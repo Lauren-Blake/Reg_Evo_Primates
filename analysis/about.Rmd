@@ -8,6 +8,6 @@ title: "About"
 
 Lauren Blake is a graduate student in the Department of Human Genetics at the University of Chicago. She is supported by the National Science Foundation's Graduate Research Fellowship (NSF-GRFP). 
 
-This website is based on the GitHub repo ashler-trial by [Joyce Hsiao][github-io]. She is a postdoctoral fellow in the Department of Human Genetics at the University of Chicago.
+This website is based on the GitHub repo ashlar-trial by [Joyce Hsiao][github-io]. She is a postdoctoral fellow in the Department of Human Genetics at the University of Chicago.
 
 [github-io]: http://jhsiao999.github.io/
