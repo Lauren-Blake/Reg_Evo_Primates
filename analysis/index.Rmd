@@ -10,7 +10,7 @@ title: "Home"
 
 ## Technical Variables Analysis
 
-*  Technical variables documented
+*  Technical variables documented/tested (sample information, RNA-seq, BS-seq, QC, processing, etc.)
 *  Testing technical variables (gene expression PCs)
 *  Further analysis with 
 *  Testing technical variables (methylation PCs)
@@ -24,6 +24,7 @@ title: "Home"
 *  Clustering after testing for technical variables 
 *  tissue DMRs
 
-## Helpful Scipts/Commands
+
+## Using Rmardown to document anaysis: An example
 
 *  [Use PCA to visualize some single-cell data](single-cell-pca.html)
