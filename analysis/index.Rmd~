@@ -6,15 +6,10 @@ title: "Home"
 
 **Code version:** `r system("git log -1 --format='%H'", intern = TRUE)`
 
-## Project Introduction
+## Tutorials
 
 *  [Making a project site](tutorial.html) ([2015-12-12 lab meeting slides](../docs/repo-setup-tutorial-stephens-lab-2015-12-03.pdf))
 
-
-## Documenting and Testing Technical Variables
-
-*  Technical variables documented/tested (sample information, RNA-seq, BS-seq, QC, processing, etc.)
-*  Testing Technical Variables Part I
 
 ## Using Rmardown to document anaysis: An example
 
