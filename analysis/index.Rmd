@@ -19,6 +19,7 @@ title: "Home"
 
 *  Different normalizations
 *  Adjusting RNA expression levels
+
 ## Methylation Data
 
 *  Clustering after testing for technical variables 
