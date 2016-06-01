@@ -12,7 +12,7 @@ title: "Home"
 
 *  [Technical variables documented/tested (sample information, RNA-seq, BS-seq, QC, processing, etc.)](../docs/List_technical_variables.docx)
 *  Testing technical variables (gene expression PCs)
-*  Further analysis with 
+*  Further analysis with potential confounders
 *  Testing technical variables (methylation PCs)
 
 ## RNA-seq Data
@@ -25,6 +25,6 @@ title: "Home"
 *  tissue DMRs
 
 
-## Using Rmardown to document anaysis: An example
 
-*  [Use PCA to visualize some single-cell data](single-cell-pca.html)
+
+
