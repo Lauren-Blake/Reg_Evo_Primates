@@ -10,7 +10,7 @@ title: "Home"
 
 ## Technical Variables Analysis
 
-*  Technical variables documented/tested (sample information, RNA-seq, BS-seq, QC, processing, etc.)
+*  [Technical variables documented/tested (sample information, RNA-seq, BS-seq, QC, processing, etc.)](../docs/List_technical_variables.docx)
 *  Testing technical variables (gene expression PCs)
 *  Further analysis with 
 *  Testing technical variables (methylation PCs)

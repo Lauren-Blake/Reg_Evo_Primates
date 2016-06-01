@@ -25,6 +25,6 @@ title: "Home"
 *  tissue DMRs
 
 
-## Using Rmardown to document anaysis: An example
 
-*  [Use PCA to visualize some single-cell data](single-cell-pca.html)
+
+
