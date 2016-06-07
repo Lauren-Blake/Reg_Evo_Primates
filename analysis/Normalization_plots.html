@@ -127,6 +127,7 @@ img {
 <ul>
 <li><a href="#the-goal-of-this-script-is-to-visualize-different-normalizations-that-can-be-applied-to-the-rna-seq-data.">The goal of this script is to visualize different normalizations that can be applied to the RNA-seq data.</a></li>
 <li><a href="#hierarchical-clustering-and-pca-on-raw-data">Hierarchical clustering and PCA on raw data</a></li>
+<li><a href="#pcs-3-and-4-raw-data">PCs 3 and 4 Raw Data</a></li>
 <li><a href="#look-at-the-density-for-each-tissue">Look at the density for each tissue</a></li>
 <li><a href="#comparing-the-tmmcpm-data-without-the-gc-normalization-versus-the-raw-data">Comparing the TMM/CPM data without the GC normalization versus the raw data</a></li>
 </ul>
@@ -215,15 +216,15 @@ dev.off()</code></pre>
 for (n in 1:n){
   col.v &lt;- pal[as.integer(samples$Tissue)]
   plot_scores(pca_genes, scores, n, n+1, col.v)
-}
-
-dev.off()</code></pre>
-<pre><code>## null device 
-##           1</code></pre>
+}</code></pre>
+</div>
+<div id="pcs-3-and-4-raw-data" class="section level3">
+<h3>PCs 3 and 4 Raw Data</h3>
 <pre class="r"><code>for (n in 2:3){
   col.v &lt;- pal[as.integer(samples$Tissue)]
   plot_scores(pca_genes, scores, n, n+1, col.v)
 }</code></pre>
+<p><img src="Normalization_plots_files/figure-html/unnamed-chunk-4-1.png" title="" alt="" width="672" /><img src="Normalization_plots_files/figure-html/unnamed-chunk-4-2.png" title="" alt="" width="672" /></p>
 <div id="assign-different-conditions" class="section level4">
 <h4>Assign different conditions</h4>
 <pre class="r"><code>all_chimps &lt;- c(1:16)
