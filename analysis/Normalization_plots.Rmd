@@ -63,7 +63,7 @@ plot_scores <- function(pca, scores, n, m, cols, points=F, pchs =20, legend=F){
 # Clustering (from Julien Roux)
 cors <- cor(counts_genes, method="spearman", use="pairwise.complete.obs")
 
-dev.off()
+
 heatmap.2( cors, scale="none", col = colors, margins = c(12, 12), trace='none', denscol="white", labCol=labels, ColSideColors=pal[as.integer(as.factor(samples$Species))], RowSideColors=pal[as.integer(as.factor(samples$Tissue))+9], cexCol = 0.2 + 1/log10(15), cexRow = 0.2 + 1/log10(15))
 
 ```
@@ -83,23 +83,17 @@ scores <- pca_genes$x
 #Make PCA plots with the factors colored by tissue
 
 
-for (n in 1:2){
+for (n in 1:1){
   col.v <- pal[as.integer(samples$Tissue)]
   plot_scores(pca_genes, scores, n, n+1, col.v)
 }
 
 ### PCs 3 and 4 Raw Data
 
-for (n in 2:3){
+for (n in 3:3){
   col.v <- pal[as.integer(samples$Tissue)]
   plot_scores(pca_genes, scores, n, n+1, col.v)
 }
-
-```
-
-### PCs 3 and 4 Raw Data
-
-```{r}
 
 ```
 
