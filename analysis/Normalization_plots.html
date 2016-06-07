@@ -209,22 +209,22 @@ scores &lt;- pca_genes$x
 
 
 #Make PCA plots with the factors colored by tissue
-dev.off()</code></pre>
-<pre><code>## null device 
-##           1</code></pre>
-<pre class="r"><code>n=1
-for (n in 1:n){
+
+
+for (n in 1:2){
+  col.v &lt;- pal[as.integer(samples$Tissue)]
+  plot_scores(pca_genes, scores, n, n+1, col.v)
+}
+
+### PCs 3 and 4 Raw Data
+
+for (n in 2:3){
   col.v &lt;- pal[as.integer(samples$Tissue)]
   plot_scores(pca_genes, scores, n, n+1, col.v)
 }</code></pre>
 </div>
 <div id="pcs-3-and-4-raw-data" class="section level3">
 <h3>PCs 3 and 4 Raw Data</h3>
-<pre class="r"><code>for (n in 2:3){
-  col.v &lt;- pal[as.integer(samples$Tissue)]
-  plot_scores(pca_genes, scores, n, n+1, col.v)
-}</code></pre>
-<p><img src="Normalization_plots_files/figure-html/unnamed-chunk-4-1.png" title="" alt="" width="672" /><img src="Normalization_plots_files/figure-html/unnamed-chunk-4-2.png" title="" alt="" width="672" /></p>
 <div id="assign-different-conditions" class="section level4">
 <h4>Assign different conditions</h4>
 <pre class="r"><code>all_chimps &lt;- c(1:16)

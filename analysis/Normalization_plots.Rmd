@@ -79,9 +79,16 @@ scores <- pca_genes$x
 
 
 #Make PCA plots with the factors colored by tissue
-dev.off()
-n=1
-for (n in 1:n){
+
+
+for (n in 1:2){
+  col.v <- pal[as.integer(samples$Tissue)]
+  plot_scores(pca_genes, scores, n, n+1, col.v)
+}
+
+### PCs 3 and 4 Raw Data
+
+for (n in 2:3){
   col.v <- pal[as.integer(samples$Tissue)]
   plot_scores(pca_genes, scores, n, n+1, col.v)
 }
@@ -91,10 +98,7 @@ for (n in 1:n){
 ### PCs 3 and 4 Raw Data
 
 ```{r}
-for (n in 2:3){
-  col.v <- pal[as.integer(samples$Tissue)]
-  plot_scores(pca_genes, scores, n, n+1, col.v)
-}
+
 ```
 
 
