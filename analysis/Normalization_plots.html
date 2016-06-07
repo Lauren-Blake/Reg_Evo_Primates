@@ -168,7 +168,7 @@ labels &lt;- paste(samples$Species, samples$Tissue, sep=&quot; &quot;)</code></p
 </div>
 <div id="hierarchical-clustering-and-pca-on-raw-data" class="section level3">
 <h3>Hierarchical clustering and PCA on raw data</h3>
-<pre class="r"><code>#PCA function
+<pre class="r"><code>#PCA function (from Julien Roux)
 #Load in the plot_scores function
 plot_scores &lt;- function(pca, scores, n, m, cols, points=F, pchs =20, legend=F){
   xmin &lt;- min(scores[,n]) - (max(scores[,n]) - min(scores[,n]))*0.05
@@ -188,24 +188,22 @@ plot_scores &lt;- function(pca, scores, n, m, cols, points=F, pchs =20, legend=F
     points(scores[,n],scores[,m], col=cols, pch=pchs, cex=1.3)
   }
 }</code></pre>
-<pre class="r"><code># Clustering
+<pre class="r"><code># Clustering (from Julien Roux)
 cors &lt;- cor(counts_genes, method=&quot;spearman&quot;, use=&quot;pairwise.complete.obs&quot;)
 
 dev.off()</code></pre>
 <pre><code>## null device 
 ##           1</code></pre>
-<pre class="r"><code>heatmap.2( cors, scale=&quot;none&quot;, col = colors, margins = c(12, 12), trace=&#39;none&#39;, denscol=&quot;white&quot;, labCol=labels, ColSideColors=pal[as.integer(as.factor(samples$Species))], RowSideColors=pal[as.integer(as.factor(samples$Tissue))+9], cexCol = 0.2 + 1/log10(15), cexRow = 0.2 + 1/log10(15))
-
-
-# Check that there&#39;s no &quot;NAs&quot; in the data
+<pre class="r"><code>heatmap.2( cors, scale=&quot;none&quot;, col = colors, margins = c(12, 12), trace=&#39;none&#39;, denscol=&quot;white&quot;, labCol=labels, ColSideColors=pal[as.integer(as.factor(samples$Species))], RowSideColors=pal[as.integer(as.factor(samples$Tissue))+9], cexCol = 0.2 + 1/log10(15), cexRow = 0.2 + 1/log10(15))</code></pre>
+<pre class="r"><code># Check that there&#39;s no &quot;NAs&quot; in the data
 select &lt;- counts_genes
 summary(apply(select, 1, var) == 0) </code></pre>
 <pre><code>##    Mode   FALSE    TRUE    NA&#39;s 
 ## logical   28253    1777       0</code></pre>
-<pre class="r"><code>pca_genes &lt;- prcomp(t(counts_genes), scale = F)
+<pre class="r"><code># Perform PCA
+
+pca_genes &lt;- prcomp(t(counts_genes), scale = F)
 scores &lt;- pca_genes$x
-
-
 
 
 #Make PCA plots with the factors colored by tissue
@@ -214,14 +212,15 @@ scores &lt;- pca_genes$x
 for (n in 1:2){
   col.v &lt;- pal[as.integer(samples$Tissue)]
   plot_scores(pca_genes, scores, n, n+1, col.v)
-}
-
-### PCs 3 and 4 Raw Data
+}</code></pre>
+<p><img src="Normalization_plots_files/figure-html/unnamed-chunk-4-1.png" title="" alt="" width="672" /></p>
+<pre class="r"><code>### PCs 3 and 4 Raw Data
 
 for (n in 2:3){
   col.v &lt;- pal[as.integer(samples$Tissue)]
   plot_scores(pca_genes, scores, n, n+1, col.v)
 }</code></pre>
+<p><img src="Normalization_plots_files/figure-html/unnamed-chunk-4-2.png" title="" alt="" width="672" /><img src="Normalization_plots_files/figure-html/unnamed-chunk-4-3.png" title="" alt="" width="672" /></p>
 </div>
 <div id="pcs-3-and-4-raw-data" class="section level3">
 <h3>PCs 3 and 4 Raw Data</h3>

@@ -36,7 +36,7 @@ labels <- paste(samples$Species, samples$Tissue, sep=" ")
 ### Hierarchical clustering and PCA on raw data
 
 ```{r}
-#PCA function
+#PCA function (from Julien Roux)
 #Load in the plot_scores function
 plot_scores <- function(pca, scores, n, m, cols, points=F, pchs =20, legend=F){
   xmin <- min(scores[,n]) - (max(scores[,n]) - min(scores[,n]))*0.05
@@ -60,22 +60,24 @@ plot_scores <- function(pca, scores, n, m, cols, points=F, pchs =20, legend=F){
 ```
 
 ```{r}
-
-# Clustering
+# Clustering (from Julien Roux)
 cors <- cor(counts_genes, method="spearman", use="pairwise.complete.obs")
 
 dev.off()
 heatmap.2( cors, scale="none", col = colors, margins = c(12, 12), trace='none', denscol="white", labCol=labels, ColSideColors=pal[as.integer(as.factor(samples$Species))], RowSideColors=pal[as.integer(as.factor(samples$Tissue))+9], cexCol = 0.2 + 1/log10(15), cexRow = 0.2 + 1/log10(15))
 
+```
 
+
+```{r}
 # Check that there's no "NAs" in the data
 select <- counts_genes
 summary(apply(select, 1, var) == 0) 
 
+# Perform PCA
+
 pca_genes <- prcomp(t(counts_genes), scale = F)
 scores <- pca_genes$x
-
-
 
 
 #Make PCA plots with the factors colored by tissue
