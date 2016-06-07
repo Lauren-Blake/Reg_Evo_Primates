@@ -1,0 +1,142 @@
+---
+title: "Normalization_plots_RNAseq"
+author: "Lauren Blake"
+date: "June 2, 2016"
+output: html_document
+---
+
+### The goal of this script is to visualize different normalizations that can be applied to the RNA-seq data.  
+
+```{r}
+#Load the libraries
+
+library("gplots")
+library("ggplot2")
+library("RColorBrewer")
+
+# Load colors 
+
+colors <- colorRampPalette(c(brewer.pal(9, "Blues")[1],brewer.pal(9, "Blues")[9]))(100)
+pal <- c(brewer.pal(9, "Set1"), brewer.pal(8, "Set2"), brewer.pal(12, "Set3"))
+
+#Load the data
+
+  #Raw counts
+
+counts_genes <- read.delim("~/Reg_Evo_Primates/ashlar-trial/data/counts_genes.txt")
+
+  #Sample information
+
+samples <- read.csv("~/Reg_Evo_Primates/ashlar-trial/data/Sample_info_RNAseq.csv")
+
+labels <- paste(samples$Species, samples$Tissue, sep=" ")
+
+```
+
+### Hierarchical clustering and PCA on raw data
+
+```{r}
+#PCA function
+#Load in the plot_scores function
+plot_scores <- function(pca, scores, n, m, cols, points=F, pchs =20, legend=F){
+  xmin <- min(scores[,n]) - (max(scores[,n]) - min(scores[,n]))*0.05
+  if (legend == T){ ## let some room (35%) for a legend                                                                                                                                                 
+    xmax <- max(scores[,n]) + (max(scores[,n]) - min(scores[,n]))*0.50
+  }
+  else {
+    xmax <- max(scores[,n]) + (max(scores[,n]) - min(scores[,n]))*0.05
+  }
+  ymin <- min(scores[,m]) - (max(scores[,m]) - min(scores[,m]))*0.05
+  ymax <- max(scores[,m]) + (max(scores[,m]) - min(scores[,m]))*0.05
+  plot(scores[,n], scores[,m], xlab=paste("PC", n, ": ", round(summary(pca)$importance[2,n],3)*100, "% variance explained", sep=""), ylab=paste("PC", m, ": ", round(summary(pca)$importance[2,m],3)*100, "% variance explained", sep=""), xlim=c(xmin, xmax), ylim=c(ymin, ymax), type="n")
+  if (points == F){
+    text(scores[,n],scores[,m], rownames(scores), col=cols, cex=1)
+  }
+  else {
+    points(scores[,n],scores[,m], col=cols, pch=pchs, cex=1.3)
+  }
+}
+
+```
+
+```{r}
+
+# Clustering
+cors <- cor(counts_genes, method="spearman", use="pairwise.complete.obs")
+
+dev.off()
+heatmap.2( cors, scale="none", col = colors, margins = c(12, 12), trace='none', denscol="white", labCol=labels, ColSideColors=pal[as.integer(as.factor(samples$Species))], RowSideColors=pal[as.integer(as.factor(samples$Tissue))+9], cexCol = 0.2 + 1/log10(15), cexRow = 0.2 + 1/log10(15))
+
+
+# Check that there's no "NAs" in the data
+select <- counts_genes
+summary(apply(select, 1, var) == 0) 
+
+pca_genes <- prcomp(t(counts_genes), scale = F)
+scores <- pca_genes$x
+
+
+
+
+#Make PCA plots with the factors colored by tissue
+dev.off()
+n=1
+for (n in 1:n){
+  col.v <- pal[as.integer(samples$Tissue)]
+  plot_scores(pca_genes, scores, n, n+1, col.v)
+}
+
+dev.off()
+for (n in 2:3){
+  col.v <- pal[as.integer(samples$Tissue)]
+  plot_scores(pca_genes, scores, n, n+1, col.v)
+}
+
+```
+
+#### Assign different conditions
+
+```{r}
+
+all_chimps <- c(1:16)
+all_humans <- c(17:32)
+all_rhesus <- c(33:48)
+
+chimp_hearts <- c(1,5,9,13)
+chimp_kidneys <- c(2,6,10,14)
+chimp_livers <- c(3,7,11,15)
+chimp_lungs <- c(4,8,12,16)
+
+human_hearts <- c(17,21,25,29)
+human_kidneys <- c(18, 22, 26, 30)
+human_livers <- c(19, 23, 27, 31)
+human_lungs <- c(20, 24, 28, 32)
+  
+rhesus_hearts <- c(33, 37, 41, 45)
+rhesus_kidneys <- c(34, 38, 42, 46)
+rhesus_livers <- c(35, 39, 43, 47)
+rhesus_lungs <- c(36, 40, 44, 48)
+
+```
+
+### Look at the density for each tissue
+
+```{r}
+
+```
+
+
+### Comparing the TMM/CPM data without the GC normalization versus the raw data
+
+
+
+```{r}
+
+#inshared_promoters = row.names(ratio_hc_hearts_counts_genes) %in% rownames(CPM.genes.GC.TMM.norm)
+#inshared_promoters_data <- as.data.frame(inshared_promoters)
+#ratio_hc_hearts_counts_genes_in <- cbind(ratio_hc_hearts_counts_genes, inshared_promoters_data)
+#ratio_hc_hearts_counts_genes <- subset(ratio_hc_hearts_counts_genes_in, inshared_promoters == "TRUE")
+
+
+```
+
