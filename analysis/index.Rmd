@@ -18,7 +18,7 @@ title: "Home"
 ## RNA-seq Data
 
 *  [Unmapped and Mapped Reads](../analysis/Plots_unmapped_mapped_RNAseq_reads.html)
-*  Different normalizations
+*  [Different normalizations](../analysis/Plots_unmapped_mapped_RNAseq_reads.html)
 *  Adjusting RNA expression levels
 
 ## Methylation Data
