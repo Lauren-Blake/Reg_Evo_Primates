@@ -128,6 +128,10 @@ img {
 <li><a href="#the-goal-of-this-script-is-to-visualize-different-normalizations-that-can-be-applied-to-the-rna-seq-data.">The goal of this script is to visualize different normalizations that can be applied to the RNA-seq data.</a></li>
 <li><a href="#hierarchical-clustering-and-pca-on-raw-data">Hierarchical clustering and PCA on raw data</a></li>
 <li><a href="#density-plots">Density plots</a></li>
+<li><a href="#log2raw-counts">Log2(raw counts)</a></li>
+<li><a href="#log2cpm">log2(CPM)</a></li>
+<li><a href="#tmmlog2cpm">TMM/log2(CPM)</a></li>
+<li><a href="#tmmlog2cpm-with-h1h-removed">TMM/log2(CPM) with H1H Removed</a></li>
 </ul>
 </div>
 
@@ -275,6 +279,9 @@ for (n in 3:3){
 density_plot_C1H + labs(title = &quot;Density plot of raw gene counts of C1H&quot;) + labs(x = &quot;Raw counts for each gene&quot;)</code></pre>
 <p><img src="Normalization_plots_files/figure-html/unnamed-chunk-5-1.png" title="" alt="" width="672" /></p>
 <p>We need to first transform this raw data so we can better assess the densities. We will look the counts using log2.</p>
+</div>
+<div id="log2raw-counts" class="section level3">
+<h3>Log2(raw counts)</h3>
 <pre class="r"><code>log_counts_genes &lt;- as.data.frame(log2(counts_genes))
 head(log_counts_genes)</code></pre>
 <pre><code>##                       C1H       C1K      C1Li      C1Lu       C2H
@@ -376,7 +383,9 @@ plotDensities(log_counts_genes[,1:16], col=col[1:16, ], legend=&quot;topright&qu
 <p><img src="Normalization_plots_files/figure-html/unnamed-chunk-6-9.png" title="" alt="" width="672" /></p>
 <pre class="r"><code>plotDensities(log_counts_genes[,33:48], col=col[33:48, ], legend=&quot;topright&quot;)</code></pre>
 <p><img src="Normalization_plots_files/figure-html/unnamed-chunk-6-10.png" title="" alt="" width="672" /></p>
-<p>Let’s compare these to log2(CPM)</p>
+</div>
+<div id="log2cpm" class="section level3">
+<h3>log2(CPM)</h3>
 <pre class="r"><code>cpm &lt;- cpm(counts_genes, log=TRUE)
 head(cpm)</code></pre>
 <pre><code>##                      C1H       C1K      C1Li      C1Lu       C2H
@@ -470,7 +479,9 @@ plotDensities(cpm[,1:16], col=col[1:16, ], legend=&quot;topright&quot;)</code></
 <p><img src="Normalization_plots_files/figure-html/unnamed-chunk-7-6.png" title="" alt="" width="672" /></p>
 <pre class="r"><code>plotDensities(cpm[,33:48], col=col[33:48, ], legend=&quot;topright&quot;)</code></pre>
 <p><img src="Normalization_plots_files/figure-html/unnamed-chunk-7-7.png" title="" alt="" width="672" /></p>
-<p>Let’s compare these to TMM/log2(CPM)</p>
+</div>
+<div id="tmmlog2cpm" class="section level3">
+<h3>TMM/log2(CPM)</h3>
 <pre class="r"><code>## Create edgeR object (dge) to calculate TMM normalization  
 dge_original &lt;- DGEList(counts=as.matrix(counts_genes), genes=rownames(counts_genes), group = as.character(t(labels)))
 dge_original &lt;- calcNormFactors(dge_original)
@@ -572,6 +583,9 @@ plotDensities(tmm_cpm[,1:16], col=col[1:16, ], legend=&quot;topright&quot;)</cod
 <p><img src="Normalization_plots_files/figure-html/unnamed-chunk-8-7.png" title="" alt="" width="672" /></p>
 <pre class="r"><code>plotDensities(tmm_cpm[,33:48], col=col[33:48, ], legend=&quot;topright&quot;)</code></pre>
 <p><img src="Normalization_plots_files/figure-html/unnamed-chunk-8-8.png" title="" alt="" width="672" /></p>
+</div>
+<div id="tmmlog2cpm-with-h1h-removed" class="section level3">
+<h3>TMM/log2(CPM) with H1H Removed</h3>
 <p>We can see from the data that H1H doesn’t look like the other (human) hearts. We will remove it here.</p>
 <pre class="r"><code># Remove H1H
 

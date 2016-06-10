@@ -119,6 +119,8 @@ density_plot_C1H + labs(title = "Density plot of raw gene counts of C1H") + labs
 
 We need to first transform this raw data so we can better assess the densities. We will look the counts using log2. 
 
+### Log2(raw counts)
+
 ```{r}
 log_counts_genes <- as.data.frame(log2(counts_genes))
 head(log_counts_genes)
@@ -160,7 +162,7 @@ plotDensities(log_counts_genes[,33:48], col=col[33:48, ], legend="topright")
 ```
 
 
-Let's compare these to log2(CPM)
+### log2(CPM)
 
 ```{r}
 cpm <- cpm(counts_genes, log=TRUE)
@@ -189,7 +191,7 @@ plotDensities(cpm[,33:48], col=col[33:48, ], legend="topright")
 
 ```
 
-Let's compare these to TMM/log2(CPM)
+### TMM/log2(CPM)
 
 ```{r}
 ## Create edgeR object (dge) to calculate TMM normalization  
@@ -225,6 +227,8 @@ plotDensities(tmm_cpm[,17:32], col=col[17:32, ], legend="topright")
 plotDensities(tmm_cpm[,33:48], col=col[33:48, ], legend="topright")
 
 ```
+
+### TMM/log2(CPM) with H1H Removed
 
 We can see from the data that H1H doesn't look like the other (human) hearts. We will remove it here. 
 
