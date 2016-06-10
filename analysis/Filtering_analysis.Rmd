@@ -1,0 +1,110 @@
+---
+title: "Filtering_analysis"
+author: "Lauren Blake"
+date: "June 10, 2016"
+output: html_document
+---
+
+### The goal of this file is to establish filtering criteria for multispecies RNA-seq data.
+
+### Introduction
+
+There are two main considerations for filtering:
+  
+1. **When to filter (before or after performing TMM/CPM).** Given that this is multi-species and multi-tissue analysis, I would argue that it makes sense to filter before performing TMM/CPM. My reasoning is that if we filter after TMM/CPM, it would then be prudent to perform TMM and CPM again with the updated library sizes. 
+
+2. **What threshold(s) to filter** at e.g. how many samples, tissues, and/or species should have a present value in order to include the gene in the later analysis. For example, Julien had used the cut-off of log2(cpm > 1) in at least 4 of the samples for each gene. This is a potentially lax cutoff and may lead to us having lots of missing data when we perform the differential expression analysis. 
+
+
+```{r}
+# Load libraries 
+
+library("gplots")
+library("ggplot2")
+library("RColorBrewer")
+library("scales")
+library("edgeR")
+
+# Load colors 
+
+colors <- colorRampPalette(c(brewer.pal(9, "Blues")[1],brewer.pal(9, "Blues")[9]))(100)
+pal <- c(brewer.pal(9, "Set1"), brewer.pal(8, "Set2"), brewer.pal(12, "Set3"))
+
+#Load the data
+
+  #Raw counts
+
+counts_genes <- read.delim("~/Reg_Evo_Primates/ashlar-trial/data/counts_genes.txt")
+
+  #Sample information
+
+samples <- read.csv("~/Reg_Evo_Primates/ashlar-trial/data/Sample_info_RNAseq.csv")
+
+labels <- paste(samples$Species, samples$Tissue, sep=" ")
+
+dim(counts_genes)
+```
+
+### log2(CPM) > 1 in at least 4 samples
+
+We are beginning with 30030 genes and 48 samples. What happens when we require keeping only those that have log2(CPM) > 1 in at least 4 samples? (Julien's analysis)
+
+```{r}
+dge_original <- DGEList(counts=as.matrix(counts_genes), genes=rownames(counts_genes), group = as.character(t(labels)))
+dge_original <- calcNormFactors(dge_original)
+
+cpm <- cpm(dge_original, normalized.lib.sizes=TRUE, log=TRUE, prior.count = 0.25)
+head(cpm)
+
+cpm_filtered <- cpm[rowSums(cpm > 1) >= 4, ]
+dim(cpm_filtered)
+```
+
+This leaves us with 16,934 genes. 
+
+### Different log2(cpm) thresholds (1 to 48 samples required)
+
+```{r}
+
+#Find number of genes for each sample threshold
+filtered_genes <- array(1:48, dim = (c(48,1)))
+
+for (i in 1:48){
+  cpm_filtered <- cpm[rowSums(cpm > 1) >= i, ]
+  filter_genes <- as.data.frame(dim(cpm_filtered))
+  filtered_genes[i, 1] <- filter_genes[1,]
+  
+  }
+
+# Plot the results
+plot(filtered_genes, pch = 16, xlab = "Number of samples required to have log2(cpm) > 1", ylab = "Number of genes", main = "Genes for each sample threshold")
+```
+
+There are `r filtered_genes[48,1]` genes when we require log2(cpm) > 1 in all 48 samples. 
+
+### What if we try log2(raw counts) > 1 in all 48 samples?
+
+```{r}
+
+#Find number of genes for each sample threshold
+filtered_genes <- array(1:48, dim = (c(48,1)))
+log_counts_genes <- as.data.frame(log2(counts_genes))
+
+for (i in 1:48){
+  log_filtered <- log_counts_genes[rowSums(log_counts_genes > 1) >= i, ] 
+  filter_genes <- as.data.frame(dim(log_filtered))
+  filtered_genes[i, 1] <- filter_genes[1,]
+  
+  }
+
+# Plot the results
+plot(filtered_genes, pch = 16, xlab = "Number of samples required to have log2(raw counts) > 1", ylab = "Number of genes", main = "Genes for each sample threshold")
+```
+
+There are `r filtered_genes[48,1]` genes when we require log2(raw counts) > 1 in all 48 samples. 
+
+### What if we require log2(raw counts) > 1 in 10/12 samples for each species (regardless of tissue)?
+
+### What if we require log2(raw counts) > 1 in 3/4 individuals for each tissue-species pair?
+
+### What if we require log2(raw counts) > 1 in 3/4 individuals for 3/4 tissues in each species?

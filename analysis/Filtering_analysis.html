@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+<head>
+
+<meta charset="utf-8">
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<meta name="generator" content="pandoc" />
+
+<meta name="author" content="Lauren Blake" />
+
+<meta name="date" content="2016-06-10" />
+
+<title>Filtering_analysis</title>
+
+<script src="libs/jquery-1.11.0/jquery.min.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link href="libs/bootstrap-3.3.1/css/united.min.css" rel="stylesheet" />
+<script src="libs/bootstrap-3.3.1/js/bootstrap.min.js"></script>
+<script src="libs/bootstrap-3.3.1/shim/html5shiv.min.js"></script>
+<script src="libs/bootstrap-3.3.1/shim/respond.min.js"></script>
+
+<style type="text/css">
+
+/* padding for bootstrap navbar */
+body {
+  padding-top: 50px;
+  padding-bottom: 40px;
+}
+
+
+/* offset scroll position for anchor links (for fixed navbar)  */
+.section h2 {
+  padding-top: 55px;
+  margin-top: -55px;
+}
+.section h3 {
+  padding-top: 55px;
+  margin-top: -55px;
+}
+
+
+
+/* don't use link color in navbar */
+.dropdown-menu>li>a {
+  color: black;
+}
+
+/* some padding for disqus */
+#disqus_thread {
+  margin-top: 45px;
+}
+
+</style>
+
+<link rel="stylesheet" href="libs/font-awesome-4.1.0/css/font-awesome.min.css"/>
+
+<style type="text/css">code{white-space: pre;}</style>
+<link rel="stylesheet"
+      href="libs/highlight/textmate.css"
+      type="text/css" />
+<script src="libs/highlight/highlight.js"></script>
+<style type="text/css">
+  pre:not([class]) {
+    background-color: white;
+  }
+</style>
+<script type="text/javascript">
+if (window.hljs && document.readyState && document.readyState === "complete") {
+   window.setTimeout(function() {
+      hljs.initHighlighting();
+   }, 0);
+}
+</script>
+
+
+
+</head>
+
+<body>
+
+<style type = "text/css">
+.main-container {
+  max-width: 940px;
+  margin-left: auto;
+  margin-right: auto;
+}
+code {
+  color: inherit;
+  background-color: rgba(0, 0, 0, 0.04);
+}
+img { 
+  max-width:100%; 
+  height: auto; 
+}
+</style>
+<div class="container-fluid main-container">
+
+
+<div class="navbar navbar-default navbar-fixed-top" role="navigation">
+  <div class="container">
+    <div class="navbar-header">
+      <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar">
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+      </button>
+      <a class="navbar-brand" href="index.html">RegulatoryEvolutionInPrimates</a>
+    </div>
+    <div id="navbar" class="navbar-collapse collapse">
+      <ul class="nav navbar-nav">
+        <li><a href="index.html">Home</a></li>
+        <li><a href="about.html">About</a></li>
+        <li><a href="license.html">License</a></li>
+        <li><a href="https://github.com/Lauren-Blake/Reg_Evo_Primates">GitHub</a></li>
+    </div><!--/.nav-collapse -->
+  </div><!--/.container -->
+</div><!--/.navbar -->
+
+<div id="header">
+<h1 class="title">Filtering_analysis</h1>
+<h4 class="author"><em>Lauren Blake</em></h4>
+<h4 class="date"><em>June 10, 2016</em></h4>
+</div>
+
+<div id="TOC">
+<ul>
+<li><a href="#the-goal-of-this-file-is-to-establish-filtering-criteria-for-multispecies-rna-seq-data.">The goal of this file is to establish filtering criteria for multispecies RNA-seq data.</a></li>
+<li><a href="#introduction">Introduction</a></li>
+<li><a href="#log2cpm-1-in-at-least-4-samples">log2(CPM) &gt; 1 in at least 4 samples</a></li>
+<li><a href="#different-log2cpm-thresholds-1-to-48-samples-required">Different log2(cpm) thresholds (1 to 48 samples required)</a></li>
+<li><a href="#what-if-we-try-log2raw-counts-1-in-all-48-samples">What if we try log2(raw counts) &gt; 1 in all 48 samples?</a></li>
+<li><a href="#what-if-we-require-log2raw-counts-1-in-1012-samples-for-each-species-regardless-of-tissue">What if we require log2(raw counts) &gt; 1 in 10/12 samples for each species (regardless of tissue)?</a></li>
+<li><a href="#what-if-we-require-log2raw-counts-1-in-34-individuals-for-each-tissue-species-pair">What if we require log2(raw counts) &gt; 1 in 3/4 individuals for each tissue-species pair?</a></li>
+<li><a href="#what-if-we-require-log2raw-counts-1-in-34-individuals-for-34-tissues-in-each-species">What if we require log2(raw counts) &gt; 1 in 3/4 individuals for 3/4 tissues in each species?</a></li>
+</ul>
+</div>
+
+<div id="the-goal-of-this-file-is-to-establish-filtering-criteria-for-multispecies-rna-seq-data." class="section level3">
+<h3>The goal of this file is to establish filtering criteria for multispecies RNA-seq data.</h3>
+</div>
+<div id="introduction" class="section level3">
+<h3>Introduction</h3>
+<p>There are two main considerations for filtering:</p>
+<ol style="list-style-type: decimal">
+<li><p><strong>When to filter (before or after performing TMM/CPM).</strong> Given that this is multi-species and multi-tissue analysis, I would argue that it makes sense to filter before performing TMM/CPM. My reasoning is that if we filter after TMM/CPM, it would then be prudent to perform TMM and CPM again with the updated library sizes.</p></li>
+<li><p><strong>What threshold(s) to filter</strong> at e.g. how many samples, tissues, and/or species should have a present value in order to include the gene in the later analysis. For example, Julien had used the cut-off of log2(cpm &gt; 1) in at least 4 of the samples for each gene. This is a potentially lax cutoff and may lead to us having lots of missing data when we perform the differential expression analysis.</p></li>
+</ol>
+<pre class="r"><code># Load libraries 
+
+library(&quot;gplots&quot;)</code></pre>
+<pre><code>## Warning: package &#39;gplots&#39; was built under R version 3.1.3</code></pre>
+<pre><code>## 
+## Attaching package: &#39;gplots&#39;
+## 
+## The following object is masked from &#39;package:stats&#39;:
+## 
+##     lowess</code></pre>
+<pre class="r"><code>library(&quot;ggplot2&quot;)</code></pre>
+<pre><code>## Warning: package &#39;ggplot2&#39; was built under R version 3.1.3</code></pre>
+<pre class="r"><code>library(&quot;RColorBrewer&quot;)
+library(&quot;scales&quot;)
+library(&quot;edgeR&quot;)</code></pre>
+<pre><code>## Loading required package: limma</code></pre>
+<pre><code>## Warning: package &#39;limma&#39; was built under R version 3.1.3</code></pre>
+<pre class="r"><code># Load colors 
+
+colors &lt;- colorRampPalette(c(brewer.pal(9, &quot;Blues&quot;)[1],brewer.pal(9, &quot;Blues&quot;)[9]))(100)
+pal &lt;- c(brewer.pal(9, &quot;Set1&quot;), brewer.pal(8, &quot;Set2&quot;), brewer.pal(12, &quot;Set3&quot;))
+
+#Load the data
+
+  #Raw counts
+
+counts_genes &lt;- read.delim(&quot;~/Reg_Evo_Primates/ashlar-trial/data/counts_genes.txt&quot;)
+
+  #Sample information
+
+samples &lt;- read.csv(&quot;~/Reg_Evo_Primates/ashlar-trial/data/Sample_info_RNAseq.csv&quot;)
+
+labels &lt;- paste(samples$Species, samples$Tissue, sep=&quot; &quot;)
+
+dim(counts_genes)</code></pre>
+<pre><code>## [1] 30030    48</code></pre>
+</div>
+<div id="log2cpm-1-in-at-least-4-samples" class="section level3">
+<h3>log2(CPM) &gt; 1 in at least 4 samples</h3>
+<p>We are beginning with 30030 genes and 48 samples. What happens when we require keeping only those that have log2(CPM) &gt; 1 in at least 4 samples? (Julien’s analysis)</p>
+<pre class="r"><code>dge_original &lt;- DGEList(counts=as.matrix(counts_genes), genes=rownames(counts_genes), group = as.character(t(labels)))
+dge_original &lt;- calcNormFactors(dge_original)
+
+cpm &lt;- cpm(dge_original, normalized.lib.sizes=TRUE, log=TRUE, prior.count = 0.25)
+head(cpm)</code></pre>
+<pre><code>##                      C1H       C1K      C1Li      C1Lu       C2H       C2K
+## ENSG00000000003 4.567373  6.447533  8.256017  5.424906 4.6294354  6.011805
+## ENSG00000000005 2.416000 -1.580095 -1.416352 -3.341347 0.6076502 -1.343658
+## ENSG00000000419 5.840304  5.181024  5.932747  5.421890 5.6238128  5.035649
+## ENSG00000000457 4.558401  5.177784  5.897776  4.915903 4.7768304  5.224658
+## ENSG00000000460 1.505008  1.832930  2.075455  2.252356 1.6034149  1.903546
+## ENSG00000000938 5.610063  3.782664  5.086430  7.494062 2.4759548  4.113386
+##                      C2Li      C2Lu       C3H         C3K      C3Li
+## ENSG00000000003  7.997439  4.518180  4.896187  6.34935971  7.711220
+## ENSG00000000005 -2.074003 -2.073564 -1.336243 -0.08391333 -3.805819
+## ENSG00000000419  5.781412  5.153538  5.656791  5.12246958  6.340540
+## ENSG00000000457  6.513238  4.939606  4.599465  5.14729901  6.424910
+## ENSG00000000460  2.292856  1.977228  1.561216  1.40473716  2.271103
+## ENSG00000000938  5.356426  8.037124  4.945957  4.16655579  5.131295
+##                      C3Lu      C4H       C4K      C4Li      C4Lu       H1H
+## ENSG00000000003  5.825590 4.200148  6.445727  8.368230  5.362211  6.761084
+## ENSG00000000005 -3.821423 3.812407 -1.533431 -3.682999 -2.532144 -6.806579
+## ENSG00000000419  5.546317 5.749810  5.199950  5.796045  5.253771  6.134200
+## ENSG00000000457  5.118596 4.609688  4.965236  6.512006  5.195795  5.269211
+## ENSG00000000460  2.074325 1.421009  1.768841  2.121422  2.408692  5.108993
+## ENSG00000000938  7.109951 3.603345  3.563260  4.494896  7.649746  4.442136
+##                      H1K      H1Li      H1Lu       H2H       H2K      H2Li
+## ENSG00000000003 6.804563  6.546031  5.007223  3.704707 7.1262303  6.618244
+## ENSG00000000005 4.852944 -6.806579 -2.246586 -3.903089 0.3878291 -6.806579
+## ENSG00000000419 5.528057  6.052945  5.719069  5.629978 5.3823470  5.817742
+## ENSG00000000457 4.224917  4.923772  4.410342  3.430292 4.0791476  4.430133
+## ENSG00000000460 2.706694  4.959282  3.226274  1.915724 1.8992527  2.637193
+## ENSG00000000938 3.999256  4.449888  7.786373  5.583692 3.6609998  5.969598
+##                      H2Lu        H3H         H3K      H3Li      H3Lu
+## ENSG00000000003  4.123641  3.4819522 7.018616442  7.646317  5.182205
+## ENSG00000000005 -6.806579 -6.8065788 0.009014279 -6.806579 -6.806579
+## ENSG00000000419  5.255982  5.6892431 5.781990575  6.127195  4.901956
+## ENSG00000000457  4.144389  4.3789705 4.649846700  4.904103  3.891301
+## ENSG00000000460  2.495636 -0.1372257 2.917685496  3.148170  2.349467
+## ENSG00000000938  6.911422  4.0351829 2.570227284  5.651445  6.804843
+##                       H4H        H4K      H4Li      H4Lu       R1H
+## ENSG00000000003  4.298917  6.3173589  6.492465  4.430781  4.277450
+## ENSG00000000005 -2.885525 -0.4099302 -6.806579 -4.381165 -6.806579
+## ENSG00000000419  6.259288  5.5536660  5.736507  5.317749  5.385154
+## ENSG00000000457  3.327086  4.0330630  5.078478  4.140972  4.206293
+## ENSG00000000460  1.644565  1.9287495  3.040136  2.571756  1.205569
+## ENSG00000000938  4.933243  3.7664364  6.801466  8.216330  1.758374
+##                       R1K       R1Li      R1Lu       R2H       R2K
+## ENSG00000000003  6.865893  8.2379489  5.862719  4.587429  7.080213
+## ENSG00000000005 -6.806579 -3.5812300 -2.947388 -2.950144 -2.392446
+## ENSG00000000419  5.324798  5.7295743  4.834230  5.257598  4.989863
+## ENSG00000000457  4.957819  5.0471784  4.784547  4.273744  5.100864
+## ENSG00000000460  1.488300 -0.2693252  2.427739  1.377881  1.266081
+## ENSG00000000938  2.497210  3.7078234  6.462495  2.289137  2.627796
+##                      R2Li      R2Lu       R3H       R3K      R3Li
+## ENSG00000000003  8.590210  5.596179  4.447299  7.118296  8.159964
+## ENSG00000000005 -1.254679 -4.918947 -4.250247 -4.518792 -3.157713
+## ENSG00000000419  5.673041  4.822969  5.441223  5.319612  5.947843
+## ENSG00000000457  5.461042  5.207134  4.219708  5.092042  5.317075
+## ENSG00000000460  1.446891  2.336439  1.634827  1.826680  1.371274
+## ENSG00000000938  3.622173  6.524890  2.849036  2.219476  3.593860
+##                      R3Lu       R4H       R4K      R4Li      R4Lu
+## ENSG00000000003  5.443878  4.822954  7.048140  7.679671  5.347353
+## ENSG00000000005 -3.806700 -2.535407 -2.099889 -4.589602 -6.806579
+## ENSG00000000419  4.946500  5.357811  5.169441  5.438501  5.027872
+## ENSG00000000457  5.155818  4.440126  5.098001  5.292544  4.814466
+## ENSG00000000460  2.567598  1.018736  1.463169  1.508474  2.833647
+## ENSG00000000938  6.836275  2.405256  2.264315  4.483635  6.820965</code></pre>
+<pre class="r"><code>cpm_filtered &lt;- cpm[rowSums(cpm &gt; 1) &gt;= 4, ]
+dim(cpm_filtered)</code></pre>
+<pre><code>## [1] 16934    48</code></pre>
+<p>This leaves us with 16,934 genes.</p>
+</div>
+<div id="different-log2cpm-thresholds-1-to-48-samples-required" class="section level3">
+<h3>Different log2(cpm) thresholds (1 to 48 samples required)</h3>
+<pre class="r"><code>#Find number of genes for each sample threshold
+filtered_genes &lt;- array(1:48, dim = (c(48,1)))
+
+for (i in 1:48){
+  cpm_filtered &lt;- cpm[rowSums(cpm &gt; 1) &gt;= i, ]
+  filter_genes &lt;- as.data.frame(dim(cpm_filtered))
+  filtered_genes[i, 1] &lt;- filter_genes[1,]
+  
+  }
+
+# Plot the results
+plot(filtered_genes, pch = 16, xlab = &quot;Number of samples required to have log2(cpm) &gt; 1&quot;, ylab = &quot;Number of genes&quot;, main = &quot;Genes for each sample threshold&quot;)</code></pre>
+<p><img src="Filtering_analysis_files/figure-html/unnamed-chunk-3-1.png" title="" alt="" width="672" /></p>
+<p>There are 8916 genes when we require log2(cpm) &gt; 1 in all 48 samples.</p>
+</div>
+<div id="what-if-we-try-log2raw-counts-1-in-all-48-samples" class="section level3">
+<h3>What if we try log2(raw counts) &gt; 1 in all 48 samples?</h3>
+<pre class="r"><code>#Find number of genes for each sample threshold
+filtered_genes &lt;- array(1:48, dim = (c(48,1)))
+log_counts_genes &lt;- as.data.frame(log2(counts_genes))
+
+for (i in 1:48){
+  log_filtered &lt;- log_counts_genes[rowSums(log_counts_genes &gt; 1) &gt;= i, ] 
+  filter_genes &lt;- as.data.frame(dim(log_filtered))
+  filtered_genes[i, 1] &lt;- filter_genes[1,]
+  
+  }
+
+# Plot the results
+plot(filtered_genes, pch = 16, xlab = &quot;Number of samples required to have log2(raw counts) &gt; 1&quot;, ylab = &quot;Number of genes&quot;, main = &quot;Genes for each sample threshold&quot;)</code></pre>
+<p><img src="Filtering_analysis_files/figure-html/unnamed-chunk-4-1.png" title="" alt="" width="672" /></p>
+<p>There are 12843 genes when we require log2(raw counts) &gt; 1 in all 48 samples.</p>
+</div>
+<div id="what-if-we-require-log2raw-counts-1-in-1012-samples-for-each-species-regardless-of-tissue" class="section level3">
+<h3>What if we require log2(raw counts) &gt; 1 in 10/12 samples for each species (regardless of tissue)?</h3>
+</div>
+<div id="what-if-we-require-log2raw-counts-1-in-34-individuals-for-each-tissue-species-pair" class="section level3">
+<h3>What if we require log2(raw counts) &gt; 1 in 3/4 individuals for each tissue-species pair?</h3>
+</div>
+<div id="what-if-we-require-log2raw-counts-1-in-34-individuals-for-34-tissues-in-each-species" class="section level3">
+<h3>What if we require log2(raw counts) &gt; 1 in 3/4 individuals for 3/4 tissues in each species?</h3>
+</div>
+
+
+<!-- some extra javascript for older browsers -->
+<script type="text/javascript" src="libs/polyfill.js"></script>
+
+<script>
+
+// manage active state of menu based on current page
+$(document).ready(function () {
+
+    // active menu
+    href = window.location.pathname
+    href = href.substr(href.lastIndexOf('/') + 1)
+    $('a[href="' + href + '"]').parent().addClass('active');
+
+    // manage active menu header
+    if (href.startsWith('authoring_'))
+      $('a[href="' + 'authoring' + '"]').parent().addClass('active');
+    else if (href.endsWith('_format.html'))
+      $('a[href="' + 'formats' + '"]').parent().addClass('active');
+    else if (href.startsWith('developer_'))
+      $('a[href="' + 'developer' + '"]').parent().addClass('active');
+
+});
+
+</script>
+
+</div>
+
+<script>
+
+// add bootstrap table styles to pandoc tables
+$(document).ready(function () {
+  $('tr.header').parent('thead').parent('table').addClass('table table-condensed');
+});
+
+</script>
+
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src  = "https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML";
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
+
+</body>
+</html>
