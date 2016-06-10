@@ -235,6 +235,9 @@ labels <- as.data.frame(labels)
 labels_47 <- labels[-17,]
 labels_47 <- as.character(labels_47)
 
+species <- as.data.frame(samples$Species)
+tissues <- as.data.frame(samples$Tissue)
+
 boxplot_library_size <- ggplot(dge$samples, aes(x = tissues[-17,], y = dge$samples$lib.size, fill = species[-17,])) + geom_boxplot()
  
 boxplot_library_size + labs(title = "Library size by tissue") + labs(y = "Library size") + labs(x = "Tissues") + guides(fill=guide_legend(title="Species"))
@@ -242,9 +245,18 @@ boxplot_library_size + labs(title = "Library size by tissue") + labs(y = "Librar
 
 
 ```{r}
+# Update these values (because H1H was dropped)
+
+all_hearts <- c(1,5,9,13,20,24,28,32,36,40,44)
+all_kidneys <- c(2,6,10,14,17,21,25,29,33,37,41,45)
+all_livers <- c(3,7,11,15,18,22,26,30,34,38,42,46)
+all_lungs <- c(4,8,12,16,19,23,27,31,35,39,43,47)
+
 tmm_cpm <- cpm(dge, normalized.lib.sizes=TRUE, log=TRUE, prior.count = 0.25)
 head(cpm)
 
+# Update the samples file so that H1H is deleted
+samples <- samples[-17,]
 col = as.data.frame(pal[as.numeric(samples$Species)])
 
 plotDensities(tmm_cpm[,all_hearts], col=col[all_hearts, ], legend="topright")
@@ -260,9 +272,9 @@ col = as.data.frame(pal[as.numeric(samples$Tissue)])
 
 plotDensities(tmm_cpm[,1:16], col=col[1:16, ], legend="topright")
 
-plotDensities(tmm_cpm[,17:32], col=col[17:32, ], legend="topright")
+plotDensities(tmm_cpm[,17:31], col=col[17:31, ], legend="topright")
 
-plotDensities(tmm_cpm[,33:48], col=col[33:48, ], legend="topright")
+plotDensities(tmm_cpm[,32:47], col=col[32:47, ], legend="topright")
 
 ```
 
