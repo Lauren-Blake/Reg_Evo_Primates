@@ -128,10 +128,6 @@ img {
 <li><a href="#the-goal-of-this-script-is-to-visualize-different-normalizations-that-can-be-applied-to-the-rna-seq-data.">The goal of this script is to visualize different normalizations that can be applied to the RNA-seq data.</a></li>
 <li><a href="#hierarchical-clustering-and-pca-on-raw-data">Hierarchical clustering and PCA on raw data</a></li>
 <li><a href="#density-plots">Density plots</a></li>
-<li><a href="#tmmcpm-filtered-without-adjusting-for-gene-length">TMM/CPM Filtered without adjusting for gene length</a></li>
-<li><a href="#tmmcpm-without-adjusting-for-gene-length-but-adjusting-for-gc-content">TMM/CPM without adjusting for gene length but adjusting for GC content</a></li>
-<li><a href="#comparing-exon-lengths-between-species">Comparing exon lengths between species</a></li>
-<li><a href="#scaled-tmmcpm-so-edger-actually-outputs-rpkm-when-it-thinks-its-outputting-cpm-not-adjusting-for-gc-content">Scaled TMM/CPM so edgeR actually outputs RPKM when it thinks it’s outputting CPM (not adjusting for GC content)</a></li>
 </ul>
 </div>
 
@@ -691,43 +687,6 @@ plotDensities(tmm_cpm[,1:16], col=col[1:16, ], legend=&quot;topright&quot;)</cod
 <p><img src="Normalization_plots_files/figure-html/unnamed-chunk-10-6.png" title="" alt="" width="672" /></p>
 <pre class="r"><code>plotDensities(tmm_cpm[,32:47], col=col[32:47, ], legend=&quot;topright&quot;)</code></pre>
 <p><img src="Normalization_plots_files/figure-html/unnamed-chunk-10-7.png" title="" alt="" width="672" /></p>
-<p>We want to filter genes, keeping only those that have log2(CPM) &gt; 1 in at least 4 samples</p>
-<pre class="r"><code>cpm_filtered &lt;- cpm[rowSums(cpm &gt; 1) &gt;= 30, ]
-dim(cpm_filtered)</code></pre>
-<pre><code>## [1] 12206    48</code></pre>
-<pre class="r"><code># Recalculate the normalization factors
-
-dge_filtered &lt;- dge[rowSums(cpm &gt; 1) &gt;= 30, ]
-dge_filtered_factors &lt;- calcNormFactors(dge_filtered)
-dim(dge_filtered)</code></pre>
-<pre><code>## [1] 12206    47</code></pre>
-<pre class="r"><code>### Filter the original data (counts_genes, which currently contains 30,030 genes) with this criteria
-
-inshared_lists = row.names(counts_genes) %in% rownames(cpm_filtered)
-inshared_lists_data &lt;- as.data.frame(inshared_lists)
-counts_genes_in &lt;- cbind(counts_genes, inshared_lists_data)
-counts_genes_in_log2_cpm &lt;- subset(counts_genes_in, inshared_lists_data == &quot;TRUE&quot;)</code></pre>
-<p>Note here that John also suggested incorporating more complex filtering methods, such as present in 3 out of 4 individuals in at least one tissue-species pair.</p>
-</div>
-<div id="tmmcpm-filtered-without-adjusting-for-gene-length" class="section level3">
-<h3>TMM/CPM Filtered without adjusting for gene length</h3>
-<pre class="r"><code>plotDensities(cpm_filtered, col=pal[as.numeric(samples$Species)], legend=&quot;topright&quot;)</code></pre>
-<p><img src="Normalization_plots_files/figure-html/unnamed-chunk-12-1.png" title="" alt="" width="672" /></p>
-<pre class="r"><code>plotDensities(cpm_filtered, col=pal[as.numeric(samples$Tissue)], legend=&quot;topright&quot;)</code></pre>
-<p><img src="Normalization_plots_files/figure-html/unnamed-chunk-12-2.png" title="" alt="" width="672" /></p>
-</div>
-<div id="tmmcpm-without-adjusting-for-gene-length-but-adjusting-for-gc-content" class="section level3">
-<h3>TMM/CPM without adjusting for gene length but adjusting for GC content</h3>
-</div>
-<div id="comparing-exon-lengths-between-species" class="section level3">
-<h3>Comparing exon lengths between species</h3>
-</div>
-<div id="scaled-tmmcpm-so-edger-actually-outputs-rpkm-when-it-thinks-its-outputting-cpm-not-adjusting-for-gc-content" class="section level3">
-<h3>Scaled TMM/CPM so edgeR actually outputs RPKM when it thinks it’s outputting CPM (not adjusting for GC content)</h3>
-<pre class="r"><code>#inshared_promoters = row.names(ratio_hc_hearts_counts_genes) %in% rownames(CPM.genes.GC.TMM.norm)
-#inshared_promoters_data &lt;- as.data.frame(inshared_promoters)
-#ratio_hc_hearts_counts_genes_in &lt;- cbind(ratio_hc_hearts_counts_genes, inshared_promoters_data)
-#ratio_hc_hearts_counts_genes &lt;- subset(ratio_hc_hearts_counts_genes_in, inshared_promoters == &quot;TRUE&quot;)</code></pre>
 </div>
 
 

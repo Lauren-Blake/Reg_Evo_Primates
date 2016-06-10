@@ -159,6 +159,7 @@ plotDensities(log_counts_genes[,33:48], col=col[33:48, ], legend="topright")
 
 ```
 
+
 Let's compare these to log2(CPM)
 
 ```{r}
@@ -278,64 +279,4 @@ plotDensities(tmm_cpm[,32:47], col=col[32:47, ], legend="topright")
 
 ```
 
-We want to filter genes, keeping only those that have log2(CPM) > 1 in at least 4 samples
-
-```{r}
-cpm_filtered <- cpm[rowSums(cpm > 1) >= 30, ]
-dim(cpm_filtered)
-
-# Recalculate the normalization factors
-
-dge_filtered <- dge[rowSums(cpm > 1) >= 30, ]
-dge_filtered_factors <- calcNormFactors(dge_filtered)
-dim(dge_filtered)
-
-### Filter the original data (counts_genes, which currently contains 30,030 genes) with this criteria
-
-inshared_lists = row.names(counts_genes) %in% rownames(cpm_filtered)
-inshared_lists_data <- as.data.frame(inshared_lists)
-counts_genes_in <- cbind(counts_genes, inshared_lists_data)
-counts_genes_in_log2_cpm <- subset(counts_genes_in, inshared_lists_data == "TRUE")
- 
-```
-
-Note here that John also suggested incorporating more complex filtering methods, such as present in 3 out of 4 individuals in at least one tissue-species pair. 
-
-### TMM/CPM Filtered without adjusting for gene length
-
-```{r}
-plotDensities(cpm_filtered, col=pal[as.numeric(samples$Species)], legend="topright")
-
-plotDensities(cpm_filtered, col=pal[as.numeric(samples$Tissue)], legend="topright")
-
-```
-
-### TMM/CPM without adjusting for gene length but adjusting for GC content
-
-
-```{r}
-
-```
-
-### Comparing exon lengths between species
-
-```{r}
-
-```
-
-### Scaled TMM/CPM so edgeR actually outputs RPKM when it thinks it's outputting CPM (not adjusting for GC content)
-
-
-
-
-
-```{r}
-
-#inshared_promoters = row.names(ratio_hc_hearts_counts_genes) %in% rownames(CPM.genes.GC.TMM.norm)
-#inshared_promoters_data <- as.data.frame(inshared_promoters)
-#ratio_hc_hearts_counts_genes_in <- cbind(ratio_hc_hearts_counts_genes, inshared_promoters_data)
-#ratio_hc_hearts_counts_genes <- subset(ratio_hc_hearts_counts_genes_in, inshared_promoters == "TRUE")
-
-
-```
 
