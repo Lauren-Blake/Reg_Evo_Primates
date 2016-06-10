@@ -127,7 +127,7 @@ img {
 <ul>
 <li><a href="#the-goal-of-this-script-is-to-visualize-different-normalizations-that-can-be-applied-to-the-rna-seq-data.">The goal of this script is to visualize different normalizations that can be applied to the RNA-seq data.</a></li>
 <li><a href="#hierarchical-clustering-and-pca-on-raw-data">Hierarchical clustering and PCA on raw data</a></li>
-<li><a href="#density-plots">Density plots</a></li>
+<li><a href="#density-plot-for-the-raw-data">Density plot for the raw data</a></li>
 <li><a href="#log2raw-counts">Log2(raw counts)</a></li>
 <li><a href="#log2cpm">log2(CPM)</a></li>
 <li><a href="#tmmlog2cpm">TMM/log2(CPM)</a></li>
@@ -271,8 +271,8 @@ for (n in 3:3){
 }</code></pre>
 <p><img src="Normalization_plots_files/figure-html/unnamed-chunk-4-2.png" title="" alt="" width="672" /></p>
 </div>
-<div id="density-plots" class="section level3">
-<h3>Density plots</h3>
+<div id="density-plot-for-the-raw-data" class="section level3">
+<h3>Density plot for the raw data</h3>
 <p>Let’s see what the density plot looks like when we only use one sample and the raw counts.</p>
 <pre class="r"><code>density_plot_C1H &lt;- ggplot(counts_genes, aes(x = C1H)) + geom_density()
 

@@ -106,7 +106,7 @@ for (n in 3:3){
 
 ```
 
-### Density plots
+### Density plot for the raw data
 
 Let's see what the density plot looks like when we only 
 use one sample and the raw counts.
