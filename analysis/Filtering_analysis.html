@@ -130,10 +130,10 @@ img {
 <li><a href="#introduction">Introduction</a></li>
 <li><a href="#log2cpm-1-in-at-least-4-samples">log2(CPM) &gt; 1 in at least 4 samples</a></li>
 <li><a href="#different-log2cpm-thresholds-1-to-48-samples-required">Different log2(cpm) thresholds (1 to 48 samples required)</a></li>
-<li><a href="#what-if-we-try-log2raw-counts-1-in-all-48-samples">What if we try log2(raw counts) &gt; 1 in all 48 samples?</a></li>
-<li><a href="#what-if-we-require-log2raw-counts-1-in-1012-samples-for-each-species-regardless-of-tissue">What if we require log2(raw counts) &gt; 1 in 10/12 samples for each species (regardless of tissue)?</a></li>
-<li><a href="#what-if-we-require-log2raw-counts-1-in-34-individuals-for-each-tissue-species-pair">What if we require log2(raw counts) &gt; 1 in 3/4 individuals for each tissue-species pair?</a></li>
-<li><a href="#what-if-we-require-log2raw-counts-1-in-34-individuals-for-34-tissues-in-each-species">What if we require log2(raw counts) &gt; 1 in 3/4 individuals for 3/4 tissues in each species?</a></li>
+<li><a href="#what-if-we-try-raw-counts-0-in-all-48-samples">What if we try raw counts &gt; 0 in all 48 samples?</a></li>
+<li><a href="#for-the-samples-that-do-not-meet-the">For the samples that do not meet the</a></li>
+<li><a href="#what-if-we-require-raw-counts-1-in-34-individuals-for-each-tissue-species-pair">What if we require (raw counts) &gt;= 1 in 3/4 individuals for each tissue-species pair?</a></li>
+<li><a href="#what-if-we-require-raw-counts-1-in-24-individuals-for-34-tissues-in-each-species">What if we require (raw counts) &gt;= 1 in 2/4 individuals for 3/4 tissues in each species?</a></li>
 </ul>
 </div>
 
@@ -277,32 +277,87 @@ plot(filtered_genes, pch = 16, xlab = &quot;Number of samples required to have l
 <p><img src="Filtering_analysis_files/figure-html/unnamed-chunk-3-1.png" title="" alt="" width="672" /></p>
 <p>There are 8916 genes when we require log2(cpm) &gt; 1 in all 48 samples.</p>
 </div>
-<div id="what-if-we-try-log2raw-counts-1-in-all-48-samples" class="section level3">
-<h3>What if we try log2(raw counts) &gt; 1 in all 48 samples?</h3>
+<div id="what-if-we-try-raw-counts-0-in-all-48-samples" class="section level3">
+<h3>What if we try raw counts &gt; 0 in all 48 samples?</h3>
 <pre class="r"><code>#Find number of genes for each sample threshold
 filtered_genes &lt;- array(1:48, dim = (c(48,1)))
-log_counts_genes &lt;- as.data.frame(log2(counts_genes))
 
 for (i in 1:48){
-  log_filtered &lt;- log_counts_genes[rowSums(log_counts_genes &gt; 1) &gt;= i, ] 
-  filter_genes &lt;- as.data.frame(dim(log_filtered))
+  counts_genes_filtered &lt;- counts_genes[rowSums(counts_genes &gt; 0) &gt;= i, ] 
+  filter_genes &lt;- as.data.frame(dim(counts_genes_filtered))
   filtered_genes[i, 1] &lt;- filter_genes[1,]
   
   }
 
 # Plot the results
-plot(filtered_genes, pch = 16, xlab = &quot;Number of samples required to have log2(raw counts) &gt; 1&quot;, ylab = &quot;Number of genes&quot;, main = &quot;Genes for each sample threshold&quot;)</code></pre>
+plot(filtered_genes, pch = 16, xlab = &quot;Number of samples required to have (raw counts) &gt; 0&quot;, ylab = &quot;Number of genes&quot;, main = &quot;Genes for each sample threshold&quot;)</code></pre>
 <p><img src="Filtering_analysis_files/figure-html/unnamed-chunk-4-1.png" title="" alt="" width="672" /></p>
-<p>There are 12843 genes when we require log2(raw counts) &gt; 1 in all 48 samples.</p>
+<p>There are 14090 genes when we require (raw counts) &gt; 0 in all 48 samples.</p>
 </div>
-<div id="what-if-we-require-log2raw-counts-1-in-1012-samples-for-each-species-regardless-of-tissue" class="section level3">
-<h3>What if we require log2(raw counts) &gt; 1 in 10/12 samples for each species (regardless of tissue)?</h3>
+<div id="for-the-samples-that-do-not-meet-the" class="section level3">
+<h3>For the samples that do not meet the</h3>
+<p>We are concerned about the distribution of the missing data (where raw counts &gt; 0) e.g. if one species or tissue-species pair is over-represented in the missing genes</p>
+<pre class="r"><code># Copy the raw counts table
+counts_genes_filtered &lt;- counts_genes
+
+# If the raw count in a cell is &gt; 0, replace the counts with a 1
+counts_genes_filtered[counts_genes_filtered &gt; 0 ] &lt;- 1
+
+# If the raw count in a cell is =&lt; 0, replace the counts with a 0
+counts_genes_filtered[counts_genes_filtered &lt;= 0 ] &lt;- 0
+head(counts_genes_filtered)</code></pre>
+<pre><code>##                 C1H C1K C1Li C1Lu C2H C2K C2Li C2Lu C3H C3K C3Li C3Lu C4H
+## ENSG00000000003   1   1    1    1   1   1    1    1   1   1    1    1   1
+## ENSG00000000005   1   1    1    1   1   1    1    1   1   1    1    1   1
+## ENSG00000000419   1   1    1    1   1   1    1    1   1   1    1    1   1
+## ENSG00000000457   1   1    1    1   1   1    1    1   1   1    1    1   1
+## ENSG00000000460   1   1    1    1   1   1    1    1   1   1    1    1   1
+## ENSG00000000938   1   1    1    1   1   1    1    1   1   1    1    1   1
+##                 C4K C4Li C4Lu H1H H1K H1Li H1Lu H2H H2K H2Li H2Lu H3H H3K
+## ENSG00000000003   1    1    1   1   1    1    1   1   1    1    1   1   1
+## ENSG00000000005   1    1    1   0   1    0    1   1   1    0    0   0   1
+## ENSG00000000419   1    1    1   1   1    1    1   1   1    1    1   1   1
+## ENSG00000000457   1    1    1   1   1    1    1   1   1    1    1   1   1
+## ENSG00000000460   1    1    1   1   1    1    1   1   1    1    1   1   1
+## ENSG00000000938   1    1    1   1   1    1    1   1   1    1    1   1   1
+##                 H3Li H3Lu H4H H4K H4Li H4Lu R1H R1K R1Li R1Lu R2H R2K R2Li
+## ENSG00000000003    1    1   1   1    1    1   1   1    1    1   1   1    1
+## ENSG00000000005    0    0   1   1    0    1   0   0    1    1   1   1    1
+## ENSG00000000419    1    1   1   1    1    1   1   1    1    1   1   1    1
+## ENSG00000000457    1    1   1   1    1    1   1   1    1    1   1   1    1
+## ENSG00000000460    1    1   1   1    1    1   1   1    1    1   1   1    1
+## ENSG00000000938    1    1   1   1    1    1   1   1    1    1   1   1    1
+##                 R2Lu R3H R3K R3Li R3Lu R4H R4K R4Li R4Lu
+## ENSG00000000003    1   1   1    1    1   1   1    1    1
+## ENSG00000000005    1   1   1    1    1   1   1    1    0
+## ENSG00000000419    1   1   1    1    1   1   1    1    1
+## ENSG00000000457    1   1   1    1    1   1   1    1    1
+## ENSG00000000460    1   1   1    1    1   1   1    1    1
+## ENSG00000000938    1   1   1    1    1   1   1    1    1</code></pre>
+<pre class="r"><code># Count the number of 
+x &lt;- colSums(counts_genes_filtered)
+
+par(las=1)
+plot(x, pch = 16, ylab = &quot;Number of Genes with Raw Counts &gt; 0&quot;, xlab = &#39;   &#39;, xaxt = &#39;n&#39;, col = as.factor(samples$Tissue), main = &quot;Number of genes with 1 or more raw counts/sample&quot;)
+axis(side = 1, at = 1:48,labels = samples$Species)
+legend(&quot;bottomright&quot;, c(&quot;Heart&quot;, &quot;Kidney&quot;, &quot;Liver&quot;, &quot;Lung&quot;), lwd = c(2,2,2,2), col = c(&quot;black&quot;, &quot;red&quot;, &quot;green&quot;, &quot;blue&quot;))</code></pre>
+<p><img src="Filtering_analysis_files/figure-html/unnamed-chunk-5-1.png" title="" alt="" width="672" /></p>
 </div>
-<div id="what-if-we-require-log2raw-counts-1-in-34-individuals-for-each-tissue-species-pair" class="section level3">
-<h3>What if we require log2(raw counts) &gt; 1 in 3/4 individuals for each tissue-species pair?</h3>
+<div id="what-if-we-require-raw-counts-1-in-34-individuals-for-each-tissue-species-pair" class="section level3">
+<h3>What if we require (raw counts) &gt;= 1 in 3/4 individuals for each tissue-species pair?</h3>
+<pre class="r"><code>chimp_hearts &lt;- c(1, 5, 9, 12)
+chimp_kidneys &lt;- c(2,6,10,13)
+
+counts_genes_filtered_3 &lt;- counts_genes_filtered
+
+
+counts_genes_filtered_3A &lt;- counts_genes_filtered_3[rowSums(counts_genes_filtered_3[, chimp_hearts] &gt; 0) &gt;= 3, ] 
+
+dim(counts_genes_filtered_3A)</code></pre>
+<pre><code>## [1] 20148    48</code></pre>
 </div>
-<div id="what-if-we-require-log2raw-counts-1-in-34-individuals-for-34-tissues-in-each-species" class="section level3">
-<h3>What if we require log2(raw counts) &gt; 1 in 3/4 individuals for 3/4 tissues in each species?</h3>
+<div id="what-if-we-require-raw-counts-1-in-24-individuals-for-34-tissues-in-each-species" class="section level3">
+<h3>What if we require (raw counts) &gt;= 1 in 2/4 individuals for 3/4 tissues in each species?</h3>
 </div>
 
 
