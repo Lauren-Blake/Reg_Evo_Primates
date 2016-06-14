@@ -688,6 +688,7 @@ for (i in 1: dim_counts_genes_not_in_3_of_4_all_0){
   one_gene_tissue &lt;- as.data.frame(one_gene_tissue)
   colnames(one_gene_tissue) &lt;- c(&quot;Gene1&quot;, &quot;Species&quot;, &quot;Tissue&quot;)
   gene.glm = glm(Gene1 ~ as.factor(Species) + as.factor(Tissue), data = one_gene_tissue, family = binomial)
+  suppressWarnings(gene.glm)
   log_reg_p_values[,i] &lt;- summary(gene.glm)$coefficients[,4]
 #  print(i)
 }  </code></pre>
