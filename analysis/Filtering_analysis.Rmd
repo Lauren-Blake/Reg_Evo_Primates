@@ -306,7 +306,7 @@ If all of the samples have a raw counts value of 0, then there will be a warning
 
 ### Distribution of NAs in genes that do not meet the criteria of 3/4 samples in each species-tissue pair  
 
-```{r}
+```{r, warning =FALSE}
 # We take out all the ones that have all samples missing and make an array to store the data
 counts_genes_not_in_3_of_4_all_0 <- counts_genes_not_in_3_of_4[rowSums(counts_genes_not_in_3_of_4) > 0, ]
 
