@@ -330,7 +330,7 @@ for (i in 1: dim_counts_genes_not_in_3_of_4_all_0){
   colnames(one_gene_tissue) <- c("Gene1", "Species", "Tissue")
   gene.glm = glm(Gene1 ~ as.factor(Species) + as.factor(Tissue), data = one_gene_tissue, family = binomial)
   log_reg_p_values[,i] <- summary(gene.glm)$coefficients[,4]
-  print(i)
+#  print(i)
 }  
 
 # Name the columns and rows
