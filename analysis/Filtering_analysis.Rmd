@@ -11,9 +11,9 @@ output: word_document
 
 There are the main considerations for filtering:
   
-1. **When to filter (before or after performing TMM/CPM).** Given that this is multi-species and multi-tissue analysis, I would argue that it makes sense to filter before performing TMM/CPM. My reasoning is that if we filter after TMM/CPM, it would then be prudent to perform TMM and CPM again with the updated library sizes. 
+1. **What to filter (raw counts or CPM).** Our lab frequently uses CPM in human RNA-seq and multi-species RNA-seq data (e.g. Gallego Romero and Pavlovic et al. 2015). 
 
-2. **What threshold(s) to filter** at e.g. how many samples, tissues, and/or species should have a present value in order to include the gene in the later analysis. For example, Julien had used the cut-off of log2(cpm > 1) in at least 4 of the samples for each gene. This is a potentially lax cutoff and may lead to us having lots of missing data when we perform the differential expression analysis. 
+2. **What threshold(s) to filter** at e.g. how many samples, tissues, and/or species should have a present value in order to include the gene in the later analysis. For example, Julien had used the cut-off of log2(cpm > 1) in at least 4 of the samples for each gene. This is a potentially lax cutoff and may lead to us having lots of missing data when we perform the differential expression analysis. We have 12 tissue-species pairs. Therefore, we will evaluate the performance of 2/4, 3/4, and 4/4 samples in all 12 tissue-species pairs. 
 
 
 ```{r}
@@ -26,6 +26,10 @@ library("scales")
 library("edgeR")
 library("R.utils")
 library("plyr")
+library("limma")
+library("statmod")
+library("EDASeq")
+source("~/Reg_Evo_Primates/ashlar-trial/analysis/functions.R")
 
 # Load colors 
 
@@ -47,17 +51,89 @@ labels <- paste(samples$Species, samples$Tissue, sep=" ")
 dim(counts_genes)
 ```
 
-### log2(CPM) > 1 in at least 4 samples
+### Patterns of log2(CPM) 
 
-We are beginning with 30030 genes and 48 samples. What happens when we require keeping only those that have log2(CPM) > 1 in at least 4 samples? (Julien's analysis)
+We are beginning with 30030 genes and 48 samples. Let's do some preliminary analysis on the log2(CPM) to determine an appropriate cutoff
+
 
 ```{r}
+# log2(CPM)
+
 dge_original <- DGEList(counts=as.matrix(counts_genes), genes=rownames(counts_genes), group = as.character(t(labels)))
 dge_original <- calcNormFactors(dge_original)
 
-cpm <- cpm(dge_original, normalized.lib.sizes=TRUE, log=TRUE, prior.count = 0.25)
+cpm <- cpm(dge_original, normalized.lib.sizes=FALSE, log=TRUE, prior.count = 0.25)
 head(cpm)
 
+summary(cpm)
+hist(cpm, xlab = "Log2(CPM)", ylim = c(0, 500000))
+expr_cutoff <- -5
+abline(v = expr_cutoff, col = "red", lwd = 3)
+
+# log2(CPM) adjusted for library sizes
+
+tmm_cpm <- cpm(dge_original, normalized.lib.sizes=TRUE, log=TRUE, prior.count = 0.25)
+head(tmm_cpm)
+
+summary(tmm_cpm)
+hist(tmm_cpm, main = "TMM/CPM values (n = 48 samples)")
+abline(v = expr_cutoff, col = "red", lwd = 3)
+
+# Median log2(CPM)
+
+cpm_log <- cpm(counts_genes, log = TRUE, prior.count = 0.25)
+median_log2_cpm <- apply(cpm_log, 1, median)
+hist(median_log2_cpm)
+abline(v = expr_cutoff, col = "red", lwd = 3)
+
+# Median log(CPM) adjusted for library sizes
+
+cpm_log <- cpm(counts_genes, normalized.lib.sizes=TRUE, log = TRUE, prior.count = 0.25)
+median_log2_cpm <- apply(cpm_log, 1, median)
+hist(median_log2_cpm)
+abline(v = expr_cutoff, col = "red", lwd = 3)
+
+```
+
+These plots are very similar.
+
+### Patterns of log2(CPM) for each species
+
+```{r}
+# Looking at chimpanzees
+hist(tmm_cpm[,1], main = "TMM/CPM values for chimpanzee heart sample 1", breaks = 24)
+abline(v = expr_cutoff, col = "red", lwd = 3)
+
+
+hist(tmm_cpm[,1:16], main = "TMM/CPM values for all chimpanzee samples", breaks = 24)
+abline(v = expr_cutoff, col = "red", lwd = 3)
+
+# Looking at humans
+hist(tmm_cpm[,17], main = "TMM/CPM values for human heart sample 1", breaks = 24)
+abline(v = expr_cutoff, col = "red", lwd = 3)
+
+
+hist(tmm_cpm[,17:32], main = "TMM/CPM values for all human samples", breaks = 24)
+abline(v = expr_cutoff, col = "red", lwd = 3)
+
+# Rhesus macaques
+
+# Looking at chimpanzees
+hist(tmm_cpm[,33], main = "TMM/CPM values for rhesus macaque heart sample 1", breaks = 24)
+abline(v = expr_cutoff, col = "red", lwd = 3)
+
+
+hist(tmm_cpm[,33:48], main = "TMM/CPM values for all rhesus macaque samples", breaks = 24)
+abline(v = expr_cutoff, col = "red", lwd = 3)
+
+```
+
+
+### Filtering 1: log2(CPM) > 1 in at least 4 samples (original filtering scheme)
+
+What happens when we require keeping only those that have log2(CPM) > 1 in at least 4 samples? (Julien's analysis)
+
+```{r}
 cpm_filtered <- cpm[rowSums(cpm > 1) >= 4, ]
 dim(cpm_filtered)
 ```
@@ -84,55 +160,10 @@ plot(filtered_genes, pch = 16, xlab = "Number of samples required to have log2(c
 
 There are `r filtered_genes[48,1]` genes when we require log2(cpm) > 1 in all 48 samples. 
 
-## Part I: Filtering schemes based on raw counts
-
-### What if we try raw counts > 0 in all 48 samples?
+### Filtering 2: Log2(CPM) > a particular threshold adjusted for library size in 4/4 samples, 3/4 samples, and 2/4 samples per tissue-species pair. 
 
 ```{r}
-
-#Find number of genes for each sample threshold
-filtered_genes <- array(1:48, dim = (c(48,1)))
-
-for (i in 1:48){
-  counts_genes_filtered <- counts_genes[rowSums(counts_genes > 0) >= i, ] 
-  filter_genes <- as.data.frame(dim(counts_genes_filtered))
-  filtered_genes[i, 1] <- filter_genes[1,]
-  
-  }
-
-# Plot the results
-plot(filtered_genes, pch = 16, xlab = "Number of samples required to have (raw counts) > 0", ylab = "Number of genes", main = "Genes for each sample threshold")
-```
-
-There are `r filtered_genes[48,1]` genes when we require (raw counts) > 0 in all 48 samples. 
-
-### Distribution of NAs/0 counts
-
-We are concerned about the distribution of the missing data (where raw counts > 0) e.g. if one species or tissue-species pair is over-represented in the missing genes
-
-```{r}
-# Copy the raw counts table
-counts_genes_filtered <- counts_genes
-
-# If the raw count in a cell is > 0, replace the counts with a 1
-counts_genes_filtered[counts_genes_filtered > 0 ] <- 1
-
-# If the raw count in a cell is =< 0, replace the counts with a 0
-counts_genes_filtered[counts_genes_filtered <= 0 ] <- 0
-head(counts_genes_filtered)
-
-# Count the number of genes that have a raw count < 1
-x <- 30030 - colSums(counts_genes_filtered)
-
-par(las=1)
-plot(x, pch = 16, ylab = "Number of Genes with Raw Counts < 1", xlab = "Sample name", xaxt = 'n', col = as.factor(samples$Tissue), main = "Number of genes with 0 raw counts/sample")
-axis(side = 1, at = 1:48,labels = samples$Species)
-legend("topright", c("Heart", "Kidney", "Liver", "Lung"), lwd = c(2,2,2,2), col = c("black", "red", "green", "blue"))
-```
-
-### What if we require (raw counts) >= 1 in 3/4 individuals for each tissue-species pair instead of ?
-
-```{r}
+# Assign all 12 tissue-species pairs
 chimp_hearts <- c(1, 5, 9, 13)
 chimp_kidneys <- c(2,6,10,14)
 chimp_livers <- c(3,7,11,15)
@@ -149,89 +180,135 @@ rhesus_livers <- c(35,39,43,47)
 rhesus_lungs <- c(36,40,44,48)
 
 # Save the counts
-counts_genes_filtered_3 <- counts_genes_filtered
+                          # Raw counts = log2(counts_genes)
+                          # CPM = tmm_cpm
+counts_genes_filtered_3 <- tmm_cpm
 
-# Put the number of samples that you want to have for every tissue-species pair (counts out of 4)
+# Put the number of samples that you want to have for every tissue-species pair (count/4 samples)
 
-count = 3
+count = 2
+threshold = -5
 
-counts_genes_filtered_3A <- counts_genes_filtered_3[rowSums(counts_genes_filtered_3[, chimp_hearts] > 0) >= count, ] 
+counts_genes_filtered_3A <- counts_genes_filtered_3[rowSums(counts_genes_filtered_3[, chimp_hearts] >= threshold) >= count, ] 
 
 dim(counts_genes_filtered_3A)
 
-counts_genes_filtered_3B <- counts_genes_filtered_3A[rowSums(counts_genes_filtered_3A[, chimp_kidneys] > 0) >= count, ] 
+counts_genes_filtered_3B <- counts_genes_filtered_3A[rowSums(counts_genes_filtered_3A[, chimp_kidneys] >= threshold) >= count, ] 
 
 dim(counts_genes_filtered_3B)
 
-counts_genes_filtered_3C <- counts_genes_filtered_3B[rowSums(counts_genes_filtered_3B[, chimp_livers] > 0) >= count, ] 
+counts_genes_filtered_3C <- counts_genes_filtered_3B[rowSums(counts_genes_filtered_3B[, chimp_livers] >= threshold) >= count, ] 
 
 dim(counts_genes_filtered_3C)
 
-counts_genes_filtered_3D <- counts_genes_filtered_3C[rowSums(counts_genes_filtered_3C[, chimp_lungs] > 0) >= count, ] 
+counts_genes_filtered_3D <- counts_genes_filtered_3C[rowSums(counts_genes_filtered_3C[, chimp_lungs] >= threshold) >= count, ] 
 
 dim(counts_genes_filtered_3D)
 
-counts_genes_filtered_3E <- counts_genes_filtered_3D[rowSums(counts_genes_filtered_3D[, human_hearts] > 0) >= count, ] 
+counts_genes_filtered_3E <- counts_genes_filtered_3D[rowSums(counts_genes_filtered_3D[, human_hearts] >= threshold) >= count, ] 
 
 dim(counts_genes_filtered_3E)
 
-counts_genes_filtered_3F <- counts_genes_filtered_3E[rowSums(counts_genes_filtered_3E[, human_kidneys] > 0) >= count, ] 
+counts_genes_filtered_3F <- counts_genes_filtered_3E[rowSums(counts_genes_filtered_3E[, human_kidneys] >= threshold) >= count, ] 
 
 dim(counts_genes_filtered_3F)
 
-counts_genes_filtered_3G <- counts_genes_filtered_3F[rowSums(counts_genes_filtered_3F[, human_livers] > 0) >= count, ] 
+counts_genes_filtered_3G <- counts_genes_filtered_3F[rowSums(counts_genes_filtered_3F[, human_livers] >= threshold) >= count, ] 
 
 dim(counts_genes_filtered_3G)
 
-counts_genes_filtered_3H <- counts_genes_filtered_3G[rowSums(counts_genes_filtered_3G[, human_lungs] > 0) >= count, ] 
+counts_genes_filtered_3H <- counts_genes_filtered_3G[rowSums(counts_genes_filtered_3G[, human_lungs] >= threshold) >= count, ] 
 
 dim(counts_genes_filtered_3H)
 
-counts_genes_filtered_3I <- counts_genes_filtered_3H[rowSums(counts_genes_filtered_3H[, rhesus_hearts] > 0) >= count, ] 
+counts_genes_filtered_3I <- counts_genes_filtered_3H[rowSums(counts_genes_filtered_3H[, rhesus_hearts] >= threshold) >= count, ] 
 
 dim(counts_genes_filtered_3I)
 
-counts_genes_filtered_3J <- counts_genes_filtered_3I[rowSums(counts_genes_filtered_3I[, rhesus_kidneys] > 0) >= count, ] 
+counts_genes_filtered_3J <- counts_genes_filtered_3I[rowSums(counts_genes_filtered_3I[, rhesus_kidneys] >= threshold) >= count, ] 
 
 dim(counts_genes_filtered_3J)
 
-counts_genes_filtered_3K <- counts_genes_filtered_3J[rowSums(counts_genes_filtered_3J[, rhesus_livers] > 0) >= count, ] 
+counts_genes_filtered_3K <- counts_genes_filtered_3J[rowSums(counts_genes_filtered_3J[, rhesus_livers] >= threshold) >= count, ] 
 
 dim(counts_genes_filtered_3K)
 
-counts_genes_filtered_3L <- counts_genes_filtered_3K[rowSums(counts_genes_filtered_3K[, rhesus_lungs] > 0) >= count, ] 
+counts_genes_filtered_3L <- counts_genes_filtered_3K[rowSums(counts_genes_filtered_3K[, rhesus_lungs] >= threshold) >= count, ] 
 
 dim(counts_genes_filtered_3L)
-counts_genes_filtered_3L_sums <- rowSums(counts_genes_filtered_3L)
 
-hist(counts_genes_filtered_3L_sums, main = "Number of genes remaining (3/4 specices-tissue criteria)", xlab = "Number of genes")
-
+#counts_genes_filtered_3L_sums <- rowSums(counts_genes_filtered_3L)
+#hist(counts_genes_filtered_3L_sums, main = "Number of genes remaining (2/4 species-tissue criteria)", xlab = "Number of genes")
 ```
 
-As noted earlier, when we require each sample in each tissue-species pair to have raw counts >0 in each gene, we have 14,090 genes remaining. 
+When we require each sample in each tissue-species pair to have log2(raw counts) >= 0 in each gene, we have 8,916 genes remaining. 
 
-When we require 3/4 samples in each tissue-species pair to have raw counts >0 in each gene, we have 15,801 genes remaining. 
+When we require 3/4 samples in each tissue-species pair to have log2(raw counts) >= 0 in each gene, we have 15,801 genes remaining. 
 
-When we require 2/4 samples in each tissue-species pair to have raw counts >0 in each gene, we have 17,109 genes remaining. 
+When we require 2/4 samples in each tissue-species pair to have log2(raw counts) >= 0 in each gene, we have 14,090 genes remaining. 
 
-### Density plots of gene counts when we require 3/4 samples in each tissue-species pair to have raw counts > 0
+When we require each sample in each tissue-species pair to have log2(CPM) > 1 in each gene, we have 8,916 genes remaining. 
+
+When we require 3/4 samples in each tissue-species pair to have log2(CPM) > 1 in each gene, we have 9,652 genes remaining. 
+
+When we require 2/4 samples in each tissue-species pair to have log2(CPM) > 1 in each gene, we have 10,157 genes remaining. 
+
+**When we require each sample in each tissue-species pair to have log2(CPM) > -5 in each gene, we have 14,077 genes remaining.**
+
+**When we require 3/4 samples in each tissue-species pair to have log2(CPM) > -5 in each gene, we have 15,776 genes remaining.** 
+
+**When we require 2/4 samples in each tissue-species pair to have log2(CPM) > -5 in each gene, we have 17,073 genes remaining.** 
+
+### Distribution of NAs/0 counts
+
+We can get an idea about the distribution of the missing data (where log2(CPM) > -5) e.g. if one species or tissue-species pair is over-represented in the missing genes
+
+```{r}
+# Copy the raw counts table
+counts_genes_filtered <- tmm_cpm
+
+# If the raw count in a cell is > threshold, replace the counts with a 1
+counts_genes_filtered[counts_genes_filtered > threshold ] <- 1
+
+# If the raw count in a cell is =< threshold, replace the counts with a 0
+counts_genes_filtered[counts_genes_filtered <= threshold ] <- 0
+head(counts_genes_filtered)
+
+# Count the number of genes that have a raw count < 1
+x <- 30030 - colSums(counts_genes_filtered)
+
+par(las=1)
+plot(x, pch = 16, ylab = "Number of Genes with log2(CPM) < -5", xlab = "Sample name", xaxt = 'n', col = as.factor(samples$Tissue), main = "Number of genes with 0 raw counts/sample")
+axis(side = 1, at = 1:48,labels = samples$Species)
+legend("topright", c("Heart", "Kidney", "Liver", "Lung"), lwd = c(2,2,2,2), col = c("black", "red", "green", "blue"))
+```
+
+
+### Density plots of gene counts when we require 2/4 samples in each tissue-species pair to have log2(CPM) > -5
 
 ```{r}
 
-# Find the original counts of all of the genes that fit the 3/4 criteria
+# Find the original counts of all of the genes that fit the 2/4 criteria and then re-do TMM
 
 inshared_lists = row.names(counts_genes) %in% rownames(counts_genes_filtered_3L)
 inshared_lists_data <- as.data.frame(inshared_lists)
 counts_genes_in <- cbind(counts_genes, inshared_lists_data)
-counts_genes_in_3_of_4 <- subset(counts_genes_in, inshared_lists_data == "TRUE")
-counts_genes_in_3_of_4 <- counts_genes_in_3_of_4[,1:48]
+counts_genes_in_2_of_4 <- subset(counts_genes_in, inshared_lists_data == "TRUE")
+counts_genes_in_2_of_4 <- counts_genes_in_2_of_4[,1:48]
 
-# Take the log2 of the data. Note: there still are some -Infs because only 3/4 samples were required to have a non-zero raw count
+# Take the TMM of the genes that meet the criteria of 2/4 in 12 tissue-species pairs
 
-counts_genes_filtered_log2 <- log2(counts_genes_in_3_of_4)
-counts_genes_filtered_log2[counts_genes_filtered_log2 == -Inf] <- NA
-summary(counts_genes_filtered_log2)
+dge_2_in_4 <- DGEList(counts=as.matrix(counts_genes_in_2_of_4), genes=rownames(counts_genes_in_2_of_4), group = as.character(t(labels)))
+dge_2_in_4 <- calcNormFactors(dge_2_in_4)
 
+cpm <- cpm(dge_2_in_4, normalized.lib.sizes=TRUE, log=TRUE, prior.count = 0.25)
+head(cpm)
+
+summary(cpm)
+hist(cpm, xlab = "Log2(CPM)", main = "Log2(CPM) values for genes meeting the filtering criteria" )
+```
+
+```{r}
 all_hearts <- c(1,5,9,13,17, 21,25,29,33,37,41,45)
 all_kidneys <- c(2,6,10,14,18, 22,26,30,34,38,42,46)
 all_livers <- c(3,7,11,15,19, 23,27,31,35,39,43,47)
@@ -239,146 +316,270 @@ all_lungs <- c(4,8,12,16,20, 24,28,31,36,40,44,48)
 
 col = as.data.frame(pal[as.numeric(samples$Species)])
 
-plotDensities(counts_genes_filtered_log2[,all_hearts], col=col[all_hearts, ], legend="topright")
+plotDensities(cpm[,all_hearts], col=col[all_hearts, ], legend="topright")
 
-plotDensities(counts_genes_filtered_log2[,all_kidneys], col=col[all_kidneys, ], legend="topright")
+plotDensities(cpm[,all_kidneys], col=col[all_kidneys, ], legend="topright")
 
-plotDensities(counts_genes_filtered_log2[,all_livers], col=col[all_livers, ], legend="topright")
+plotDensities(cpm[,all_livers], col=col[all_livers, ], legend="topright")
 
-plotDensities(counts_genes_filtered_log2[,all_lungs], col=col[all_lungs, ], legend="topright")
+plotDensities(cpm[,all_lungs], col=col[all_lungs, ], legend="topright")
 
 # Look at all tissues in each species
 
 col = as.data.frame(pal[as.numeric(samples$Tissue)])
 
-plotDensities(counts_genes_filtered_log2[,1:16],col=col[1:16, ], legend="topright")
+plotDensities(cpm[,1:16],col=col[1:16, ], legend="topright")
 
-plotDensities(counts_genes_filtered_log2[,17:32], col=col[17:32, ], legend="topright")
+plotDensities(cpm[,17:32], col=col[17:32, ], legend="topright")
 
-plotDensities(counts_genes_filtered_log2[,33:48], col=col[33:48, ], legend="topright")
+plotDensities(cpm[,33:48], col=col[33:48, ], legend="topright")
 ```
 
-## Part II: Testing for the distribution of missing data
+### Voom and corfit (filtering but no additional normalization)
 
-For example, what if all of the genes that have 0 raw counts are rhesus? Are lungs? Are rhesus lungs?
-
-### Distribution of the missing data when we require 3/4 samples in each tissue-species pair to have raw counts > 0
-
+We will use voom in order to decouple the dependency between mean and variance. We will use corfit to model a within-individual term. 
 
 ```{r}
-# Count the number of genes that have a raw count < 1
-x <- 30030 - colSums(counts_genes_filtered_3L)
+## Voom requires a design matrix as input                                                                                                                                                             
+## To make contrasts easier to formulate, we rename factors species and tissue in a single factor 
 
-par(las=1)
-plot(x, pch = 16, ylab = "Number of Genes with Raw Counts < 1 in at least 3/4 samples in each tissue-species pair", xlab = '   ', xaxt = 'n', col = as.factor(samples$Tissue), main = "Number of genes with raw counts < 1")
-axis(side = 1, at = 1:48,labels = samples$Species)
-legend("topright", c("Heart", "Kidney", "Liver", "Lung"), lwd = c(2,2,2,2), col = c("black", "red", "green", "blue"))
+condition <- factor(paste(samples$Species,samples$Tissue,sep="."))
+design <- model.matrix(~ 0 + condition)
+colnames(design) <- gsub("condition", "", dput(colnames(design)))
+
+# Voom with individual as a random variable
+
+cpm.voom <- voom(dge_2_in_4, design, normalize.method="none", plot=T)
+corfit <- duplicateCorrelation(cpm.voom, design, block=samples$Individual)
+corfit$consensus
+#save(corfit, file="~/Reg_Evo_Primates/ashlar-trial/analysis/corfit.genes.RDa")
+
+# Final voom on filtered data
+
+cpm.voom <- voom(dge_2_in_4, design, normalize.method="none", plot=TRUE, block=samples$Individual, correlation=corfit$consensus)
+save(cpm.voom, file="~/Reg_Evo_Primates/ashlar-trial/analysis/voom.genes.RDa")
+
+boxplot(cpm.voom$E, col = t(col))
+plotDensities(cpm.voom, group=samples$Tissue, col=pal[as.numeric(samples$Tissue)])
+
+col = as.data.frame(pal[as.numeric(samples$Species)])
+group = as.data.frame(samples$Species)
+
+# Density plots for each species 
+
+plotDensities(cpm.voom[,1:16], group=samples$Tissue, col=pal[as.numeric(samples$Tissue)])
+
+plotDensities(cpm.voom[,17:32], group=samples$Tissue, col=pal[as.numeric(samples$Tissue)])
+
+plotDensities(cpm.voom[,33:48], group=samples$Tissue, col=pal[as.numeric(samples$Tissue)])
+
+col = as.data.frame(pal[as.numeric(samples$Species)])
+col_hearts = col[all_hearts,]
+col_kidneys = col[all_kidneys, ]
+col_livers = col[all_livers, ]
+col_lungs = col[all_lungs, ]
+
+group = as.data.frame(samples$Species)
+group_hearts = group[all_hearts, ]
+group_kidneys = group[all_kidneys, ]
+group_livers = group[all_livers, ]
+group_lungs = group[all_lungs, ]
+
+# Density plots for each tissue
+
+plotDensities(cpm.voom[,all_hearts], col=col_hearts, legend = FALSE)
+legend('topright', legend = levels(group_hearts), col = levels(col_hearts), pch = 20)
+
+plotDensities(cpm.voom[,all_kidneys], col=col_kidneys, legend = FALSE)
+legend('topright', legend = levels(group_kidneys), col = levels(col_kidneys), pch = 20)
+
+plotDensities(cpm.voom[,all_livers], col=col_livers, legend = FALSE)
+legend('topright', legend = levels(group_livers), col = levels(col_livers), pch = 20)
+
+plotDensities(cpm.voom[,all_lungs], col=col_lungs, legend = FALSE)
+legend('topright', legend = levels(group_lungs), col = levels(col_lungs), pch = 20)
 ```
 
-Note: The outlier here is H3H. Not sure why. 
+### PCA and clustering
 
 ```{r}
-# We want a list of genes that do not meet the criteria of 3/4 samples with a raw count > 0 in each tissue-species pair
+# PCA 
+  # Load colors 
 
-inshared_lists = row.names(counts_genes) %in% rownames(counts_genes_filtered_3L)
-inshared_lists_data <- as.data.frame(inshared_lists)
-counts_genes_in <- cbind(counts_genes, inshared_lists_data)
-counts_genes_not_in_3_of_4 <- subset(counts_genes_in, inshared_lists_data == "FALSE")
-counts_genes_not_in_3_of_4 <- counts_genes_not_in_3_of_4[,1:48]
+colors <- colorRampPalette(c(brewer.pal(9, "Blues")[1],brewer.pal(9, "Blues")[9]))(100)
+pal <- c(brewer.pal(9, "Set1"), brewer.pal(8, "Set2"), brewer.pal(12, "Set3"))
 
-# If the raw count in a cell is > 0, replace the counts with a 1
-counts_genes_not_in_3_of_4[counts_genes_not_in_3_of_4  > 0 ] <- 1
+  # Check that there's no "NAs" in the data
+select <- counts_genes
+summary(apply(select, 1, var) == 0) 
 
-# If the raw count in a cell is =< 0, replace the counts with a 0
-counts_genes_not_in_3_of_4[counts_genes_not_in_3_of_4 <= 0 ] <- 0
-head(counts_genes_not_in_3_of_4)
+  # Perform PCA
 
-sum_ea_gene <- rowSums(counts_genes_not_in_3_of_4)
-sum_ea_gene_comp = 48 - sum_ea_gene 
-hist(sum_ea_gene_comp, breaks = 49, main = "Number of samples missing in genes that did not meet the 3/4 samples criteria", xlab = "Number of samples missing/gene", xlim = c(0,48))
-```
+pca_genes <- prcomp(t(cpm.voom$E), scale = F)
+scores <- pca_genes$x
 
-The  in this graph suggests that for many of the genes, if there is not enough samples to meet the criteria of 3/4 in each species-tissue pair, then it is usually because there is raw count < 1 in many samples. 
 
-We want to see what is the pattern of 0s and 1s for the samples that do not meet in the 3/4 criteria. We will use a logistic regression model for each gene to answer the question if tissue or species a statistically significant predictor of whether there will be missing data / raw count = 0. 
+#Make PCA plots with the factors colored by tissue
 
-If all of the samples have a raw counts value of 0, then there will be a warning. Therefore, let's eliminate the genes for which all of the samples have raw counts = 0. (Even if those are eliminated, I think that there are still warnings because of the number of 0 counts compared to 1 counts.)
+### PCs 1-5 Raw Data
+for (n in 1:5){
+  col.v <- pal[as.integer(samples$Tissue)]
+  plot_scores(pca_genes, scores, n, n+1, col.v)
+}
 
-### Distribution of NAs in genes that do not meet the criteria of 3/4 samples in each species-tissue pair  
 
-```{r, warning =FALSE}
-# We take out all the ones that have all samples missing and make an array to store the data
-counts_genes_not_in_3_of_4_all_0 <- counts_genes_not_in_3_of_4[rowSums(counts_genes_not_in_3_of_4) > 0, ]
+# Clustering (original code from Julien Roux)
+cors <- cor(cpm.voom$E, method="spearman", use="pairwise.complete.obs")
 
-dim(counts_genes_not_in_3_of_4_all_0)
 
-dim_counts_genes_not_in_3_of_4_all_0 <- as.data.frame(dim(counts_genes_not_in_3_of_4_all_0))
-dim_counts_genes_not_in_3_of_4_all_0  <- dim_counts_genes_not_in_3_of_4_all_0[1,1]
-
-# Create a matrix for saving the p-values that is 6 x the number of genes
-
-log_reg_p_values <- array(data = NA, dim = c(6, dim_counts_genes_not_in_3_of_4_all_0))
-
-# Find the p-values for tissue and species 
-
-for (i in 1: dim_counts_genes_not_in_3_of_4_all_0){
-  one_gene <- counts_genes_not_in_3_of_4_all_0[i,]
-  one_gene <- t(one_gene)
-  one_gene_species <- cbind(one_gene, samples$Species)
-  one_gene_tissue <- cbind(one_gene_species, samples$Tissue)
-  one_gene_tissue <- as.data.frame(one_gene_tissue)
-  colnames(one_gene_tissue) <- c("Gene1", "Species", "Tissue")
-  gene.glm = suppressWarnings(glm(Gene1 ~ as.factor(Species) + as.factor(Tissue), data = one_gene_tissue, family = binomial))
-  log_reg_p_values[,i] <- summary(gene.glm)$coefficients[,4]
-#  print(i)
-}  
-
-# Name the columns and rows
-row.names(log_reg_p_values) <- c("Intercept", "Human", "Rhesus", "Kidney", "Liver", "Lung")
-colnames(log_reg_p_values) <- row.names(counts_genes_not_in_3_of_4_all_0)
-
-# Remove the "Intercept" because we specifically want to look at the significance of species and tissues
-log_reg_p_values_no_intercept <- log_reg_p_values[-1,]
-
-# How frequently are species and tissue statistically significant? (in which genes)
-
-# If the raw count in a cell is =< 0, replace the counts with a 0 (note: order matters here. This means that 0s are bad because it means tissue and species are significant and 1s are good because it means tissue and species are non-significant)
-log_reg_p_values_no_intercept[log_reg_p_values_no_intercept > 0.05 ] <- 1
-
-# If the raw count in a cell is > 0, replace the counts with a 1
-log_reg_p_values_no_intercept[log_reg_p_values_no_intercept < 0.05 ] <- 0
-
-# Number of significant factors
-
-log_reg_p_values_no_intercept_comp = 5 - colSums(log_reg_p_values_no_intercept)
-
-# How many genes have 0 significant factors
-
-length(log_reg_p_values_no_intercept_comp[isZero(log_reg_p_values_no_intercept_comp) == TRUE])
-
-#8,757 genes have 0 significant factors
-
-hist(log_reg_p_values_no_intercept_comp, xlab = "Number of significant factors (2 possible for species; 3 possible for tissues)", main = "Number of genes with significant factors")
-
-# Of the genes that have more than one significant factor, are the tissue and species type evenly distributed?
-
-significant_factors <- as.data.frame(dim(log_reg_p_values_no_intercept))[2,1] - rowSums(log_reg_p_values_no_intercept)
-
-significant_factors
+heatmap.2( cors, scale="none", col = colors, margins = c(12, 12), trace='none', denscol="white", labCol=labels, ColSideColors=pal[as.integer(as.factor(samples$Species))], RowSideColors=pal[as.integer(as.factor(samples$Tissue))+9], cexCol = 0.2 + 1/log10(15), cexRow = 0.2 + 1/log10(15))
 
 ```
 
-In many genes (8,757), tissue or species are not statistically significant factors. We can see that of the rest of the genes, the factors look relatively well distributed but we can probe this further.  
 
-Let's see what the overlap is between all of the factors. In this table, 1 is a non-significant factor and 0 is a significant factor. Therefore, the last row of the table is the number of genes in which no factors are statistically significant.
+##### fit.GC.norm <- lmFit(rpkm.GC.norm.voom, design, block=samples$Individual, #correlation=corfit.GC.norm$consensus)
+##### fit.GC.norm <- eBayes(fit.GC.norm)
+
+### Voom and corfit (filtering and cyclic loess normalization)
 
 ```{r}
-# Make a table of all of the possible combinations of significant and non-significant factors
-log_reg_p_values_no_intercept_t <- as.data.frame(t(log_reg_p_values_no_intercept))
-counts_combination = count(log_reg_p_values_no_intercept_t, c('Human', 'Rhesus', 'Kidney', 'Liver', 'Lung'))
+# Voom with individual as a random variable
 
-# In this table, 1 is a non-significant factor and 0 is a significant factor
-counts_combination
+cpm.voom.cyclic <- voom(dge_2_in_4, design, normalize.method="cyclicloess", plot=T)
+corfit <- duplicateCorrelation(cpm.voom.cyclic, design, block=samples$Individual)
+corfit$consensus
+#save(corfit, file="corfit.genes.cyclic.RDa")
+
+# Final voom on filtered data
+
+cpm.voom.cyclic <- voom(dge_2_in_4, design, normalize.method="cyclicloess", plot=TRUE, block=samples$Individual, correlation=corfit$consensus)
+#save(cpm.voom, file="voom.genes.RDa")
+
+boxplot(cpm.voom.cyclic$E, col = t(col))
+plotDensities(cpm.voom.cyclic, group=samples$Tissue, col=pal[as.numeric(samples$Tissue)])
+
+col = as.data.frame(pal[as.numeric(samples$Species)])
+group = as.data.frame(samples$Species)
+
+# Density plots for each species 
+
+plotDensities(cpm.voom.cyclic[,1:16], group=samples$Tissue, col=pal[as.numeric(samples$Tissue)])
+
+plotDensities(cpm.voom.cyclic[,17:32], group=samples$Tissue, col=pal[as.numeric(samples$Tissue)])
+
+plotDensities(cpm.voom.cyclic[,33:48], group=samples$Tissue, col=pal[as.numeric(samples$Tissue)])
+
+# Density plots for each tissue
+
+plotDensities(cpm.voom.cyclic[,all_hearts], col=col_hearts, legend = FALSE)
+legend('topright', legend = levels(group_hearts), col = levels(col_hearts), pch = 20)
+
+plotDensities(cpm.voom.cyclic[,all_kidneys], col=col_kidneys, legend = FALSE)
+legend('topright', legend = levels(group_kidneys), col = levels(col_kidneys), pch = 20)
+
+plotDensities(cpm.voom.cyclic[,all_livers], col=col_livers, legend = FALSE)
+legend('topright', legend = levels(group_livers), col = levels(col_livers), pch = 20)
+
+plotDensities(cpm.voom.cyclic[,all_lungs], col=col_lungs, legend = FALSE)
+legend('topright', legend = levels(group_lungs), col = levels(col_lungs), pch = 20)
 ```
 
+### PCA and clustering
 
+```{r}
+# PCA 
+
+pca_genes <- prcomp(t(cpm.voom.cyclic$E), scale = F)
+scores <- pca_genes$x
+
+
+#Make PCA plots with the factors colored by tissue
+
+### PCs 1-10 Raw Data
+for (n in 1:5){
+  col.v <- pal[as.integer(samples$Tissue)]
+  plot_scores(pca_genes, scores, n, n+1, col.v)
+}
+
+
+# Clustering (original code from Julien Roux)
+cors <- cor(cpm.voom.cyclic$E, method="spearman", use="pairwise.complete.obs")
+
+
+heatmap.2( cors, scale="none", col = colors, margins = c(12, 12), trace='none', denscol="white", labCol=labels, ColSideColors=pal[as.integer(as.factor(samples$Species))], RowSideColors=pal[as.integer(as.factor(samples$Tissue))+9], cexCol = 0.2 + 1/log10(15), cexRow = 0.2 + 1/log10(15))
+
+```
+
+### Voom and corfit (filtering and quantile normalization)
+
+```{r}
+# Voom with individual as a random variable
+
+cpm.voom.quantile <- voom(dge_2_in_4, design, normalize.method="quantile", plot=T)
+corfit <- duplicateCorrelation(cpm.voom.quantile, design, block=samples$Individual)
+corfit$consensus
+#save(corfit, file="corfit.genes.cyclic.RDa")
+
+# Final voom on filtered data
+
+cpm.voom.quantile <- voom(dge_2_in_4, design, normalize.method="quantile", plot=TRUE, block=samples$Individual, correlation=corfit$consensus)
+#save(cpm.voom, file="voom.genes.RDa")
+
+boxplot(cpm.voom.quantile$E, col = t(col))
+plotDensities(cpm.voom.quantile, group=samples$Tissue, col=pal[as.numeric(samples$Tissue)])
+
+col = as.data.frame(pal[as.numeric(samples$Species)])
+group = as.data.frame(samples$Species)
+
+# Density plots for each species 
+
+plotDensities(cpm.voom.quantile[,1:16], group=samples$Tissue, col=pal[as.numeric(samples$Tissue)])
+
+plotDensities(cpm.voom.quantile[,17:32], group=samples$Tissue, col=pal[as.numeric(samples$Tissue)])
+
+plotDensities(cpm.voom.quantile[,33:48], group=samples$Tissue, col=pal[as.numeric(samples$Tissue)])
+
+# Density plots for each tissue
+
+plotDensities(cpm.voom.quantile[,all_hearts], col=col_hearts, legend = FALSE)
+legend('topright', legend = levels(group_hearts), col = levels(col_hearts), pch = 20)
+
+plotDensities(cpm.voom.quantile[,all_kidneys], col=col_kidneys, legend = FALSE)
+legend('topright', legend = levels(group_kidneys), col = levels(col_kidneys), pch = 20)
+
+plotDensities(cpm.voom.quantile[,all_livers], col=col_livers, legend = FALSE)
+legend('topright', legend = levels(group_livers), col = levels(col_livers), pch = 20)
+
+plotDensities(cpm.voom.quantile[,all_lungs], col=col_lungs, legend = FALSE)
+legend('topright', legend = levels(group_lungs), col = levels(col_lungs), pch = 20)
+```
+
+### PCA and clustering
+
+```{r}
+# PCA 
+
+pca_genes <- prcomp(t(cpm.voom.quantile$E), scale = F)
+scores <- pca_genes$x
+
+
+#Make PCA plots with the factors colored by tissue
+
+### PCs 1-5 Raw Data
+for (n in 1:5){
+  col.v <- pal[as.integer(samples$Tissue)]
+  plot_scores(pca_genes, scores, n, n+1, col.v)
+}
+
+
+# Clustering (original code from Julien Roux)
+cors <- cor(cpm.voom.quantile$E, method="spearman", use="pairwise.complete.obs")
+
+
+heatmap.2( cors, scale="none", col = colors, margins = c(12, 12), trace='none', denscol="white", labCol=labels, ColSideColors=pal[as.integer(as.factor(samples$Species))], RowSideColors=pal[as.integer(as.factor(samples$Tissue))+9], cexCol = 0.2 + 1/log10(15), cexRow = 0.2 + 1/log10(15))
+
+```
+
+### GC content normalization + filtering + TMM + voom + no normalization
+
+There could be different GC 
