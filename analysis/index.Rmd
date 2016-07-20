@@ -20,7 +20,8 @@ title: "Home"
 *  [Unmapped and Mapped Reads](../analysis/Plots_unmapped_mapped_RNAseq_reads.html)
 *  [Raw counts](../analysis/Normalization_plots.html)
 *  [Filtering](../analysis/Filtering_analysis.html)
-*  Normalization
+*  [GC content normalization](../analysis/GC_content_normalization_CHT.html)
+*  [Library size adjustment and decoupling the relationship between expression mean and variance](../analysis/TMM_voom_on_GC_normalized_data.html)
 
 ## Methylation Data
 
