@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+<head>
+
+<meta charset="utf-8">
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<meta name="generator" content="pandoc" />
+
+<meta name="author" content="Lauren Blake" />
+
+<meta name="date" content="2016-07-20" />
+
+<title>TMM_voom_on_GC_normalized_data</title>
+
+<script src="libs/jquery-1.11.0/jquery.min.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link href="libs/bootstrap-3.3.1/css/united.min.css" rel="stylesheet" />
+<script src="libs/bootstrap-3.3.1/js/bootstrap.min.js"></script>
+<script src="libs/bootstrap-3.3.1/shim/html5shiv.min.js"></script>
+<script src="libs/bootstrap-3.3.1/shim/respond.min.js"></script>
+
+<style type="text/css">
+
+/* padding for bootstrap navbar */
+body {
+  padding-top: 50px;
+  padding-bottom: 40px;
+}
+
+
+/* offset scroll position for anchor links (for fixed navbar)  */
+.section h2 {
+  padding-top: 55px;
+  margin-top: -55px;
+}
+.section h3 {
+  padding-top: 55px;
+  margin-top: -55px;
+}
+
+
+
+/* don't use link color in navbar */
+.dropdown-menu>li>a {
+  color: black;
+}
+
+/* some padding for disqus */
+#disqus_thread {
+  margin-top: 45px;
+}
+
+</style>
+
+<link rel="stylesheet" href="libs/font-awesome-4.1.0/css/font-awesome.min.css"/>
+
+<style type="text/css">code{white-space: pre;}</style>
+<link rel="stylesheet"
+      href="libs/highlight/textmate.css"
+      type="text/css" />
+<script src="libs/highlight/highlight.js"></script>
+<style type="text/css">
+  pre:not([class]) {
+    background-color: white;
+  }
+</style>
+<script type="text/javascript">
+if (window.hljs && document.readyState && document.readyState === "complete") {
+   window.setTimeout(function() {
+      hljs.initHighlighting();
+   }, 0);
+}
+</script>
+
+
+
+</head>
+
+<body>
+
+<style type = "text/css">
+.main-container {
+  max-width: 940px;
+  margin-left: auto;
+  margin-right: auto;
+}
+code {
+  color: inherit;
+  background-color: rgba(0, 0, 0, 0.04);
+}
+img { 
+  max-width:100%; 
+  height: auto; 
+}
+</style>
+<div class="container-fluid main-container">
+
+
+<div class="navbar navbar-default navbar-fixed-top" role="navigation">
+  <div class="container">
+    <div class="navbar-header">
+      <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar">
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+      </button>
+      <a class="navbar-brand" href="index.html">RegulatoryEvolutionInPrimates</a>
+    </div>
+    <div id="navbar" class="navbar-collapse collapse">
+      <ul class="nav navbar-nav">
+        <li><a href="index.html">Home</a></li>
+        <li><a href="about.html">About</a></li>
+        <li><a href="license.html">License</a></li>
+        <li><a href="https://github.com/Lauren-Blake/Reg_Evo_Primates">GitHub</a></li>
+    </div><!--/.nav-collapse -->
+  </div><!--/.container -->
+</div><!--/.navbar -->
+
+<div id="header">
+<h1 class="title">TMM_voom_on_GC_normalized_data</h1>
+<h4 class="author"><em>Lauren Blake</em></h4>
+<h4 class="date"><em>July 20, 2016</em></h4>
+</div>
+
+<div id="TOC">
+<ul>
+<li><a href="#correction-for-library-size">Correction for library size</a></li>
+<li><a href="#voom-and-corfit-with-the-cyclic-loess-normalization">Voom and corfit (with the cyclic loess normalization)</a></li>
+<li><a href="#pca-and-clustering">PCA and clustering</a></li>
+<li><a href="#other-normalization-methods">Other normalization methods</a></li>
+</ul>
+</div>
+
+<p>This script will take GC content-normalized counts and adjust for library size (via TMM) as well as the dependency between mean and variance (via voom).</p>
+<pre class="r"><code># Load libraries 
+
+library(&quot;gplots&quot;)</code></pre>
+<pre><code>## Warning: package &#39;gplots&#39; was built under R version 3.1.3</code></pre>
+<pre><code>## 
+## Attaching package: &#39;gplots&#39;
+## 
+## The following object is masked from &#39;package:stats&#39;:
+## 
+##     lowess</code></pre>
+<pre class="r"><code>library(&quot;ggplot2&quot;)</code></pre>
+<pre><code>## Warning: package &#39;ggplot2&#39; was built under R version 3.1.3</code></pre>
+<pre class="r"><code>library(&quot;RColorBrewer&quot;)
+library(&quot;scales&quot;)
+library(&quot;edgeR&quot;)</code></pre>
+<pre><code>## Loading required package: limma</code></pre>
+<pre><code>## Warning: package &#39;limma&#39; was built under R version 3.1.3</code></pre>
+<pre class="r"><code>library(&quot;R.utils&quot;)</code></pre>
+<pre><code>## Warning: package &#39;R.utils&#39; was built under R version 3.1.3</code></pre>
+<pre><code>## Loading required package: R.oo</code></pre>
+<pre><code>## Warning: package &#39;R.oo&#39; was built under R version 3.1.3</code></pre>
+<pre><code>## Loading required package: R.methodsS3
+## R.methodsS3 v1.7.0 (2015-02-19) successfully loaded. See ?R.methodsS3 for help.
+## R.oo v1.19.0 (2015-02-27) successfully loaded. See ?R.oo for help.
+## 
+## Attaching package: &#39;R.oo&#39;
+## 
+## The following objects are masked from &#39;package:methods&#39;:
+## 
+##     getClasses, getMethods
+## 
+## The following objects are masked from &#39;package:base&#39;:
+## 
+##     attach, detach, gc, load, save
+## 
+## R.utils v2.0.2 (2015-04-27) successfully loaded. See ?R.utils for help.
+## 
+## Attaching package: &#39;R.utils&#39;
+## 
+## The following object is masked from &#39;package:utils&#39;:
+## 
+##     timestamp
+## 
+## The following objects are masked from &#39;package:base&#39;:
+## 
+##     cat, commandArgs, getOption, inherits, isOpen, parse, warnings</code></pre>
+<pre class="r"><code>library(&quot;plyr&quot;)</code></pre>
+<pre><code>## Warning: package &#39;plyr&#39; was built under R version 3.1.3</code></pre>
+<pre class="r"><code>library(&quot;limma&quot;)
+source(&quot;~/Reg_Evo_Primates/ashlar-trial/analysis/functions.R&quot;)
+
+# Load colors 
+
+colors &lt;- colorRampPalette(c(brewer.pal(9, &quot;Blues&quot;)[1],brewer.pal(9, &quot;Blues&quot;)[9]))(100)
+pal &lt;- c(brewer.pal(9, &quot;Set1&quot;), brewer.pal(8, &quot;Set2&quot;), brewer.pal(12, &quot;Set3&quot;))
+
+#Load the data
+
+  #GC-normalized counts
+
+counts_genes &lt;- read.delim(&quot;~/Reg_Evo_Primates/ashlar-trial/data/gene_counts_with_gc_correction.txt&quot;)
+
+dim(counts_genes)</code></pre>
+<pre><code>## [1] 16616    47</code></pre>
+<pre class="r"><code>  #Sample information
+
+samples &lt;- read.csv(&quot;~/Reg_Evo_Primates/ashlar-trial/data/Sample_info_RNAseq.csv&quot;)
+
+# Remove H1H (sample 17) from labels
+
+samples &lt;- samples[-17,]
+labels &lt;- paste(samples$Species, samples$Tissue, sep=&quot; &quot;)</code></pre>
+<div id="correction-for-library-size" class="section level3">
+<h3>Correction for library size</h3>
+<pre class="r"><code># Perform TMM
+dge_gc &lt;- DGEList(counts=as.matrix(counts_genes), genes=rownames(counts_genes), group = as.character(t(labels)))
+dge_gc &lt;- calcNormFactors(dge_gc)
+
+# Make sure species-tissues labels and DGEList object contain the same 47 samples
+summary(samples[,1] %in% colnames(dge_gc))</code></pre>
+<pre><code>##    Mode    TRUE    NA&#39;s 
+## logical      47       0</code></pre>
+</div>
+<div id="voom-and-corfit-with-the-cyclic-loess-normalization" class="section level3">
+<h3>Voom and corfit (with the cyclic loess normalization)</h3>
+<p>We will use voom in order to decouple the dependency between mean and variance. We will use corfit to model a within-individual term.</p>
+<p>Although we will use the cyclic loess normalization in future analyses (because we feel it best mimics the biological relationship between tissues and species), we will also explore other normalizations at the end of this file.</p>
+<pre class="r"><code>## Voom requires a design matrix as input                                                                                                                                                             
+## To make contrasts easier to formulate, we rename factors species and tissue in a single factor 
+
+condition &lt;- factor(paste(samples$Species,samples$Tissue,sep=&quot;.&quot;))
+design &lt;- model.matrix(~ 0 + condition)
+colnames(design) &lt;- gsub(&quot;condition&quot;, &quot;&quot;, dput(colnames(design)))</code></pre>
+<pre><code>## c(&quot;conditionchimpanzee.heart&quot;, &quot;conditionchimpanzee.kidney&quot;, 
+## &quot;conditionchimpanzee.liver&quot;, &quot;conditionchimpanzee.lung&quot;, &quot;conditionhuman.heart&quot;, 
+## &quot;conditionhuman.kidney&quot;, &quot;conditionhuman.liver&quot;, &quot;conditionhuman.lung&quot;, 
+## &quot;conditionrhesus macaque.heart&quot;, &quot;conditionrhesus macaque.kidney&quot;, 
+## &quot;conditionrhesus macaque.liver&quot;, &quot;conditionrhesus macaque.lung&quot;
+## )</code></pre>
+<pre class="r"><code># Voom with individual as a random variable
+
+cpm.voom.cyclic &lt;- voom(dge_gc, design, normalize.method=&quot;cyclicloess&quot;, plot=T)</code></pre>
+<p><img src="TMM_voom_on_GC_normalized_data_files/figure-html/unnamed-chunk-3-1.png" title="" alt="" width="672" /></p>
+<pre class="r"><code>corfit &lt;- duplicateCorrelation(cpm.voom.cyclic, design, block=samples$Individual)
+# corfit$consensus = 0.1888776
+
+# Final voom on filtered data
+
+cpm.voom.cyclic &lt;- voom(dge_gc, design, normalize.method=&quot;cyclicloess&quot;, plot=TRUE, block=samples$Individual, correlation=corfit$consensus)</code></pre>
+<p><img src="TMM_voom_on_GC_normalized_data_files/figure-html/unnamed-chunk-3-2.png" title="" alt="" width="672" /></p>
+<pre class="r"><code>boxplot(cpm.voom.cyclic$E, col = pal[as.numeric(samples$Tissue)])</code></pre>
+<p><img src="TMM_voom_on_GC_normalized_data_files/figure-html/unnamed-chunk-3-3.png" title="" alt="" width="672" /></p>
+<pre class="r"><code>plotDensities(cpm.voom.cyclic, group=samples$Tissue, col=pal[as.numeric(samples$Tissue)])</code></pre>
+<p><img src="TMM_voom_on_GC_normalized_data_files/figure-html/unnamed-chunk-3-4.png" title="" alt="" width="672" /></p>
+<pre class="r"><code>col = as.data.frame(pal[as.numeric(samples$Species)])
+group = as.data.frame(samples$Species)
+
+# Density plots for each tissue
+
+all_hearts &lt;- c(1,5,9,13, 20,24,28,32,36,40,44)
+all_kidneys &lt;- c(2,6,10,14,17, 21,25,29,33,37,41,45)
+all_livers &lt;- c(3,7,11,15,18, 22,26,30,34,38,42,46)
+all_lungs &lt;- c(4,8,12,16,19, 23,27,31,35,39,43,47)
+
+col = as.data.frame(pal[as.numeric(samples$Species)])
+col_hearts = col[all_hearts,]
+col_kidneys = col[all_kidneys, ]
+col_livers = col[all_livers, ]
+col_lungs = col[all_lungs, ]
+
+group = as.data.frame(samples$Species)
+group_hearts = group[all_hearts, ]
+group_kidneys = group[all_kidneys, ]
+group_livers = group[all_livers, ]
+group_lungs = group[all_lungs, ]
+
+
+plotDensities(cpm.voom.cyclic[,all_hearts], col = col_hearts, legend = FALSE)
+legend(&#39;topright&#39;, legend = levels(group_hearts), col = levels(col_hearts), pch = 20)</code></pre>
+<p><img src="TMM_voom_on_GC_normalized_data_files/figure-html/unnamed-chunk-3-5.png" title="" alt="" width="672" /></p>
+<pre class="r"><code>plotDensities(cpm.voom.cyclic[,all_kidneys], col=col_kidneys, legend = FALSE)
+legend(&#39;topright&#39;, legend = levels(group_kidneys), col = levels(col_kidneys), pch = 20)</code></pre>
+<p><img src="TMM_voom_on_GC_normalized_data_files/figure-html/unnamed-chunk-3-6.png" title="" alt="" width="672" /></p>
+<pre class="r"><code>plotDensities(cpm.voom.cyclic[,all_livers], col=col_livers, legend = FALSE)
+legend(&#39;topright&#39;, legend = levels(group_livers), col = levels(col_livers), pch = 20)</code></pre>
+<p><img src="TMM_voom_on_GC_normalized_data_files/figure-html/unnamed-chunk-3-7.png" title="" alt="" width="672" /></p>
+<pre class="r"><code>plotDensities(cpm.voom.cyclic[,all_lungs], col=col_lungs, legend = FALSE)
+legend(&#39;topright&#39;, legend = levels(group_lungs), col = levels(col_lungs), pch = 20)</code></pre>
+<p><img src="TMM_voom_on_GC_normalized_data_files/figure-html/unnamed-chunk-3-8.png" title="" alt="" width="672" /></p>
+</div>
+<div id="pca-and-clustering" class="section level3">
+<h3>PCA and clustering</h3>
+<pre class="r"><code># PCA 
+
+pca_genes &lt;- prcomp(t(cpm.voom.cyclic$E), scale = F)
+scores &lt;- pca_genes$x
+
+
+#Make PCA plots with the factors colored by tissue
+
+### PCs 1-10 Raw Data (Function code from Julien Roux)
+for (n in 1:9){
+  col.v &lt;- pal[as.integer(samples$Tissue)]
+  plot_scores(pca_genes, scores, n, n+1, col.v)
+}</code></pre>
+<p><img src="TMM_voom_on_GC_normalized_data_files/figure-html/unnamed-chunk-4-1.png" title="" alt="" width="672" /><img src="TMM_voom_on_GC_normalized_data_files/figure-html/unnamed-chunk-4-2.png" title="" alt="" width="672" /><img src="TMM_voom_on_GC_normalized_data_files/figure-html/unnamed-chunk-4-3.png" title="" alt="" width="672" /><img src="TMM_voom_on_GC_normalized_data_files/figure-html/unnamed-chunk-4-4.png" title="" alt="" width="672" /><img src="TMM_voom_on_GC_normalized_data_files/figure-html/unnamed-chunk-4-5.png" title="" alt="" width="672" /><img src="TMM_voom_on_GC_normalized_data_files/figure-html/unnamed-chunk-4-6.png" title="" alt="" width="672" /><img src="TMM_voom_on_GC_normalized_data_files/figure-html/unnamed-chunk-4-7.png" title="" alt="" width="672" /><img src="TMM_voom_on_GC_normalized_data_files/figure-html/unnamed-chunk-4-8.png" title="" alt="" width="672" /><img src="TMM_voom_on_GC_normalized_data_files/figure-html/unnamed-chunk-4-9.png" title="" alt="" width="672" /></p>
+<pre class="r"><code># Clustering (original code from Julien Roux)
+# I would argue that Pearson&#39;s correlation makes more sense here because gene expression is taken on an interval scale rather than an ordinal scale. 
+cors &lt;- cor(cpm.voom.cyclic$E, method=&quot;pearson&quot;, use=&quot;pairwise.complete.obs&quot;)
+
+
+heatmap.2( cors, scale=&quot;none&quot;, col = colors, margins = c(12, 12), trace=&#39;none&#39;, denscol=&quot;white&quot;, labCol=labels, ColSideColors=pal[as.integer(as.factor(samples$Species))], RowSideColors=pal[as.integer(as.factor(samples$Tissue))+9], cexCol = 0.2 + 1/log10(15), cexRow = 0.2 + 1/log10(15))</code></pre>
+<p><img src="TMM_voom_on_GC_normalized_data_files/figure-html/unnamed-chunk-4-10.png" title="" alt="" width="672" /></p>
+<pre class="r"><code># Clustering (original code from Julien Roux)
+cors &lt;- cor(cpm.voom.cyclic$E, method=&quot;spearman&quot;, use=&quot;pairwise.complete.obs&quot;)
+
+
+heatmap.2( cors, scale=&quot;none&quot;, col = colors, margins = c(12, 12), trace=&#39;none&#39;, denscol=&quot;white&quot;, labCol=labels, ColSideColors=pal[as.integer(as.factor(samples$Species))], RowSideColors=pal[as.integer(as.factor(samples$Tissue))+9], cexCol = 0.2 + 1/log10(15), cexRow = 0.2 + 1/log10(15))</code></pre>
+<p><img src="TMM_voom_on_GC_normalized_data_files/figure-html/unnamed-chunk-4-11.png" title="" alt="" width="672" /></p>
+</div>
+<div id="other-normalization-methods" class="section level3">
+<h3>Other normalization methods</h3>
+<div id="voom-without-individual-as-a-random-variable-cyclic-loess" class="section level4">
+<h4>Voom without individual as a random variable + cyclic loess</h4>
+<pre class="r"><code>cpm.voom &lt;- voom(dge_gc, design, normalize.method=&quot;cyclicloess&quot;, plot=T)</code></pre>
+<p><img src="TMM_voom_on_GC_normalized_data_files/figure-html/unnamed-chunk-5-1.png" title="" alt="" width="672" /></p>
+<pre class="r"><code>col = as.data.frame(pal[as.numeric(samples$Tissue)])
+group = as.data.frame(samples$Tissue)
+
+boxplot(cpm.voom$E, col = pal[as.numeric(samples$Tissue)])</code></pre>
+<p><img src="TMM_voom_on_GC_normalized_data_files/figure-html/unnamed-chunk-5-2.png" title="" alt="" width="672" /></p>
+<pre class="r"><code>plotDensities(cpm.voom, group=samples$Tissue, col=pal[as.numeric(samples$Tissue)])</code></pre>
+<p><img src="TMM_voom_on_GC_normalized_data_files/figure-html/unnamed-chunk-5-3.png" title="" alt="" width="672" /></p>
+<pre class="r"><code># Perform PCA
+
+pca_genes &lt;- prcomp(t(cpm.voom$E), scale = F)
+scores &lt;- pca_genes$x
+
+#Make PCA plots with the factors colored by tissue
+
+for (n in 1:1){
+  col.v &lt;- pal[as.integer(samples$Tissue)]
+  plot_scores(pca_genes, scores, n, n+1, col.v)
+}</code></pre>
+<p><img src="TMM_voom_on_GC_normalized_data_files/figure-html/unnamed-chunk-6-1.png" title="" alt="" width="672" /></p>
+<pre class="r"><code># Clustering 
+cors &lt;- cor(cpm.voom$E, method=&quot;spearman&quot;, use=&quot;pairwise.complete.obs&quot;)
+
+
+heatmap.2( cors, scale=&quot;none&quot;, col = colors, margins = c(12, 12), trace=&#39;none&#39;, denscol=&quot;white&quot;, labCol=labels, ColSideColors=pal[as.integer(as.factor(samples$Species))], RowSideColors=pal[as.integer(as.factor(samples$Tissue))+9], cexCol = 0.2 + 1/log10(15), cexRow = 0.2 + 1/log10(15))</code></pre>
+<p><img src="TMM_voom_on_GC_normalized_data_files/figure-html/unnamed-chunk-6-2.png" title="" alt="" width="672" /></p>
+<pre class="r"><code># Clustering
+cors &lt;- cor(cpm.voom$E, method=&quot;pearson&quot;, use=&quot;pairwise.complete.obs&quot;)
+
+
+heatmap.2( cors, scale=&quot;none&quot;, col = colors, margins = c(12, 12), trace=&#39;none&#39;, denscol=&quot;white&quot;, labCol=labels, ColSideColors=pal[as.integer(as.factor(samples$Species))], RowSideColors=pal[as.integer(as.factor(samples$Tissue))+9], cexCol = 0.2 + 1/log10(15), cexRow = 0.2 + 1/log10(15))</code></pre>
+<p><img src="TMM_voom_on_GC_normalized_data_files/figure-html/unnamed-chunk-6-3.png" title="" alt="" width="672" /></p>
+</div>
+<div id="voom-with-individual-as-a-random-variable-no-normalization-method" class="section level4">
+<h4>Voom with individual as a random variable + no normalization method</h4>
+<pre class="r"><code>cpm.voom.none &lt;- voom(dge_gc, design, normalize.method=&quot;none&quot;, plot=T)</code></pre>
+<p><img src="TMM_voom_on_GC_normalized_data_files/figure-html/unnamed-chunk-7-1.png" title="" alt="" width="672" /></p>
+<pre class="r"><code>corfit &lt;- duplicateCorrelation(cpm.voom.none, design, block=samples$Individual)
+# corfit$consensus = 0.1888776
+
+# Final voom on filtered data
+
+cpm.voom.none &lt;- voom(dge_gc, design, normalize.method=&quot;none&quot;, plot=TRUE, block=samples$Individual, correlation=corfit$consensus)</code></pre>
+<p><img src="TMM_voom_on_GC_normalized_data_files/figure-html/unnamed-chunk-7-2.png" title="" alt="" width="672" /></p>
+<pre class="r"><code>col = as.data.frame(pal[as.numeric(samples$Tissue)])
+group = as.data.frame(samples$Tissue)
+
+boxplot(cpm.voom.none$E, col = pal[as.numeric(samples$Tissue)])</code></pre>
+<p><img src="TMM_voom_on_GC_normalized_data_files/figure-html/unnamed-chunk-7-3.png" title="" alt="" width="672" /></p>
+<pre class="r"><code>plotDensities(cpm.voom.none, group=samples$Tissue, col=pal[as.numeric(samples$Tissue)])</code></pre>
+<p><img src="TMM_voom_on_GC_normalized_data_files/figure-html/unnamed-chunk-7-4.png" title="" alt="" width="672" /></p>
+<pre class="r"><code># Perform PCA
+
+pca_genes &lt;- prcomp(t(cpm.voom.none$E), scale = F)
+scores &lt;- pca_genes$x
+
+#Make PCA plots with the factors colored by tissue
+
+for (n in 1:1){
+  col.v &lt;- pal[as.integer(samples$Tissue)]
+  plot_scores(pca_genes, scores, n, n+1, col.v)
+}</code></pre>
+<p><img src="TMM_voom_on_GC_normalized_data_files/figure-html/unnamed-chunk-8-1.png" title="" alt="" width="672" /></p>
+<pre class="r"><code># Clustering (original code from Julien Roux)
+cors &lt;- cor(cpm.voom.none$E, method=&quot;spearman&quot;, use=&quot;pairwise.complete.obs&quot;)
+
+
+heatmap.2( cors, scale=&quot;none&quot;, col = colors, margins = c(12, 12), trace=&#39;none&#39;, denscol=&quot;white&quot;, labCol=labels, ColSideColors=pal[as.integer(as.factor(samples$Species))], RowSideColors=pal[as.integer(as.factor(samples$Tissue))+9], cexCol = 0.2 + 1/log10(15), cexRow = 0.2 + 1/log10(15))</code></pre>
+<p><img src="TMM_voom_on_GC_normalized_data_files/figure-html/unnamed-chunk-8-2.png" title="" alt="" width="672" /></p>
+<pre class="r"><code># Clustering 
+cors &lt;- cor(cpm.voom$E, method=&quot;pearson&quot;, use=&quot;pairwise.complete.obs&quot;)
+
+
+heatmap.2( cors, scale=&quot;none&quot;, col = colors, margins = c(12, 12), trace=&#39;none&#39;, denscol=&quot;white&quot;, labCol=labels, ColSideColors=pal[as.integer(as.factor(samples$Species))], RowSideColors=pal[as.integer(as.factor(samples$Tissue))+9], cexCol = 0.2 + 1/log10(15), cexRow = 0.2 + 1/log10(15))</code></pre>
+<p><img src="TMM_voom_on_GC_normalized_data_files/figure-html/unnamed-chunk-8-3.png" title="" alt="" width="672" /></p>
+</div>
+<div id="voom-with-individual-as-a-random-variable-quantile-normalization" class="section level4">
+<h4>Voom with individual as a random variable + quantile normalization</h4>
+<pre class="r"><code>cpm.voom.quant &lt;- voom(dge_gc, design, normalize.method=&quot;quantile&quot;, plot=T)</code></pre>
+<p><img src="TMM_voom_on_GC_normalized_data_files/figure-html/unnamed-chunk-9-1.png" title="" alt="" width="672" /></p>
+<pre class="r"><code>corfit &lt;- duplicateCorrelation(cpm.voom.none, design, block=samples$Individual)
+# corfit$consensus = 0.1888776
+
+# Final voom on filtered data
+
+cpm.voom.quant &lt;- voom(dge_gc, design, normalize.method=&quot;none&quot;, plot=TRUE, block=samples$Individual, correlation=corfit$consensus)</code></pre>
+<p><img src="TMM_voom_on_GC_normalized_data_files/figure-html/unnamed-chunk-9-2.png" title="" alt="" width="672" /></p>
+<pre class="r"><code>col = as.data.frame(pal[as.numeric(samples$Tissue)])
+group = as.data.frame(samples$Tissue)
+
+boxplot(cpm.voom.quant$E, col = pal[as.numeric(samples$Tissue)])</code></pre>
+<p><img src="TMM_voom_on_GC_normalized_data_files/figure-html/unnamed-chunk-9-3.png" title="" alt="" width="672" /></p>
+<pre class="r"><code>plotDensities(cpm.voom.quant, group=samples$Tissue, col=pal[as.numeric(samples$Tissue)])</code></pre>
+<p><img src="TMM_voom_on_GC_normalized_data_files/figure-html/unnamed-chunk-9-4.png" title="" alt="" width="672" /></p>
+<pre class="r"><code># Perform PCA
+
+pca_genes &lt;- prcomp(t(cpm.voom.quant$E), scale = F)
+scores &lt;- pca_genes$x
+
+#Make PCA plots with the factors colored by tissue
+
+for (n in 1:1){
+  col.v &lt;- pal[as.integer(samples$Tissue)]
+  plot_scores(pca_genes, scores, n, n+1, col.v)
+}</code></pre>
+<p><img src="TMM_voom_on_GC_normalized_data_files/figure-html/unnamed-chunk-10-1.png" title="" alt="" width="672" /></p>
+<pre class="r"><code># Clustering (original code from Julien Roux)
+cors &lt;- cor(cpm.voom.quant$E, method=&quot;spearman&quot;, use=&quot;pairwise.complete.obs&quot;)
+
+
+heatmap.2( cors, scale=&quot;none&quot;, col = colors, margins = c(12, 12), trace=&#39;none&#39;, denscol=&quot;white&quot;, labCol=labels, ColSideColors=pal[as.integer(as.factor(samples$Species))], RowSideColors=pal[as.integer(as.factor(samples$Tissue))+9], cexCol = 0.2 + 1/log10(15), cexRow = 0.2 + 1/log10(15))</code></pre>
+<p><img src="TMM_voom_on_GC_normalized_data_files/figure-html/unnamed-chunk-10-2.png" title="" alt="" width="672" /></p>
+<pre class="r"><code># Clustering 
+cors &lt;- cor(cpm.voom.quant$E, method=&quot;pearson&quot;, use=&quot;pairwise.complete.obs&quot;)
+
+
+heatmap.2( cors, scale=&quot;none&quot;, col = colors, margins = c(12, 12), trace=&#39;none&#39;, denscol=&quot;white&quot;, labCol=labels, ColSideColors=pal[as.integer(as.factor(samples$Species))], RowSideColors=pal[as.integer(as.factor(samples$Tissue))+9], cexCol = 0.2 + 1/log10(15), cexRow = 0.2 + 1/log10(15))</code></pre>
+<p><img src="TMM_voom_on_GC_normalized_data_files/figure-html/unnamed-chunk-10-3.png" title="" alt="" width="672" /></p>
+</div>
+</div>
+
+
+<!-- some extra javascript for older browsers -->
+<script type="text/javascript" src="libs/polyfill.js"></script>
+
+<script>
+
+// manage active state of menu based on current page
+$(document).ready(function () {
+
+    // active menu
+    href = window.location.pathname
+    href = href.substr(href.lastIndexOf('/') + 1)
+    $('a[href="' + href + '"]').parent().addClass('active');
+
+    // manage active menu header
+    if (href.startsWith('authoring_'))
+      $('a[href="' + 'authoring' + '"]').parent().addClass('active');
+    else if (href.endsWith('_format.html'))
+      $('a[href="' + 'formats' + '"]').parent().addClass('active');
+    else if (href.startsWith('developer_'))
+      $('a[href="' + 'developer' + '"]').parent().addClass('active');
+
+});
+
+</script>
+
+</div>
+
+<script>
+
+// add bootstrap table styles to pandoc tables
+$(document).ready(function () {
+  $('tr.header').parent('thead').parent('table').addClass('table table-condensed');
+});
+
+</script>
+
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src  = "https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML";
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
+
+</body>
+</html>

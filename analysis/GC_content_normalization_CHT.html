@@ -1,0 +1,1112 @@
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+<head>
+
+<meta charset="utf-8">
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<meta name="generator" content="pandoc" />
+
+<meta name="author" content="Lauren Blake" />
+
+<meta name="date" content="2016-07-13" />
+
+<title>GC_content_normalization_CHT</title>
+
+<script src="libs/jquery-1.11.0/jquery.min.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link href="libs/bootstrap-3.3.1/css/united.min.css" rel="stylesheet" />
+<script src="libs/bootstrap-3.3.1/js/bootstrap.min.js"></script>
+<script src="libs/bootstrap-3.3.1/shim/html5shiv.min.js"></script>
+<script src="libs/bootstrap-3.3.1/shim/respond.min.js"></script>
+
+<style type="text/css">
+
+/* padding for bootstrap navbar */
+body {
+  padding-top: 50px;
+  padding-bottom: 40px;
+}
+
+
+/* offset scroll position for anchor links (for fixed navbar)  */
+.section h2 {
+  padding-top: 55px;
+  margin-top: -55px;
+}
+.section h3 {
+  padding-top: 55px;
+  margin-top: -55px;
+}
+
+
+
+/* don't use link color in navbar */
+.dropdown-menu>li>a {
+  color: black;
+}
+
+/* some padding for disqus */
+#disqus_thread {
+  margin-top: 45px;
+}
+
+</style>
+
+<link rel="stylesheet" href="libs/font-awesome-4.1.0/css/font-awesome.min.css"/>
+
+<style type="text/css">code{white-space: pre;}</style>
+<link rel="stylesheet"
+      href="libs/highlight/textmate.css"
+      type="text/css" />
+<script src="libs/highlight/highlight.js"></script>
+<style type="text/css">
+  pre:not([class]) {
+    background-color: white;
+  }
+</style>
+<script type="text/javascript">
+if (window.hljs && document.readyState && document.readyState === "complete") {
+   window.setTimeout(function() {
+      hljs.initHighlighting();
+   }, 0);
+}
+</script>
+
+
+
+</head>
+
+<body>
+
+<style type = "text/css">
+.main-container {
+  max-width: 940px;
+  margin-left: auto;
+  margin-right: auto;
+}
+code {
+  color: inherit;
+  background-color: rgba(0, 0, 0, 0.04);
+}
+img { 
+  max-width:100%; 
+  height: auto; 
+}
+</style>
+<div class="container-fluid main-container">
+
+
+<div class="navbar navbar-default navbar-fixed-top" role="navigation">
+  <div class="container">
+    <div class="navbar-header">
+      <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar">
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+      </button>
+      <a class="navbar-brand" href="index.html">RegulatoryEvolutionInPrimates</a>
+    </div>
+    <div id="navbar" class="navbar-collapse collapse">
+      <ul class="nav navbar-nav">
+        <li><a href="index.html">Home</a></li>
+        <li><a href="about.html">About</a></li>
+        <li><a href="license.html">License</a></li>
+        <li><a href="https://github.com/Lauren-Blake/Reg_Evo_Primates">GitHub</a></li>
+    </div><!--/.nav-collapse -->
+  </div><!--/.container -->
+</div><!--/.navbar -->
+
+<div id="header">
+<h1 class="title">GC_content_normalization_CHT</h1>
+<h4 class="author"><em>Lauren Blake</em></h4>
+<h4 class="date"><em>July 13, 2016</em></h4>
+</div>
+
+<div id="TOC">
+<ul>
+<li><a href="#part-1-prior-to-spline-fitting">Part 1: Prior to spline fitting</a></li>
+<li><a href="#about-the-gc-content-of-different-genes-across-species">About the GC content of different genes across species</a></li>
+<li><a href="#part-2-adjust-for-gc-content">Part 2: Adjust for GC content</a></li>
+<li><a href="#part-3">Part 3:</a></li>
+</ul>
+</div>
+
+<div id="part-1-prior-to-spline-fitting" class="section level3">
+<h3>Part 1: Prior to spline fitting</h3>
+<pre class="r"><code># Load libraries 
+
+library(&quot;gplots&quot;)</code></pre>
+<pre><code>## Warning: package &#39;gplots&#39; was built under R version 3.1.3</code></pre>
+<pre><code>## 
+## Attaching package: &#39;gplots&#39;
+## 
+## The following object is masked from &#39;package:stats&#39;:
+## 
+##     lowess</code></pre>
+<pre class="r"><code>library(&quot;ggplot2&quot;)</code></pre>
+<pre><code>## Warning: package &#39;ggplot2&#39; was built under R version 3.1.3</code></pre>
+<pre class="r"><code>library(&quot;RColorBrewer&quot;)
+library(&quot;scales&quot;)
+library(&quot;edgeR&quot;)</code></pre>
+<pre><code>## Loading required package: limma</code></pre>
+<pre><code>## Warning: package &#39;limma&#39; was built under R version 3.1.3</code></pre>
+<pre class="r"><code>library(&quot;R.utils&quot;)</code></pre>
+<pre><code>## Warning: package &#39;R.utils&#39; was built under R version 3.1.3</code></pre>
+<pre><code>## Loading required package: R.oo</code></pre>
+<pre><code>## Warning: package &#39;R.oo&#39; was built under R version 3.1.3</code></pre>
+<pre><code>## Loading required package: R.methodsS3
+## R.methodsS3 v1.7.0 (2015-02-19) successfully loaded. See ?R.methodsS3 for help.
+## R.oo v1.19.0 (2015-02-27) successfully loaded. See ?R.oo for help.
+## 
+## Attaching package: &#39;R.oo&#39;
+## 
+## The following objects are masked from &#39;package:methods&#39;:
+## 
+##     getClasses, getMethods
+## 
+## The following objects are masked from &#39;package:base&#39;:
+## 
+##     attach, detach, gc, load, save
+## 
+## R.utils v2.0.2 (2015-04-27) successfully loaded. See ?R.utils for help.
+## 
+## Attaching package: &#39;R.utils&#39;
+## 
+## The following object is masked from &#39;package:utils&#39;:
+## 
+##     timestamp
+## 
+## The following objects are masked from &#39;package:base&#39;:
+## 
+##     cat, commandArgs, getOption, inherits, isOpen, parse, warnings</code></pre>
+<pre class="r"><code>library(&quot;plyr&quot;)</code></pre>
+<pre><code>## Warning: package &#39;plyr&#39; was built under R version 3.1.3</code></pre>
+<pre class="r"><code>library(&quot;limma&quot;)
+library(&quot;EDASeq&quot;)</code></pre>
+<pre><code>## Loading required package: Biobase
+## Loading required package: BiocGenerics
+## Loading required package: parallel
+## 
+## Attaching package: &#39;BiocGenerics&#39;
+## 
+## The following objects are masked from &#39;package:parallel&#39;:
+## 
+##     clusterApply, clusterApplyLB, clusterCall, clusterEvalQ,
+##     clusterExport, clusterMap, parApply, parCapply, parLapply,
+##     parLapplyLB, parRapply, parSapply, parSapplyLB
+## 
+## The following object is masked from &#39;package:limma&#39;:
+## 
+##     plotMA
+## 
+## The following object is masked from &#39;package:stats&#39;:
+## 
+##     xtabs
+## 
+## The following objects are masked from &#39;package:base&#39;:
+## 
+##     anyDuplicated, append, as.data.frame, as.vector, cbind,
+##     colnames, do.call, duplicated, eval, evalq, Filter, Find, get,
+##     intersect, is.unsorted, lapply, Map, mapply, match, mget,
+##     order, paste, pmax, pmax.int, pmin, pmin.int, Position, rank,
+##     rbind, Reduce, rep.int, rownames, sapply, setdiff, sort,
+##     table, tapply, union, unique, unlist, unsplit
+## 
+## Welcome to Bioconductor
+## 
+##     Vignettes contain introductory material; view with
+##     &#39;browseVignettes()&#39;. To cite Bioconductor, see
+##     &#39;citation(&quot;Biobase&quot;)&#39;, and for packages &#39;citation(&quot;pkgname&quot;)&#39;.
+## 
+## Loading required package: ShortRead
+## Loading required package: BiocParallel
+## Loading required package: Biostrings
+## Loading required package: S4Vectors
+## Loading required package: stats4
+## 
+## Attaching package: &#39;S4Vectors&#39;
+## 
+## The following object is masked from &#39;package:plyr&#39;:
+## 
+##     rename
+## 
+## Loading required package: IRanges
+## 
+## Attaching package: &#39;IRanges&#39;
+## 
+## The following object is masked from &#39;package:plyr&#39;:
+## 
+##     desc
+## 
+## The following object is masked from &#39;package:R.oo&#39;:
+## 
+##     trim
+## 
+## The following object is masked from &#39;package:gplots&#39;:
+## 
+##     space
+## 
+## Loading required package: XVector
+## 
+## Attaching package: &#39;XVector&#39;
+## 
+## The following object is masked from &#39;package:plyr&#39;:
+## 
+##     compact
+## 
+## Loading required package: Rsamtools
+## Loading required package: GenomeInfoDb</code></pre>
+<pre><code>## Warning: package &#39;GenomeInfoDb&#39; was built under R version 3.1.3</code></pre>
+<pre><code>## Loading required package: GenomicRanges
+## Loading required package: GenomicAlignments
+## 
+## Attaching package: &#39;ShortRead&#39;
+## 
+## The following object is masked from &#39;package:plyr&#39;:
+## 
+##     id
+## 
+## The following object is masked from &#39;package:R.utils&#39;:
+## 
+##     countLines</code></pre>
+<pre class="r"><code>source(&quot;~/Reg_Evo_Primates/ashlar-trial/analysis/functions.R&quot;)
+
+
+# Load the raw counts
+
+counts_genes &lt;- read.delim(&quot;~/Reg_Evo_Primates/ashlar-trial/data/counts_genes.txt&quot;)
+
+dim(counts_genes)</code></pre>
+<pre><code>## [1] 30030    48</code></pre>
+<pre class="r"><code># Load Sample information
+
+samples &lt;- read.csv(&quot;~/Reg_Evo_Primates/ashlar-trial/data/Sample_info_RNAseq.csv&quot;)
+
+labels &lt;- paste(samples$Species, samples$Tissue, sep=&quot; &quot;)
+
+# We previously determined with SNP calling (via GATK) that the sample Human 1 Heart is Human 1 but most likely a Human 1 Liver. Therefore, we will remove H1H
+
+counts_genes &lt;- counts_genes[,-17]
+samples &lt;- samples[-17,]
+labels &lt;- paste(samples$Species, samples$Tissue, sep=&quot; &quot;)
+
+# Eliminate the lowly expressed genes (see Filtering analysis for more information)
+
+  # Find the TMM
+dge_original &lt;- DGEList(counts=as.matrix(counts_genes), genes=rownames(counts_genes), group = as.character(t(labels)))
+dge_original &lt;- calcNormFactors(dge_original)
+tmm_cpm &lt;- cpm(dge_original, normalized.lib.sizes=TRUE, log=TRUE, prior.count = 0.25)
+head(tmm_cpm)</code></pre>
+<pre><code>##                      C1H       C1K      C1Li      C1Lu       C2H       C2K
+## ENSG00000000003 4.577905  6.458067  8.266553  5.435440 4.6399682  6.022339
+## ENSG00000000005 2.426523 -1.569756 -1.405992 -3.331480 0.6181423 -1.333290
+## ENSG00000000419 5.850838  5.191558  5.943281  5.432423 5.6343469  5.046183
+## ENSG00000000457 4.568934  5.188318  5.908310  4.926437 4.7873635  5.235192
+## ENSG00000000460 1.515520  1.843447  2.085975  2.262878 1.6139287  1.914064
+## ENSG00000000938 5.620597  3.793194  5.096963  7.504597 2.4864784  4.123918
+##                      C2Li      C2Lu       C3H         C3K      C3Li
+## ENSG00000000003  8.007975  4.528713  4.906720  6.35989436  7.721755
+## ENSG00000000005 -2.063745 -2.063306 -1.325874 -0.07344781 -3.796207
+## ENSG00000000419  5.791946  5.164072  5.667325  5.13300315  6.351074
+## ENSG00000000457  6.523773  4.950139  4.609998  5.15783261  6.435445
+## ENSG00000000460  2.303378  1.987747  1.571729  1.41524770  2.281625
+## ENSG00000000938  5.366960  8.047660  4.956491  4.17708758  5.141829
+##                      C3Lu      C4H       C4K      C4Li      C4Lu      H1K
+## ENSG00000000003  5.836125 4.210680  6.456261  8.378765  5.372745 6.815098
+## ENSG00000000005 -3.811821 3.822937 -1.523086 -3.673311 -2.521990 4.863477
+## ENSG00000000419  5.556851 5.760344  5.210484  5.806579  5.264305 5.538591
+## ENSG00000000457  5.129130 4.620220  4.975769  6.522540  5.206329 4.235449
+## ENSG00000000460  2.084845 1.431520  1.779357  2.131942  2.419215 2.717219
+## ENSG00000000938  7.120486 3.613875  3.573790  4.505428  7.660281 4.009787
+##                      H1Li      H1Lu       H2H       H2K      H2Li
+## ENSG00000000003  6.556565  5.017756  3.715237 7.1367653  6.628779
+## ENSG00000000005 -6.803449 -2.236364 -3.893541 0.3983141 -6.803449
+## ENSG00000000419  6.063479  5.729603  5.640512 5.3928808  5.828277
+## ENSG00000000457  4.934305  4.420875  3.440821 4.0896792  4.440666
+## ENSG00000000460  4.969815  3.236803  1.926242 1.9097705  2.647717
+## ENSG00000000938  4.460420  7.796908  5.594227 3.6715300  5.980133
+##                      H2Lu        H3H        H3K      H3Li      H3Lu
+## ENSG00000000003  4.134172  3.4924818 7.02915140  7.656852  5.192738
+## ENSG00000000005 -6.803449 -6.8034489 0.01948416 -6.803449 -6.803449
+## ENSG00000000419  5.266516  5.6997772 5.79252484  6.137729  4.912490
+## ENSG00000000457  4.154920  4.3895028 4.66037953  4.914637  3.901832
+## ENSG00000000460  2.506159 -0.1267628 2.92821223  3.158698  2.359990
+## ENSG00000000938  6.921957  4.0457143 2.58075164  5.661979  6.815378
+##                       H4H        H4K      H4Li      H4Lu       R1H
+## ENSG00000000003  4.309449  6.3278935  6.502999  4.441313  4.287983
+## ENSG00000000005 -2.875477 -0.3994824 -6.803449 -4.372005 -6.803449
+## ENSG00000000419  6.269823  5.5642000  5.747041  5.328283  5.395688
+## ENSG00000000457  3.337615  4.0435944  5.089012  4.151503  4.216825
+## ENSG00000000460  1.655079  1.9392676  3.050663  2.582280  1.216076
+## ENSG00000000938  4.943776  3.7769670  6.812001  8.226866  1.768889
+##                       R1K       R1Li      R1Lu       R2H       R2K
+## ENSG00000000003  6.876427  8.2484842  5.873253  4.597962  7.090748
+## ENSG00000000005 -6.803449 -3.5714845 -2.937362 -2.940118 -2.382257
+## ENSG00000000419  5.335332  5.7401085  4.844764  5.268132  5.000397
+## ENSG00000000457  4.968352  5.0577118  4.795080  4.284276  5.111398
+## ENSG00000000460  1.498811 -0.2588692  2.438262  1.388391  1.276589
+## ENSG00000000938  2.507734  3.7183538  6.473029  2.299659  2.638321
+##                      R2Li      R2Lu       R3H       R3K      R3Li
+## ENSG00000000003  8.600746  5.606713  4.457832  7.128831  8.170499
+## ENSG00000000005 -1.244301 -4.910409 -4.240968 -4.509770 -3.147767
+## ENSG00000000419  5.683575  4.833502  5.451756  5.330145  5.958378
+## ENSG00000000457  5.471576  5.217667  4.230240  5.102576  5.327609
+## ENSG00000000460  1.457402  2.346962  1.645341  1.837197  1.381784
+## ENSG00000000938  3.632703  6.535424  2.859562  2.229997  3.604390
+##                      R3Lu       R4H       R4K      R4Li      R4Lu
+## ENSG00000000003  5.454412  4.833487  7.058675  7.690207  5.357887
+## ENSG00000000005 -3.797088 -2.525255 -2.089636 -4.580657 -6.803449
+## ENSG00000000419  4.957033  5.368345  5.179974  5.449035  5.038406
+## ENSG00000000457  5.166351  4.450659  5.108534  5.303078  4.824999
+## ENSG00000000460  2.578123  1.029239  1.473680  1.518987  2.844173
+## ENSG00000000938  6.846810  2.415779  2.274836  4.494167  6.831500</code></pre>
+<pre class="r"><code># Assign all 12 tissue-species pairs
+chimp_hearts &lt;- c(1, 5, 9, 13)
+chimp_kidneys &lt;- c(2,6,10,14)
+chimp_livers &lt;- c(3,7,11,15)
+chimp_lungs &lt;- c(4,8,12,16)
+
+human_hearts &lt;- c(20,24,28)
+human_kidneys &lt;- c(17,21,25,29)
+human_livers &lt;- c(18,22,26,30)
+human_lungs &lt;- c(19,23,27,31)
+
+rhesus_hearts &lt;- c(32,36,40,44)
+rhesus_kidneys &lt;- c(33,37,41,45)
+rhesus_livers &lt;- c(34,38,42,46)
+rhesus_lungs &lt;- c(35,39,43,47)
+
+# Save the counts
+                          # Raw counts = log2(counts_genes)
+                          # CPM = tmm_cpm
+counts_genes_filtered_3 &lt;- tmm_cpm
+
+# Put the number of samples that you want to have for every tissue-species pair (count/4 samples)
+
+count = 2
+threshold = -5.5
+
+counts_genes_filtered_3A &lt;- counts_genes_filtered_3[rowSums(counts_genes_filtered_3[, chimp_hearts] &gt;= threshold) &gt;= count, ] 
+
+#dim(counts_genes_filtered_3A)
+
+counts_genes_filtered_3B &lt;- counts_genes_filtered_3A[rowSums(counts_genes_filtered_3A[, chimp_kidneys] &gt;= threshold) &gt;= count, ] 
+
+dim(counts_genes_filtered_3B)</code></pre>
+<pre><code>## [1] 20720    47</code></pre>
+<pre class="r"><code>counts_genes_filtered_3C &lt;- counts_genes_filtered_3B[rowSums(counts_genes_filtered_3B[, chimp_livers] &gt;= threshold) &gt;= count, ] 
+
+dim(counts_genes_filtered_3C)</code></pre>
+<pre><code>## [1] 19678    47</code></pre>
+<pre class="r"><code>counts_genes_filtered_3D &lt;- counts_genes_filtered_3C[rowSums(counts_genes_filtered_3C[, chimp_lungs] &gt;= threshold) &gt;= count, ] 
+
+dim(counts_genes_filtered_3D)</code></pre>
+<pre><code>## [1] 19514    47</code></pre>
+<pre class="r"><code>counts_genes_filtered_3E &lt;- counts_genes_filtered_3D[rowSums(counts_genes_filtered_3D[, human_hearts] &gt;= threshold) &gt;= count, ] 
+
+dim(counts_genes_filtered_3E)</code></pre>
+<pre><code>## [1] 18006    47</code></pre>
+<pre class="r"><code>counts_genes_filtered_3F &lt;- counts_genes_filtered_3E[rowSums(counts_genes_filtered_3E[, human_kidneys] &gt;= threshold) &gt;= count, ] 
+
+dim(counts_genes_filtered_3F)</code></pre>
+<pre><code>## [1] 17914    47</code></pre>
+<pre class="r"><code>counts_genes_filtered_3G &lt;- counts_genes_filtered_3F[rowSums(counts_genes_filtered_3F[, human_livers] &gt;= threshold) &gt;= count, ] 
+
+dim(counts_genes_filtered_3G)</code></pre>
+<pre><code>## [1] 17721    47</code></pre>
+<pre class="r"><code>counts_genes_filtered_3H &lt;- counts_genes_filtered_3G[rowSums(counts_genes_filtered_3G[, human_lungs] &gt;= threshold) &gt;= count, ] 
+
+dim(counts_genes_filtered_3H)</code></pre>
+<pre><code>## [1] 17691    47</code></pre>
+<pre class="r"><code>counts_genes_filtered_3I &lt;- counts_genes_filtered_3H[rowSums(counts_genes_filtered_3H[, rhesus_hearts] &gt;= threshold) &gt;= count, ] 
+
+dim(counts_genes_filtered_3I)</code></pre>
+<pre><code>## [1] 17178    47</code></pre>
+<pre class="r"><code>counts_genes_filtered_3J &lt;- counts_genes_filtered_3I[rowSums(counts_genes_filtered_3I[, rhesus_kidneys] &gt;= threshold) &gt;= count, ] 
+
+dim(counts_genes_filtered_3J)</code></pre>
+<pre><code>## [1] 17073    47</code></pre>
+<pre class="r"><code>counts_genes_filtered_3K &lt;- counts_genes_filtered_3J[rowSums(counts_genes_filtered_3J[, rhesus_livers] &gt;= threshold) &gt;= count, ] 
+
+dim(counts_genes_filtered_3K)</code></pre>
+<pre><code>## [1] 16856    47</code></pre>
+<pre class="r"><code>counts_genes_filtered_3L &lt;- counts_genes_filtered_3K[rowSums(counts_genes_filtered_3K[, rhesus_lungs] &gt;= threshold) &gt;= count, ] 
+
+dim(counts_genes_filtered_3L)</code></pre>
+<pre><code>## [1] 16838    47</code></pre>
+<div id="find-gc-content-for-all-of-the-filtered-genes" class="section level4">
+<h4>Find GC content for all of the filtered genes</h4>
+<pre class="r"><code>  # Load the GC content and gene length data
+
+gccontent.genes &lt;- read.table(&quot;~/Reg_Evo_Primates/ashlar-trial/data/GC_content.genes.txt&quot;, sep=&quot;\t&quot;, h=T, row.names=1)
+gccontent.genes &lt;- gccontent.genes[order(row.names(gccontent.genes)), ]
+
+lengths &lt;- read.table(&quot;~/Reg_Evo_Primates/ashlar-trial/data/lengths.txt&quot;, sep=&quot;\t&quot;, h=T)
+lengths.genes &lt;- aggregate(lengths[,3:5], list(lengths[,1]), sum)
+
+## Test that row names are identical to dge- we are expecting all true                                                                                                             
+
+summary(row.names(dge_original) ==  lengths.genes[,1])</code></pre>
+<pre><code>##    Mode    TRUE    NA&#39;s 
+## logical   30030       0</code></pre>
+<pre class="r"><code>summary(row.names(dge_original) ==  row.names(gccontent.genes))</code></pre>
+<pre><code>##    Mode    TRUE    NA&#39;s 
+## logical   30030       0</code></pre>
+</div>
+</div>
+<div id="about-the-gc-content-of-different-genes-across-species" class="section level3">
+<h3>About the GC content of different genes across species</h3>
+<pre class="r"><code>## include everything in single EDASeq object                                                                                                                                                        
+feature &lt;- data.frame(gcHuman = gccontent.genes$humanGC, lengthHuman = lengths.genes$lengthHuman, gcChimp = gccontent.genes$chimpGC, lengthChimp = lengths.genes$lengthChimp, gcRhesus = gccontent.genes$rhesusGC, lengthRhesus = lengths.genes$lengthRhesus)
+row.names(feature) &lt;- row.names(dge_original)
+pheno =  as.data.frame(samples)
+pheno = pheno[,3:4]
+row.names(pheno) &lt;- colnames(dge_original$counts)
+
+## Make sure that the row names of phenoData and the column names of counts are the same
+summary(row.names(pheno) ==  colnames(dge_original$counts))</code></pre>
+<pre><code>##    Mode    TRUE    NA&#39;s 
+## logical      47       0</code></pre>
+<pre class="r"><code>## Make and display object
+EDAdata &lt;- newSeqExpressionSet(counts = as.matrix(dge_original$counts), featureData = feature, phenoData = pheno)
+head(counts(EDAdata))</code></pre>
+<pre><code>##                  C1H  C1K C1Li C1Lu  C2H  C2K C2Li  C2Lu  C3H  C3K C3Li
+## ENSG00000000003  645 3217 6687 1436  539 2178 5590  1102  769 2966 3349
+## ENSG00000000005  145   12    8    3   33   13    5    11   10   34    1
+## ENSG00000000419 1559 1337 1336 1433 1074 1107 1203  1712 1303 1267 1295
+## ENSG00000000457  641 1334 1304 1009  597 1262 1998  1476  626 1289 1373
+## ENSG00000000460   77  131   92  159   66  126  107   189   76   96   77
+## ENSG00000000938 1329  507  743 6027  121  584  896 12637  796  653  560
+##                 C3Lu  C4H  C4K C4Li C4Lu  H1K H1Li H1Lu H2H  H2K H2Li H2Lu
+## ENSG00000000003 1835  475 2590 4794 1505 4252 2100  956 225 2365 2024  690
+## ENSG00000000005    2  363   10    1    6 1099    0    6   1   22    0    0
+## ENSG00000000419 1512 1391 1092  806 1396 1755 1492 1566 855  706 1162 1513
+## ENSG00000000457 1124  631  928 1324 1341  711  682  632 186  286  444  700
+## ENSG00000000460  136   69  101   63  194  248  699  278  65   63  128  223
+## ENSG00000000938 4470  314  351  327 7349  608  491 6564 828  214 1291 4767
+##                 H3H  H3K H3Li H3Lu  H4H  H4K H4Li  H4Lu R1H  R1K R1Li R1Lu
+## ENSG00000000003 124 4810 2918 1427  467 3002 1775  1104 270 2669 4046 1928
+## ENSG00000000005   0   37    0    0    3   28    0     2   0    0    1    4
+## ENSG00000000419 573 2041 1018 1175 1818 1768 1051  2042 582  917  711  945
+## ENSG00000000457 231  931  436  583  238  616  666   903 257  711  443  913
+## ENSG00000000460  10  280  129  200   74  143  162   304  32   64   11  178
+## ENSG00000000938 182  220  732 4395  725  512 2199 15230  47  129  175 2922
+##                 R2H  R2K R2Li R2Lu R3H  R3K R3Li R3Lu R4H  R4K R4Li R4Lu
+## ENSG00000000003 399 3727 7517 2005 500 4005 5547 2088 519 4719 6289 1978
+## ENSG00000000005   2    5    8    1   1    1    2    3   3    8    1    0
+## ENSG00000000419 635  875  995 1173 996 1151 1197 1479 752 1283 1330 1585
+## ENSG00000000457 321  945  859 1531 427  983  773 1710 398 1221 1202 1367
+## ENSG00000000460  43   66   53  209  71  102   50  284  37   98   87  346
+## ENSG00000000938  81  170  240 3817 165  134  234 5482  97  171  686 5494</code></pre>
+<pre class="r"><code>## subset EDASeq object to genes with GC content available:                                                                                                                                          
+EDAdata &lt;- EDAdata[!is.na(fData(EDAdata)$gcHuman),]
+EDAdata &lt;- EDAdata[!is.na(fData(EDAdata)$gcChimp),]
+EDAdata &lt;- EDAdata[!is.na(fData(EDAdata)$gcRhesus),]
+
+## What is the %GC difference between species. How many genes have a %GC diff &gt; 5%                                                                                                                   
+gccontent.filtered &lt;- gccontent.genes[!is.na(gccontent.genes$humanGC) &amp; !is.na(gccontent.genes$chimpGC) &amp; !is.na(gccontent.genes$rhesusGC), ]
+percent &lt;- (apply(gccontent.filtered[,1:3], 1, max) - apply(gccontent.filtered[,1:3], 1, min)) / apply(gccontent.filtered[,1:3], 1, min)
+hist(percent, breaks = 100)</code></pre>
+<p><img src="GC_content_normalization_CHT_files/figure-html/unnamed-chunk-3-1.png" title="" alt="" width="672" /></p>
+<pre class="r"><code>summary(percent)</code></pre>
+<pre><code>##     Min.  1st Qu.   Median     Mean  3rd Qu.     Max. 
+## 0.000000 0.005505 0.010990 0.017590 0.022050 0.506000</code></pre>
+<pre class="r"><code>summary(percent &gt; 0)</code></pre>
+<pre><code>##    Mode   FALSE    TRUE    NA&#39;s 
+## logical     650   28642       0</code></pre>
+<pre class="r"><code>summary(percent &gt; 0.05)</code></pre>
+<pre><code>##    Mode   FALSE    TRUE    NA&#39;s 
+## logical   27391    1901       0</code></pre>
+<pre class="r"><code>## Maybe less confusing measure: what is the difference in GC-content between genes (absolute difference)?                                                                                           
+percent &lt;- apply(gccontent.filtered[,1:3], 1, max) - apply(gccontent.filtered[,1:3], 1, min)
+hist(percent, breaks = 100)</code></pre>
+<p><img src="GC_content_normalization_CHT_files/figure-html/unnamed-chunk-3-2.png" title="" alt="" width="672" /></p>
+<pre class="r"><code>summary(percent) ## max 20% difference                                                                                                                                                               </code></pre>
+<pre><code>##     Min.  1st Qu.   Median     Mean  3rd Qu.     Max. 
+## 0.000000 0.002635 0.005317 0.007943 0.010260 0.195600</code></pre>
+<pre class="r"><code>summary(percent &gt; 0.05)</code></pre>
+<pre><code>##    Mode   FALSE    TRUE    NA&#39;s 
+## logical   29194      98       0</code></pre>
+<p>The GC content of 1901 genes (6.3%) differ by more than 5% (of the less rich gene) between species.</p>
+<p>The GC content of 98 genes have an absolute difference in GC-content of more than 5%.</p>
+<pre class="r"><code># Filter the GC content list for genes we don&#39;t have GC content on
+
+GC_content_complete &lt;- as.data.frame(gccontent.genes[!is.na(gccontent.genes[&quot;humanGC&quot;]),])
+
+GC_content_complete_col &lt;- as.data.frame(GC_content_complete[,1])
+rownames(GC_content_complete_col) &lt;- rownames(GC_content_complete)
+colnames(GC_content_complete_col) &lt;- c(&quot;HumanGC&quot;)
+
+# Find the raw counts of the genes that have met the criteria for expression 
+
+inshared_lists = row.names(counts_genes) %in% rownames(counts_genes_filtered_3L) 
+inshared_lists_data &lt;- as.data.frame(inshared_lists)
+raw_counts_in &lt;- cbind(counts_genes, inshared_lists_data)
+raw_counts_in_2_of_4 &lt;- as.data.frame(subset(raw_counts_in, inshared_lists_data == &quot;TRUE&quot;))
+raw_counts_in_2_of_4_col &lt;- as.data.frame(raw_counts_in_2_of_4[,1:47])
+rownames(raw_counts_in_2_of_4_col) &lt;- rownames(raw_counts_in_2_of_4)
+
+dim(raw_counts_in_2_of_4_col)</code></pre>
+<pre><code>## [1] 16838    47</code></pre>
+<pre class="r"><code># Find the GC content of the genes that have met the criteria for expression
+
+inshared_lists = row.names(GC_content_complete_col) %in% rownames(raw_counts_in_2_of_4_col)
+inshared_lists_data &lt;- as.data.frame(inshared_lists)
+gc_content_in &lt;- cbind(GC_content_complete_col, inshared_lists_data)
+gc_content_in_2_of_4 &lt;- as.data.frame(subset(gc_content_in, inshared_lists_data == &quot;TRUE&quot;))
+gc_content_in_2_of_4_col &lt;- as.data.frame(gc_content_in_2_of_4[,1])
+rownames(gc_content_in_2_of_4_col) &lt;- rownames(gc_content_in_2_of_4)
+colnames(gc_content_in_2_of_4_col) &lt;- c(&quot;HumanGC&quot;)
+
+dim(gc_content_in_2_of_4_col)</code></pre>
+<pre><code>## [1] 16616     1</code></pre>
+<pre class="r"><code># Find the raw counts of the genes that have met the criteria for expression and that have a real-number GC count
+
+inshared_lists = row.names(raw_counts_in_2_of_4_col) %in% rownames(gc_content_in_2_of_4_col) 
+inshared_lists_data &lt;- as.data.frame(inshared_lists)
+counts_in &lt;- cbind(raw_counts_in_2_of_4_col, inshared_lists_data)
+counts_in_2_of_4 &lt;- as.data.frame(subset(counts_in, inshared_lists_data == &quot;TRUE&quot;))
+counts_in_2_of_4_col &lt;- as.data.frame(counts_in_2_of_4[,1:47])
+rownames(counts_in_2_of_4_col) &lt;- rownames(counts_in_2_of_4)
+
+dim(counts_in_2_of_4_col)</code></pre>
+<pre><code>## [1] 16616    47</code></pre>
+<pre class="r"><code># Make sure that the row names for the GC content and the raw counts are the same
+
+summary(rownames(counts_in_2_of_4_col) %in% rownames(gc_content_in_2_of_4_col))</code></pre>
+<pre><code>##    Mode    TRUE    NA&#39;s 
+## logical   16616       0</code></pre>
+<p>The problem(s):</p>
+<ul>
+<li><p>None of the EDAseq normalizations were deemed to be sufficiently aggressive.</p></li>
+<li><p>There is a non-linear relationship between GC content and log2(read counts). We can see this illustrated here:</p></li>
+</ul>
+<pre class="r"><code># plot(data[,2],data[,3], xlim = c(0, 20e5), ylim = c(0,8e4), main = &quot;Read counts in individual versus total&quot;, ylab = &quot;Read counts in 1 individual&quot;, xlab = &quot;Total reads across all individuals&quot;) #plot x=GC, y=counts in ind/counts in all inds
+
+# plot(data[,2],data[,3], main = &quot;Read counts in individual versus total&quot;, ylab = &quot;Read counts in 1 individual&quot;, xlab = &quot;Total reads across all individuals&quot;) #plot x=GC, y=counts in ind/counts in all inds
+
+
+counts &lt;- counts_in_2_of_4_col$CH1
+gc_content &lt;- gc_content_in_2_of_4_col$HumanGC
+
+counts &lt;- counts_in_2_of_4_col[1]
+gc_content &lt;- gc_content_in_2_of_4_col[1]
+
+plot(t(gc_content), t(counts), ylab = &quot;Counts&quot;, xlab = &quot;GC content&quot;, main = &quot;Counts versus GC content for each gene in sample (C1H)&quot;)</code></pre>
+<p><img src="GC_content_normalization_CHT_files/figure-html/unnamed-chunk-5-1.png" title="" alt="" width="672" /></p>
+<pre class="r"><code>counts &lt;- log2(counts_in_2_of_4_col[1])
+gc_content &lt;- gc_content_in_2_of_4_col[1]
+plot(t(gc_content), t(counts), ylab = &quot;Log2(counts)&quot;, xlab = &quot;GC content&quot;, main = &quot;Log2(counts) versus GC content for each gene in sample (C1H)&quot;)</code></pre>
+<p><img src="GC_content_normalization_CHT_files/figure-html/unnamed-chunk-5-2.png" title="" alt="" width="672" /></p>
+<pre class="r"><code>counts &lt;- counts_in_2_of_4_col$C1H
+total_counts &lt;- rowSums(counts_in_2_of_4_col)
+divide_counts &lt;- counts / total_counts
+
+# Comparison of all data versus subsetted data (large fraction for an individual)
+
+check &lt;-  cbind(counts, total_counts)
+check2 &lt;- cbind(check, divide_counts)
+check2 &lt;- as.data.frame(check2)
+
+total_counts &lt;- check2[which(check2$divide_counts &gt; 0.1), ]
+total_counts &lt;- as.data.frame(total_counts)
+
+mean(check2$total_counts)</code></pre>
+<pre><code>## [1] 75878.85</code></pre>
+<pre class="r"><code># 75878.85
+
+mean(total_counts$total_counts)</code></pre>
+<pre><code>## [1] 115192.9</code></pre>
+<pre class="r"><code>#115192.9
+
+median(check2$total_counts)</code></pre>
+<pre><code>## [1] 25143</code></pre>
+<pre class="r"><code>#23772
+
+median(total_counts$total_counts)</code></pre>
+<pre><code>## [1] 14108</code></pre>
+<pre class="r"><code># 14108
+
+plot(t(gc_content), t(divide_counts), xlim = c(0.3, 0.7), ylim = c(0, 0.05), ylab = &quot;Fraction of counts from one individual&quot;, xlab = &quot;GC content&quot;, main = &quot;Fraction of counts versus gene GC content in one individual (C1H)&quot;)</code></pre>
+<p><img src="GC_content_normalization_CHT_files/figure-html/unnamed-chunk-5-3.png" title="" alt="" width="672" /></p>
+<pre class="r"><code>plot(t(gc_content), t(divide_counts), ylab = &quot;Fraction of counts from one individual&quot;, xlab = &quot;GC content&quot;, main = &quot;Fraction of counts versus gene GC content in one individual (C1H)&quot;)</code></pre>
+<p><img src="GC_content_normalization_CHT_files/figure-html/unnamed-chunk-5-4.png" title="" alt="" width="672" /></p>
+<ul>
+<li><p>Because GC content is species-specific, we want a scheme that will allow us to incorporate species-specific information (unlike in the analysis above). At the same time, gene GC content and species are confounded. Therefore, we argue that it makes sense to make different</p></li>
+<li><p>In RNA-seq experiments, a handful of highly expressed genes take up a large fraction of the total number of mapped reads. Different genes are highly expressed in different tissues. Also, there could be variation in the amount of highly expressed genes and the overall relationship between these and the other expressed genes. We need to adjust for total read depth.</p></li>
+</ul>
+<p><strong>Therefore, we will fit each spline for each tissue-species pair. Information from 4 samples (3 in the case of human hearts) will go into the information to fit the splines.</strong></p>
+</div>
+<div id="part-2-adjust-for-gc-content" class="section level3">
+<h3>Part 2: Adjust for GC content</h3>
+<p>For more information about the method used for adjusting read depth and GC content, see pages 4-6 of the Supplementary Text and Figures from the following paper:</p>
+<p>van de Geijn B, McVicker G, Gilad Y, Pritchard JK. WASP: allele-specific software for robust molecular quantitative trait locus discovery. Nat Methods. 2015 Sep 14. doi: 10.1038/nmeth.3582</p>
+<div id="format-gc-content-and-raw-counts-so-that-they-can-go-into-the-script-to-make-the-splines" class="section level4">
+<h4>Format GC content and raw counts so that they can go into the script to make the splines</h4>
+<pre class="r"><code># Get GC content for all 3 species for all of the genes that we have data for (not just the human GC content which we had before)
+
+inshared_lists = row.names(GC_content_complete) %in% rownames(counts_in_2_of_4_col) 
+inshared_lists_data &lt;- as.data.frame(inshared_lists)
+gc_counts_in &lt;- cbind(GC_content_complete, inshared_lists_data)
+gc_counts_in_2_of_4 &lt;- as.data.frame(subset(gc_counts_in, inshared_lists_data == &quot;TRUE&quot;))
+gc_counts_in_2_of_4_col &lt;- as.data.frame(gc_counts_in_2_of_4[,1:3])
+rownames(gc_counts_in_2_of_4_col) &lt;- rownames(gc_counts_in_2_of_4)
+
+# Split the samples into the 12 tissue-species pairs and then attach the GC content so that it is in the correct format for the next step. Make the first row is also the second row (because the next step will read the first row as the header). Then save this file, as it will be run in the next section. 
+
+  # Chimp hearts 
+
+# Subset the counts of genes for the chimp hearts
+
+counts_chimp_hearts &lt;- counts_in_2_of_4_col[,chimp_hearts]
+
+# Find the total read depth for each gene
+
+read_depth_total &lt;- rowSums(counts_chimp_hearts)
+
+# Make GC content the first column and read_depth_total for each gene the second column and then the raw counts for each individual 
+
+gc_counts_chimp_hearts &lt;- cbind(gc_counts_in_2_of_4_col[,2], read_depth_total)
+gc_counts_chimp_hearts &lt;- cbind(gc_counts_chimp_hearts, counts_chimp_hearts)
+
+# Add an extra row so there&#39;s not an issue with the headers 
+
+gc_counts_chimp_hearts &lt;- rbind(gc_counts_chimp_hearts[1,], gc_counts_chimp_hearts)
+
+# Look at the data
+
+head(gc_counts_chimp_hearts)</code></pre>
+<pre><code>##                         V1 read_depth_total  C1H  C2H  C3H  C4H
+## ENSG00000000003  0.4446018             2428  645  539  769  475
+## ENSG000000000031 0.4446018             2428  645  539  769  475
+## ENSG00000000419  0.4003512             5327 1559 1074 1303 1391
+## ENSG00000000457  0.4308564             2495  641  597  626  631
+## ENSG00000000460  0.3933759              288   77   66   76   69
+## ENSG00000000938  0.5656566             2560 1329  121  796  314</code></pre>
+<pre class="r"><code># Output this corrected file to the Desktop so that we can run it in Python (this command is commented out so that RMarkdown doesn&#39;t get confused when I try to load this to my personal site)
+
+# write.table(gc_counts_chimp_hearts,file=&quot;/Users/LEB/Reg_Evo_Primates/ashlar-trial/data/GC_counts_chimp_hearts.txt&quot;,sep=&quot;\t&quot;, col.names = F, row.names = F)
+
+  # Repeat for all of the other 11 tissue-species pairs. Here, we will repeat this process for Chimp kidneys
+
+counts_chimp_kidneys &lt;- counts_in_2_of_4_col[,chimp_kidneys]
+read_depth_total &lt;- rowSums(counts_chimp_kidneys)
+gc_counts_chimp_kidneys &lt;- cbind(gc_counts_in_2_of_4_col[,2], read_depth_total)
+gc_counts_chimp_kidneys &lt;- cbind(gc_counts_chimp_kidneys, counts_chimp_kidneys)
+gc_counts_chimp_kidneys &lt;- rbind(gc_counts_chimp_kidneys[1,], gc_counts_chimp_kidneys)
+
+head(gc_counts_chimp_kidneys)</code></pre>
+<pre><code>##                         V1 read_depth_total  C1K  C2K  C3K  C4K
+## ENSG00000000003  0.4446018            10951 3217 2178 2966 2590
+## ENSG000000000031 0.4446018            10951 3217 2178 2966 2590
+## ENSG00000000419  0.4003512             4803 1337 1107 1267 1092
+## ENSG00000000457  0.4308564             4813 1334 1262 1289  928
+## ENSG00000000460  0.3933759              454  131  126   96  101
+## ENSG00000000938  0.5656566             2095  507  584  653  351</code></pre>
+<pre class="r"><code># write.table(gc_counts_chimp_kidneys,file=&quot;/Users/LEB/Reg_Evo_Primates/ashlar-trial/data/GC_counts_chimp_kidneys.txt&quot;,sep=&quot;\t&quot;, col.names = F, row.names = F)
+
+  # Chimp livers
+
+counts_chimp_livers &lt;- counts_in_2_of_4_col[,chimp_livers]
+read_depth_total &lt;- rowSums(counts_chimp_livers)
+gc_counts_chimp_livers &lt;- cbind(gc_counts_in_2_of_4_col[,2], read_depth_total)
+gc_counts_chimp_livers &lt;- cbind(gc_counts_chimp_livers, counts_chimp_livers)
+gc_counts_chimp_livers &lt;- rbind(gc_counts_chimp_livers[1,], gc_counts_chimp_livers)
+
+head(gc_counts_chimp_livers)</code></pre>
+<pre><code>##                         V1 read_depth_total C1Li C2Li C3Li C4Li
+## ENSG00000000003  0.4446018            20420 6687 5590 3349 4794
+## ENSG000000000031 0.4446018            20420 6687 5590 3349 4794
+## ENSG00000000419  0.4003512             4640 1336 1203 1295  806
+## ENSG00000000457  0.4308564             5999 1304 1998 1373 1324
+## ENSG00000000460  0.3933759              339   92  107   77   63
+## ENSG00000000938  0.5656566             2526  743  896  560  327</code></pre>
+<pre class="r"><code># write.table(gc_counts_chimp_livers,file=&quot;/Users/LEB/Reg_Evo_Primates/ashlar-trial/data/GC_counts_chimp_livers.txt&quot;,sep=&quot;\t&quot;, col.names = F, row.names = F)
+
+  # Chimp lungs
+
+counts_chimp_lungs &lt;- counts_in_2_of_4_col[,chimp_lungs]
+read_depth_total &lt;- rowSums(counts_chimp_lungs)
+gc_counts_chimp_lungs &lt;- cbind(gc_counts_in_2_of_4_col[,2], read_depth_total) 
+gc_counts_chimp_lungs &lt;- cbind(gc_counts_chimp_lungs, counts_chimp_lungs)
+gc_counts_chimp_lungs &lt;- rbind(gc_counts_chimp_lungs[1,], gc_counts_chimp_lungs)
+
+head(gc_counts_chimp_lungs)</code></pre>
+<pre><code>##                         V1 read_depth_total C1Lu  C2Lu C3Lu C4Lu
+## ENSG00000000003  0.4446018             5878 1436  1102 1835 1505
+## ENSG000000000031 0.4446018             5878 1436  1102 1835 1505
+## ENSG00000000419  0.4003512             6053 1433  1712 1512 1396
+## ENSG00000000457  0.4308564             4950 1009  1476 1124 1341
+## ENSG00000000460  0.3933759              678  159   189  136  194
+## ENSG00000000938  0.5656566            30483 6027 12637 4470 7349</code></pre>
+<pre class="r"><code># write.table(gc_counts_chimp_lungs,file=&quot;/Users/LEB/Reg_Evo_Primates/ashlar-trial/data/GC_counts_chimp_lungs.txt&quot;,sep=&quot;\t&quot;, col.names = F, row.names = F)
+
+  # Human hearts
+
+counts_human_hearts &lt;- counts_in_2_of_4_col[,human_hearts]
+read_depth_total &lt;- rowSums(counts_human_hearts)
+gc_counts_human_hearts &lt;- cbind(gc_counts_in_2_of_4_col[,1], read_depth_total)
+gc_counts_human_hearts &lt;- cbind(gc_counts_human_hearts, counts_human_hearts)
+gc_counts_human_hearts &lt;- rbind(gc_counts_human_hearts[1,], gc_counts_human_hearts)
+
+head(gc_counts_human_hearts)</code></pre>
+<pre><code>##                         V1 read_depth_total H2H H3H  H4H
+## ENSG00000000003  0.4438938              816 225 124  467
+## ENSG000000000031 0.4438938              816 225 124  467
+## ENSG00000000419  0.3985953             3246 855 573 1818
+## ENSG00000000457  0.4335337              655 186 231  238
+## ENSG00000000460  0.3956459              149  65  10   74
+## ENSG00000000938  0.5666341             1735 828 182  725</code></pre>
+<pre class="r"><code># write.table(gc_counts_human_hearts,file=&quot;/Users/LEB/Reg_Evo_Primates/ashlar-trial/data/GC_counts_human_hearts.txt&quot;,sep=&quot;\t&quot;, col.names = F, row.names = F)
+
+  # Human kidneys
+
+counts_human_kidneys &lt;- counts_in_2_of_4_col[,human_kidneys]
+read_depth_total &lt;- rowSums(counts_human_kidneys)
+gc_counts_human_kidneys &lt;- cbind(gc_counts_in_2_of_4_col[,1], read_depth_total)
+gc_counts_human_kidneys &lt;- cbind(gc_counts_human_kidneys, counts_human_kidneys)
+gc_counts_human_kidneys &lt;- rbind(gc_counts_human_kidneys[1,], gc_counts_human_kidneys)
+
+head(gc_counts_human_kidneys)</code></pre>
+<pre><code>##                         V1 read_depth_total  H1K  H2K  H3K  H4K
+## ENSG00000000003  0.4438938            14429 4252 2365 4810 3002
+## ENSG000000000031 0.4438938            14429 4252 2365 4810 3002
+## ENSG00000000419  0.3985953             6270 1755  706 2041 1768
+## ENSG00000000457  0.4335337             2544  711  286  931  616
+## ENSG00000000460  0.3956459              734  248   63  280  143
+## ENSG00000000938  0.5666341             1554  608  214  220  512</code></pre>
+<pre class="r"><code>#write.table(gc_counts_human_kidneys,file=&quot;/Users/LEB/Reg_Evo_Primates/ashlar-trial/data/GC_counts_human_kidneys.txt&quot;,sep=&quot;\t&quot;, col.names = F, row.names = F)
+
+  # Human livers
+
+counts_human_livers &lt;- counts_in_2_of_4_col[,human_livers]
+read_depth_total &lt;- rowSums(counts_human_livers)
+gc_counts_human_livers &lt;- cbind(gc_counts_in_2_of_4_col[,1], read_depth_total)
+gc_counts_human_livers &lt;- cbind(gc_counts_human_livers, counts_human_livers)
+gc_counts_human_livers &lt;- rbind(gc_counts_human_livers[1,], gc_counts_human_livers)
+
+head(gc_counts_human_livers)</code></pre>
+<pre><code>##                         V1 read_depth_total H1Li H2Li H3Li H4Li
+## ENSG00000000003  0.4438938             8817 2100 2024 2918 1775
+## ENSG000000000031 0.4438938             8817 2100 2024 2918 1775
+## ENSG00000000419  0.3985953             4723 1492 1162 1018 1051
+## ENSG00000000457  0.4335337             2228  682  444  436  666
+## ENSG00000000460  0.3956459             1118  699  128  129  162
+## ENSG00000000938  0.5666341             4713  491 1291  732 2199</code></pre>
+<pre class="r"><code>#write.table(gc_counts_human_livers,file=&quot;/Users/LEB/Reg_Evo_Primates/ashlar-trial/data/GC_counts_human_livers.txt&quot;,sep=&quot;\t&quot;, col.names = F, row.names = F)
+
+  # Human lungs
+
+counts_human_lungs &lt;- counts_in_2_of_4_col[,human_lungs]
+read_depth_total &lt;- rowSums(counts_human_lungs)
+gc_counts_human_lungs &lt;- cbind(gc_counts_in_2_of_4_col[,1], read_depth_total)
+gc_counts_human_lungs &lt;- cbind(gc_counts_human_lungs, counts_human_lungs)
+gc_counts_human_lungs &lt;- rbind(gc_counts_human_lungs[1,], gc_counts_human_lungs)
+
+head(gc_counts_human_lungs)</code></pre>
+<pre><code>##                         V1 read_depth_total H1Lu H2Lu H3Lu  H4Lu
+## ENSG00000000003  0.4438938             4177  956  690 1427  1104
+## ENSG000000000031 0.4438938             4177  956  690 1427  1104
+## ENSG00000000419  0.3985953             6296 1566 1513 1175  2042
+## ENSG00000000457  0.4335337             2818  632  700  583   903
+## ENSG00000000460  0.3956459             1005  278  223  200   304
+## ENSG00000000938  0.5666341            30956 6564 4767 4395 15230</code></pre>
+<pre class="r"><code># write.table(gc_counts_human_lungs,file=&quot;/Users/LEB/Reg_Evo_Primates/ashlar-trial/data/GC_counts_human_lungs.txt&quot;,sep=&quot;\t&quot;, col.names = F, row.names = F)
+
+  # Rhesus hearts
+
+counts_rhesus_hearts &lt;- counts_in_2_of_4_col[,rhesus_hearts]
+read_depth_total &lt;- rowSums(counts_rhesus_hearts)
+gc_counts_rhesus_hearts &lt;- cbind(gc_counts_in_2_of_4_col[,3], read_depth_total)
+gc_counts_rhesus_hearts &lt;- cbind(gc_counts_rhesus_hearts, counts_rhesus_hearts)
+gc_counts_rhesus_hearts &lt;- rbind(gc_counts_rhesus_hearts[1,], gc_counts_rhesus_hearts)
+
+head(gc_counts_rhesus_hearts)</code></pre>
+<pre><code>##                         V1 read_depth_total R1H R2H R3H R4H
+## ENSG00000000003  0.4429651             1688 270 399 500 519
+## ENSG000000000031 0.4429651             1688 270 399 500 519
+## ENSG00000000419  0.3945993             2965 582 635 996 752
+## ENSG00000000457  0.4289068             1403 257 321 427 398
+## ENSG00000000460  0.3939919              183  32  43  71  37
+## ENSG00000000938  0.5714286              390  47  81 165  97</code></pre>
+<pre class="r"><code># write.table(gc_counts_rhesus_hearts,file=&quot;/Users/LEB/Reg_Evo_Primates/ashlar-trial/data/GC_counts_rhesus_hearts.txt&quot;,sep=&quot;\t&quot;, col.names = F, row.names = F)
+
+  # Rhesus kidneys
+
+counts_rhesus_kidneys &lt;- counts_in_2_of_4_col[,rhesus_kidneys]
+read_depth_total &lt;- rowSums(counts_rhesus_kidneys)
+gc_counts_rhesus_kidneys &lt;- cbind(gc_counts_in_2_of_4_col[,3], read_depth_total)
+gc_counts_rhesus_kidneys &lt;- cbind(gc_counts_rhesus_kidneys, counts_rhesus_kidneys)
+gc_counts_rhesus_kidneys &lt;- rbind(gc_counts_rhesus_kidneys[1,], gc_counts_rhesus_kidneys)
+
+head(gc_counts_rhesus_kidneys)</code></pre>
+<pre><code>##                         V1 read_depth_total  R1K  R2K  R3K  R4K
+## ENSG00000000003  0.4429651            15120 2669 3727 4005 4719
+## ENSG000000000031 0.4429651            15120 2669 3727 4005 4719
+## ENSG00000000419  0.3945993             4226  917  875 1151 1283
+## ENSG00000000457  0.4289068             3860  711  945  983 1221
+## ENSG00000000460  0.3939919              330   64   66  102   98
+## ENSG00000000938  0.5714286              604  129  170  134  171</code></pre>
+<pre class="r"><code># write.table(gc_counts_rhesus_kidneys,file=&quot;/Users/LEB/Reg_Evo_Primates/ashlar-trial/data/GC_counts_rhesus_kidneys.txt&quot;,sep=&quot;\t&quot;, col.names = F, row.names = F)
+
+  # Rhesus livers
+
+counts_rhesus_livers &lt;- counts_in_2_of_4_col[,rhesus_livers]
+read_depth_total &lt;- rowSums(counts_rhesus_livers)
+gc_counts_rhesus_livers &lt;- cbind(gc_counts_in_2_of_4_col[,3], read_depth_total)
+gc_counts_rhesus_livers &lt;- cbind(gc_counts_rhesus_livers, counts_rhesus_livers)
+gc_counts_rhesus_livers &lt;- rbind(gc_counts_rhesus_livers[1,], gc_counts_rhesus_livers)
+
+head(gc_counts_rhesus_livers)</code></pre>
+<pre><code>##                         V1 read_depth_total R1Li R2Li R3Li R4Li
+## ENSG00000000003  0.4429651            23399 4046 7517 5547 6289
+## ENSG000000000031 0.4429651            23399 4046 7517 5547 6289
+## ENSG00000000419  0.3945993             4233  711  995 1197 1330
+## ENSG00000000457  0.4289068             3277  443  859  773 1202
+## ENSG00000000460  0.3939919              201   11   53   50   87
+## ENSG00000000938  0.5714286             1335  175  240  234  686</code></pre>
+<pre class="r"><code># write.table(gc_counts_rhesus_livers,file=&quot;/Users/LEB/Reg_Evo_Primates/ashlar-trial/data/GC_counts_rhesus_livers.txt&quot;,sep=&quot;\t&quot;, col.names = F, row.names = F)
+
+  # Rhesus lungs
+
+counts_rhesus_lungs &lt;- counts_in_2_of_4_col[,rhesus_lungs]
+read_depth_total &lt;- rowSums(counts_rhesus_lungs)
+gc_counts_rhesus_lungs &lt;- cbind(gc_counts_in_2_of_4_col[,3], read_depth_total)
+gc_counts_rhesus_lungs  &lt;- cbind(gc_counts_rhesus_lungs, counts_rhesus_lungs)
+gc_counts_rhesus_lungs &lt;- rbind(gc_counts_rhesus_lungs[1,], gc_counts_rhesus_lungs)
+
+head(gc_counts_rhesus_lungs)</code></pre>
+<pre><code>##                         V1 read_depth_total R1Lu R2Lu R3Lu R4Lu
+## ENSG00000000003  0.4429651             7999 1928 2005 2088 1978
+## ENSG000000000031 0.4429651             7999 1928 2005 2088 1978
+## ENSG00000000419  0.3945993             5182  945 1173 1479 1585
+## ENSG00000000457  0.4289068             5521  913 1531 1710 1367
+## ENSG00000000460  0.3939919             1017  178  209  284  346
+## ENSG00000000938  0.5714286            17715 2922 3817 5482 5494</code></pre>
+<pre class="r"><code># write.table(gc_counts_rhesus_lungs,file=&quot;/Users/LEB/Reg_Evo_Primates/ashlar-trial/data/GC_counts_rhesus_lungs.txt&quot;,sep=&quot;\t&quot;, col.names = F, row.names = F)</code></pre>
+</div>
+<div id="executing-the-file-to-adjust-for-total-read-depth-and-gc-content" class="section level4">
+<h4>Executing the file to adjust for total read depth and GC content</h4>
+<p>To execute this, run a Python script that uses parts of the Python script found here <em><a href="https://github.com/bmvdgeijn/WASP/blob/master/CHT/update_total_depth.py" class="uri">https://github.com/bmvdgeijn/WASP/blob/master/CHT/update_total_depth.py</a></em></p>
+<p>From this, we will get coefficients for the quartic function for each individual.</p>
+</div>
+</div>
+<div id="part-3" class="section level3">
+<h3>Part 3:</h3>
+<pre class="r"><code># Here&#39;s a file with GC content 
+
+GC_read_depth_coefficients &lt;- read.csv(&quot;~/Reg_Evo_Primates/ashlar-trial/data/GC_read_depth_coefficients.csv&quot;, header=FALSE)
+
+coefs &lt;- GC_read_depth_coefficients[,2:11]
+
+# Average gc content
+
+avg_chimp_gc &lt;- mean(gc_counts_chimp_hearts[,1])
+
+# Here&#39;s a file with the GC content and all of the counts for chimps
+
+tot &lt;- cbind(gc_counts_chimp_hearts[-2, 1:2], gc_counts_chimp_hearts[-2, 2], gc_counts_chimp_hearts[-2, 2], gc_counts_chimp_hearts[-2, 2], gc_counts_chimp_kidneys[-2,2], gc_counts_chimp_kidneys[-2,2], gc_counts_chimp_kidneys[-2,2], gc_counts_chimp_kidneys[-2,2], gc_counts_chimp_livers[-2,2], gc_counts_chimp_livers[-2,2], gc_counts_chimp_livers[-2,2], gc_counts_chimp_livers[-2,2], gc_counts_chimp_lungs[-2,2], gc_counts_chimp_lungs[-2,2], gc_counts_chimp_lungs[-2,2], gc_counts_chimp_lungs[-2,2])
+
+dim(tot)</code></pre>
+<pre><code>## [1] 16616    17</code></pre>
+<pre class="r"><code># Find the updated gene counts for the chimps
+
+updated_chimp_gc_avg &lt;- array(NA, dim = c(16616, 16))
+updated_chimp_gc_all &lt;- array(NA, dim = c(16616, 16))
+
+for (j in 1:16616){
+    for (i in 2:17){
+
+updated_chimp_gc_avg[j,i-1] &lt;- exp(coefs[i-1,1] + avg_chimp_gc*coefs[i-1,2] + ((avg_chimp_gc)^2)*coefs[i-1,3] + ((avg_chimp_gc)^3)*coefs[i-1,4] + ((avg_chimp_gc)^4)*coefs[i-1,5])
+
+updated_chimp_gc_all[j,i-1] &lt;- exp(coefs[i-1,1] + tot[j,1]*coefs[i-1,2] + ((tot[j,1])^2)*coefs[i-1,3] + ((tot[j,1])^3)*coefs[i-1,4] + ((tot[j,1])^4)*coefs[i-1,5])
+
+#updated_chimp_gene_counts[j,i-1] &lt;- exp((coefs[i-1,1] + tot[j,1]*coefs[i-1,2] + ((tot[j,1])^2)*coefs[i-1,3] + ((tot[j,1])^3)*coefs[i-1,4] + ((tot[j,1])^4)*coefs[i-1,5]))*(0 + tot[j,i]*coefs[i-1,7] + ((tot[j, i])^2)*coefs[i-1,8] + ((tot[j, i])^3)*coefs[i-1,9] + ((tot[j, i])^4)*coefs[i-1,10])
+  }
+}
+
+# Calculate the adjustment factor
+
+gc_adj &lt;- updated_chimp_gc_avg / updated_chimp_gc_all
+
+# Combine the counts for the chimps
+
+counts_chimps &lt;- cbind(gc_counts_chimp_hearts[-2,3:6], gc_counts_chimp_kidneys[-2,3:6], gc_counts_chimp_livers[-2,3:6], gc_counts_chimp_lungs[-2,3:6])
+
+dim(counts_chimps)</code></pre>
+<pre><code>## [1] 16616    16</code></pre>
+<pre class="r"><code># Calculate the new counts
+
+gc_counts_chimps = counts_chimps*gc_adj 
+
+# Plots comparing raw and adjusted counts
+
+plot(gc_counts_chimp_hearts[-2,1], gc_counts_chimp_hearts[-2,3], xlab = &quot;GC content&quot;, ylab = &quot;Observed raw counts&quot;)</code></pre>
+<p><img src="GC_content_normalization_CHT_files/figure-html/unnamed-chunk-7-1.png" title="" alt="" width="672" /></p>
+<pre class="r"><code>plot(gc_counts_chimp_hearts[-2,1], gc_counts_chimps[,1], xlab = &quot;GC content&quot;, ylab = &quot;Adjusted raw counts&quot;)</code></pre>
+<p><img src="GC_content_normalization_CHT_files/figure-html/unnamed-chunk-7-2.png" title="" alt="" width="672" /></p>
+<pre class="r"><code>plot(gc_counts_chimp_hearts[-2,3], gc_counts_chimps[,1], ylab = &quot;Expected counts&quot;, xlab = &quot;Observed raw counts&quot;)
+abline(a = 0, b = 1, col = &quot;red&quot;, lwd = 3)</code></pre>
+<p><img src="GC_content_normalization_CHT_files/figure-html/unnamed-chunk-7-3.png" title="" alt="" width="672" /></p>
+<pre class="r"><code># Now repeat with humans
+
+# Average gc content
+
+avg_human_gc &lt;- mean(gc_counts_human_hearts[,1])
+
+# Here&#39;s a file with the GC content and all of the counts for chimps
+
+tot &lt;- cbind(gc_counts_human_hearts[-2, 1:2], gc_counts_human_hearts[-2, 2], gc_counts_human_hearts[-2, 2], gc_counts_human_kidneys[-2,2], gc_counts_human_kidneys[-2,2], gc_counts_human_kidneys[-2,2], gc_counts_human_kidneys[-2,2], gc_counts_human_livers[-2,2], gc_counts_human_livers[-2,2], gc_counts_human_livers[-2,2], gc_counts_human_livers[-2,2], gc_counts_human_lungs[-2,2], gc_counts_human_lungs[-2,2], gc_counts_human_lungs[-2,2], gc_counts_human_lungs[-2,2])
+
+dim(tot)</code></pre>
+<pre><code>## [1] 16616    16</code></pre>
+<pre class="r"><code># Find the updated gene counts for the chimps
+
+updated_human_gc_avg &lt;- array(NA, dim = c(16616, 16))
+updated_human_gc_all &lt;- array(NA, dim = c(16616, 16))
+
+for (j in 1:16616){
+    for (i in 17:31){
+
+updated_human_gc_avg[j,i-16] &lt;- exp(coefs[i,1] + avg_human_gc*coefs[i,2] + ((avg_human_gc)^2)*coefs[i,3] + ((avg_human_gc)^3)*coefs[i,4] + ((avg_human_gc)^4)*coefs[i,5])
+
+updated_human_gc_all[j,i-16] &lt;- exp(coefs[i,1] + tot[j,1]*coefs[i,2] + ((tot[j,1])^2)*coefs[i,3] + ((tot[j,1])^3)*coefs[i,4] + ((tot[j,1])^4)*coefs[i,5])
+
+#updated_chimp_gene_counts[j,i-1] &lt;- exp((coefs[i-1,1] + tot[j,1]*coefs[i-1,2] + ((tot[j,1])^2)*coefs[i-1,3] + ((tot[j,1])^3)*coefs[i-1,4] + ((tot[j,1])^4)*coefs[i-1,5]))*(0 + tot[j,i]*coefs[i-1,7] + ((tot[j, i])^2)*coefs[i-1,8] + ((tot[j, i])^3)*coefs[i-1,9] + ((tot[j, i])^4)*coefs[i-1,10])
+  }
+}
+
+# Calculate the adjustment factor
+
+gc_adj &lt;- updated_human_gc_avg / updated_human_gc_all
+
+# Combine the counts for the humans
+
+counts_humans &lt;- cbind(gc_counts_human_hearts[-2,3:5], gc_counts_human_kidneys[-2,3:6], gc_counts_human_livers[-2,3:6], gc_counts_human_lungs[-2,3:6])
+
+dim(counts_humans)</code></pre>
+<pre><code>## [1] 16616    15</code></pre>
+<pre class="r"><code># Calculate the new counts
+
+gc_counts_humans = counts_humans*gc_adj 
+
+# Plot to see the relationship between the raw counts and the GC adjusted counts
+plot(gc_counts_human_hearts[-2,1], gc_counts_human_hearts[-2,3], xlab = &quot;GC content&quot;, ylab = &quot;Observed raw counts&quot;)</code></pre>
+<p><img src="GC_content_normalization_CHT_files/figure-html/unnamed-chunk-7-4.png" title="" alt="" width="672" /></p>
+<pre class="r"><code>plot(gc_counts_human_hearts[-2,1], gc_counts_humans[,1], xlab = &quot;GC content&quot;, ylab = &quot;Adjusted raw counts&quot;)</code></pre>
+<p><img src="GC_content_normalization_CHT_files/figure-html/unnamed-chunk-7-5.png" title="" alt="" width="672" /></p>
+<pre class="r"><code>plot(gc_counts_human_hearts[-2,3], gc_counts_humans[,1], ylab = &quot;Expected counts&quot;, xlab = &quot;Observed raw counts&quot;)
+abline(a = 0, b = 1, col = &quot;red&quot;, lwd = 3)</code></pre>
+<p><img src="GC_content_normalization_CHT_files/figure-html/unnamed-chunk-7-6.png" title="" alt="" width="672" /></p>
+<pre class="r"><code># Now repeat for rhesus
+
+# Average gc content
+
+avg_rhesus_gc &lt;- mean(gc_counts_rhesus_hearts[,1])
+
+# Here&#39;s a file with the GC content and all of the counts for chimps
+
+tot &lt;- cbind(gc_counts_rhesus_hearts[-2, 1:2], gc_counts_rhesus_hearts[-2, 2], gc_counts_rhesus_hearts[-2, 2], gc_counts_rhesus_hearts[-2, 2], gc_counts_rhesus_kidneys[-2,2], gc_counts_rhesus_kidneys[-2,2], gc_counts_rhesus_kidneys[-2,2], gc_counts_rhesus_kidneys[-2,2], gc_counts_rhesus_livers[-2,2], gc_counts_rhesus_livers[-2,2], gc_counts_rhesus_livers[-2,2], gc_counts_rhesus_livers[-2,2], gc_counts_rhesus_lungs[-2,2], gc_counts_rhesus_lungs[-2,2], gc_counts_rhesus_lungs[-2,2], gc_counts_rhesus_lungs[-2,2])
+
+dim(tot)</code></pre>
+<pre><code>## [1] 16616    17</code></pre>
+<pre class="r"><code># Find the updated gene counts for the chimps
+
+updated_rhesus_gc_avg &lt;- array(NA, dim = c(16616, 16))
+updated_rhesus_gc_all &lt;- array(NA, dim = c(16616, 16))
+
+for (j in 1:16616){
+    for (i in 32:47){
+
+updated_rhesus_gc_avg[j,i-31] &lt;- exp(coefs[i-1,1] + avg_rhesus_gc*coefs[i-1,2] + ((avg_rhesus_gc)^2)*coefs[i-1,3] + ((avg_rhesus_gc)^3)*coefs[i-1,4] + ((avg_rhesus_gc)^4)*coefs[i-1,5])
+
+updated_rhesus_gc_all[j,i-31] &lt;- exp(coefs[i-1,1] + tot[j,1]*coefs[i-1,2] + ((tot[j,1])^2)*coefs[i-1,3] + ((tot[j,1])^3)*coefs[i-1,4] + ((tot[j,1])^4)*coefs[i-1,5])
+
+  }
+}
+
+# Calculate the adjustment factor
+
+gc_adj &lt;- updated_rhesus_gc_avg / updated_rhesus_gc_all
+
+# Combine the counts 
+
+counts_rhesus &lt;- cbind(gc_counts_rhesus_hearts[-2,3:6], gc_counts_rhesus_kidneys[-2,3:6], gc_counts_rhesus_livers[-2,3:6], gc_counts_rhesus_lungs[-2,3:6])
+
+dim(counts_rhesus)</code></pre>
+<pre><code>## [1] 16616    16</code></pre>
+<pre class="r"><code># Calculate the new counts
+
+gc_counts_rhesus = counts_rhesus*gc_adj 
+
+# Plots comparing raw and adjusted counts
+
+plot(gc_counts_rhesus_hearts[-2,1], gc_counts_rhesus_hearts[-2,3], xlab = &quot;GC content&quot;, ylab = &quot;Observed raw counts&quot;)</code></pre>
+<p><img src="GC_content_normalization_CHT_files/figure-html/unnamed-chunk-7-7.png" title="" alt="" width="672" /></p>
+<pre class="r"><code>plot(gc_counts_rhesus_hearts[-2,1], gc_counts_rhesus[,1], xlab = &quot;GC content&quot;, ylab = &quot;Adjusted raw counts&quot;)</code></pre>
+<p><img src="GC_content_normalization_CHT_files/figure-html/unnamed-chunk-7-8.png" title="" alt="" width="672" /></p>
+<pre class="r"><code>plot(gc_counts_rhesus_hearts[-2,3], gc_counts_rhesus[,1], ylab = &quot;Expected counts&quot;, xlab = &quot;Observed raw counts&quot;)
+abline(a = 0, b = 1, col = &quot;red&quot;, lwd = 3)</code></pre>
+<p><img src="GC_content_normalization_CHT_files/figure-html/unnamed-chunk-7-9.png" title="" alt="" width="672" /></p>
+<pre class="r"><code># Combine the samples in the same order as before (all chimpanzee 1 samples together, etc. )
+
+chimps &lt;- c(1, 5, 9, 13, 2, 6, 10, 14, 3, 7, 11, 15, 4, 8, 12, 16)
+humans &lt;- c(4, 8, 12, 1, 5, 9, 13, 2, 6, 10, 14, 3, 7, 11, 15)
+
+counts_genes_gc &lt;- cbind(gc_counts_chimps[, chimps], gc_counts_humans[ ,humans], gc_counts_rhesus[, chimps])
+
+# write.table(counts_genes_gc,file=&quot;/Users/LEB/Reg_Evo_Primates/ashlar-trial/data/gene_counts_with_gc_correction.txt&quot;,sep=&quot;\t&quot;, col.names = T, row.names = T)</code></pre>
+<p><strong>To do: Show that orthologous gene length (and exon length) is the same/similar across the different species and therefore we did not correct for it in the analysis. </strong></p>
+</div>
+
+
+<!-- some extra javascript for older browsers -->
+<script type="text/javascript" src="libs/polyfill.js"></script>
+
+<script>
+
+// manage active state of menu based on current page
+$(document).ready(function () {
+
+    // active menu
+    href = window.location.pathname
+    href = href.substr(href.lastIndexOf('/') + 1)
+    $('a[href="' + href + '"]').parent().addClass('active');
+
+    // manage active menu header
+    if (href.startsWith('authoring_'))
+      $('a[href="' + 'authoring' + '"]').parent().addClass('active');
+    else if (href.endsWith('_format.html'))
+      $('a[href="' + 'formats' + '"]').parent().addClass('active');
+    else if (href.startsWith('developer_'))
+      $('a[href="' + 'developer' + '"]').parent().addClass('active');
+
+});
+
+</script>
+
+</div>
+
+<script>
+
+// add bootstrap table styles to pandoc tables
+$(document).ready(function () {
+  $('tr.header').parent('thead').parent('table').addClass('table table-condensed');
+});
+
+</script>
+
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src  = "https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML";
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
+
+</body>
+</html>

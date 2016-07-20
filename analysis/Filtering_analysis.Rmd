@@ -5,7 +5,7 @@ date: "June 10, 2016"
 output: word_document
 ---
 
-### The goal of this file is to establish filtering criteria for multispecies RNA-seq data.
+### The goal of this file is to establish filtering criteria for multispecies RNA-seq data. This analysis is exploratory; our final scheme can be found in the beginning of the GC content normalization file.
 
 ### Introduction
 
@@ -15,6 +15,7 @@ There are the main considerations for filtering:
 
 2. **What threshold(s) to filter** at e.g. how many samples, tissues, and/or species should have a present value in order to include the gene in the later analysis. For example, Julien had used the cut-off of log2(cpm > 1) in at least 4 of the samples for each gene. This is a potentially lax cutoff and may lead to us having lots of missing data when we perform the differential expression analysis. We have 12 tissue-species pairs. Therefore, we will evaluate the performance of 2/4, 3/4, and 4/4 samples in all 12 tissue-species pairs. 
 
+*Note: After this preliminary exploration, we SNP calling (via GATK) that the sample Human 1 Heart is Human 1 but most likely a Human 1 Liver. Therefore, in future analyses, we will drop this sample.*
 
 ```{r}
 # Load libraries 
@@ -42,6 +43,8 @@ pal <- c(brewer.pal(9, "Set1"), brewer.pal(8, "Set2"), brewer.pal(12, "Set3"))
 
 counts_genes <- read.delim("~/Reg_Evo_Primates/ashlar-trial/data/counts_genes.txt")
 
+summary(counts_genes)
+
   #Sample information
 
 samples <- read.csv("~/Reg_Evo_Primates/ashlar-trial/data/Sample_info_RNAseq.csv")
@@ -57,40 +60,25 @@ We are beginning with 30030 genes and 48 samples. Let's do some preliminary anal
 
 
 ```{r}
-# log2(CPM)
+# log2(CPM) adjusted for library sizes
 
 dge_original <- DGEList(counts=as.matrix(counts_genes), genes=rownames(counts_genes), group = as.character(t(labels)))
 dge_original <- calcNormFactors(dge_original)
 
-cpm <- cpm(dge_original, normalized.lib.sizes=FALSE, log=TRUE, prior.count = 0.25)
-head(cpm)
-
-summary(cpm)
-hist(cpm, xlab = "Log2(CPM)", ylim = c(0, 500000))
-expr_cutoff <- -5
-abline(v = expr_cutoff, col = "red", lwd = 3)
-
-# log2(CPM) adjusted for library sizes
+expr_cutoff <- -5.5
 
 tmm_cpm <- cpm(dge_original, normalized.lib.sizes=TRUE, log=TRUE, prior.count = 0.25)
 head(tmm_cpm)
 
 summary(tmm_cpm)
-hist(tmm_cpm, main = "TMM/CPM values (n = 48 samples)")
-abline(v = expr_cutoff, col = "red", lwd = 3)
-
-# Median log2(CPM)
-
-cpm_log <- cpm(counts_genes, log = TRUE, prior.count = 0.25)
-median_log2_cpm <- apply(cpm_log, 1, median)
-hist(median_log2_cpm)
+hist(tmm_cpm, main = "log2(CPM) values in unfiltered data (n = 48 samples)", breaks = 100, ylim = c(0, 50000), xlab = "log2(CPM) values")
 abline(v = expr_cutoff, col = "red", lwd = 3)
 
 # Median log(CPM) adjusted for library sizes
 
 cpm_log <- cpm(counts_genes, normalized.lib.sizes=TRUE, log = TRUE, prior.count = 0.25)
 median_log2_cpm <- apply(cpm_log, 1, median)
-hist(median_log2_cpm)
+hist(median_log2_cpm, breaks = 100, ylim = c(0, 1500))
 abline(v = expr_cutoff, col = "red", lwd = 3)
 
 ```
@@ -101,44 +89,44 @@ These plots are very similar.
 
 ```{r}
 # Looking at chimpanzees
-hist(tmm_cpm[,1], main = "TMM/CPM values for chimpanzee heart sample 1", breaks = 24)
+hist(tmm_cpm[,1], main = "log2(CPM) values in unfiltered data (chimpanzee heart sample 1)", xlab = "log2(CPM)", breaks = 100, ylim = c(0, 5000))
 abline(v = expr_cutoff, col = "red", lwd = 3)
 
 
-hist(tmm_cpm[,1:16], main = "TMM/CPM values for all chimpanzee samples", breaks = 24)
+hist(tmm_cpm[,1:16], main = "log2(CPM) values in unfiltered chimpanzee samples", breaks = 100, xlab = "log2(CPM)", ylim = c(0, 20000))
 abline(v = expr_cutoff, col = "red", lwd = 3)
 
 # Looking at humans
-hist(tmm_cpm[,17], main = "TMM/CPM values for human heart sample 1", breaks = 24)
+hist(tmm_cpm[,17], main = "log2(CPM) values in unfiltered data (human heart sample 1)", xlab = "log2(CPM)", breaks = 100, ylim = c(0, 5000))
 abline(v = expr_cutoff, col = "red", lwd = 3)
 
-
-hist(tmm_cpm[,17:32], main = "TMM/CPM values for all human samples", breaks = 24)
+hist(tmm_cpm[,17:32], main = "log2(CPM) values in unfiltered data (all human samples)", xlab = "log2(CPM)", breaks = 100, ylim = c(0, 20000))
 abline(v = expr_cutoff, col = "red", lwd = 3)
 
 # Rhesus macaques
 
 # Looking at chimpanzees
-hist(tmm_cpm[,33], main = "TMM/CPM values for rhesus macaque heart sample 1", breaks = 24)
+hist(tmm_cpm[,33], main = "log2(CPM) values in unfiltered rhesus macaque heart sample 1", xlab = "log2(CPM)", breaks = 100, ylim = c(0, 5000))
 abline(v = expr_cutoff, col = "red", lwd = 3)
 
 
-hist(tmm_cpm[,33:48], main = "TMM/CPM values for all rhesus macaque samples", breaks = 24)
+hist(tmm_cpm[,33:48], main = "log2(CPM) vallues in rhesus macaque samples", xlab = "log2(CPM)", breaks = 100, ylim = c(0, 20000))
 abline(v = expr_cutoff, col = "red", lwd = 3)
 
 ```
 
 
-### Filtering 1: log2(CPM) > 1 in at least 4 samples (original filtering scheme)
+### Filtering 1: log2(CPM) > 1 in at least 4 samples (filtering scheme proposed by Julien)
 
-What happens when we require keeping only those that have log2(CPM) > 1 in at least 4 samples? (Julien's analysis)
+What happens when we require keeping only those that have log2(CPM) > 1 in at least 4 samples? 
 
 ```{r}
+cpm <- cpm(dge_original, normalized.lib.sizes=TRUE, log=TRUE, prior.count=0.25)
 cpm_filtered <- cpm[rowSums(cpm > 1) >= 4, ]
 dim(cpm_filtered)
 ```
 
-This leaves us with 16,934 genes. 
+This leaves us with 15,487 genes. 
 
 ### Different log2(cpm) thresholds (1 to 48 samples required)
 
@@ -187,11 +175,11 @@ counts_genes_filtered_3 <- tmm_cpm
 # Put the number of samples that you want to have for every tissue-species pair (count/4 samples)
 
 count = 2
-threshold = -5
+threshold = -5.5
 
 counts_genes_filtered_3A <- counts_genes_filtered_3[rowSums(counts_genes_filtered_3[, chimp_hearts] >= threshold) >= count, ] 
 
-dim(counts_genes_filtered_3A)
+#dim(counts_genes_filtered_3A)
 
 counts_genes_filtered_3B <- counts_genes_filtered_3A[rowSums(counts_genes_filtered_3A[, chimp_kidneys] >= threshold) >= count, ] 
 
@@ -241,27 +229,24 @@ dim(counts_genes_filtered_3L)
 #hist(counts_genes_filtered_3L_sums, main = "Number of genes remaining (2/4 species-tissue criteria)", xlab = "Number of genes")
 ```
 
-When we require each sample in each tissue-species pair to have log2(raw counts) >= 0 in each gene, we have 8,916 genes remaining. 
-
-When we require 3/4 samples in each tissue-species pair to have log2(raw counts) >= 0 in each gene, we have 15,801 genes remaining. 
-
-When we require 2/4 samples in each tissue-species pair to have log2(raw counts) >= 0 in each gene, we have 14,090 genes remaining. 
-
-When we require each sample in each tissue-species pair to have log2(CPM) > 1 in each gene, we have 8,916 genes remaining. 
-
-When we require 3/4 samples in each tissue-species pair to have log2(CPM) > 1 in each gene, we have 9,652 genes remaining. 
-
-When we require 2/4 samples in each tissue-species pair to have log2(CPM) > 1 in each gene, we have 10,157 genes remaining. 
-
-**When we require each sample in each tissue-species pair to have log2(CPM) > -5 in each gene, we have 14,077 genes remaining.**
+**When we require each sample in each tissue-species pair to have log2(CPM) > -5 in each gene, we have 14,090 genes remaining.**
 
 **When we require 3/4 samples in each tissue-species pair to have log2(CPM) > -5 in each gene, we have 15,776 genes remaining.** 
 
-**When we require 2/4 samples in each tissue-species pair to have log2(CPM) > -5 in each gene, we have 17,073 genes remaining.** 
+**When we require 2/4 samples in each tissue-species pair to have log2(CPM) > -5 in each gene, we have 17,109 genes remaining.** 
+
+For comparison,
+
+When we require each sample in each tissue-species pair to have log2(CPM) > 0 in each gene, we have 9,803 genes remaining. 
+
+When we require 3/4 samples in each tissue-species pair to have log2(CPM) > 0 in each gene, we have 10,579 genes remaining. 
+
+When we require 2/4 samples in each tissue-species pair to have log2(CPM) > 0 in each gene, we have 10,157 genes remaining. 
+
 
 ### Distribution of NAs/0 counts
 
-We can get an idea about the distribution of the missing data (where log2(CPM) > -5) e.g. if one species or tissue-species pair is over-represented in the missing genes
+We can get an idea about the distribution of the missing data (where log2(CPM) > threshold) e.g. if one species or tissue-species pair is over-represented in the missing genes
 
 ```{r}
 # Copy the raw counts table
@@ -284,7 +269,7 @@ legend("topright", c("Heart", "Kidney", "Liver", "Lung"), lwd = c(2,2,2,2), col 
 ```
 
 
-### Density plots of gene counts when we require 2/4 samples in each tissue-species pair to have log2(CPM) > -5
+### Density plots of gene counts when we require 2/4 samples in each tissue-species pair to have log2(CPM) > -5.5
 
 ```{r}
 
@@ -305,7 +290,7 @@ cpm <- cpm(dge_2_in_4, normalized.lib.sizes=TRUE, log=TRUE, prior.count = 0.25)
 head(cpm)
 
 summary(cpm)
-hist(cpm, xlab = "Log2(CPM)", main = "Log2(CPM) values for genes meeting the filtering criteria" )
+hist(cpm, xlab = "Log2(CPM)", main = "Log2(CPM) values for genes meeting the filtering criteria", breaks = 100 )
 ```
 
 ```{r}
@@ -313,65 +298,6 @@ all_hearts <- c(1,5,9,13,17, 21,25,29,33,37,41,45)
 all_kidneys <- c(2,6,10,14,18, 22,26,30,34,38,42,46)
 all_livers <- c(3,7,11,15,19, 23,27,31,35,39,43,47)
 all_lungs <- c(4,8,12,16,20, 24,28,31,36,40,44,48)
-
-col = as.data.frame(pal[as.numeric(samples$Species)])
-
-plotDensities(cpm[,all_hearts], col=col[all_hearts, ], legend="topright")
-
-plotDensities(cpm[,all_kidneys], col=col[all_kidneys, ], legend="topright")
-
-plotDensities(cpm[,all_livers], col=col[all_livers, ], legend="topright")
-
-plotDensities(cpm[,all_lungs], col=col[all_lungs, ], legend="topright")
-
-# Look at all tissues in each species
-
-col = as.data.frame(pal[as.numeric(samples$Tissue)])
-
-plotDensities(cpm[,1:16],col=col[1:16, ], legend="topright")
-
-plotDensities(cpm[,17:32], col=col[17:32, ], legend="topright")
-
-plotDensities(cpm[,33:48], col=col[33:48, ], legend="topright")
-```
-
-### Voom and corfit (filtering but no additional normalization)
-
-We will use voom in order to decouple the dependency between mean and variance. We will use corfit to model a within-individual term. 
-
-```{r}
-## Voom requires a design matrix as input                                                                                                                                                             
-## To make contrasts easier to formulate, we rename factors species and tissue in a single factor 
-
-condition <- factor(paste(samples$Species,samples$Tissue,sep="."))
-design <- model.matrix(~ 0 + condition)
-colnames(design) <- gsub("condition", "", dput(colnames(design)))
-
-# Voom with individual as a random variable
-
-cpm.voom <- voom(dge_2_in_4, design, normalize.method="none", plot=T)
-corfit <- duplicateCorrelation(cpm.voom, design, block=samples$Individual)
-corfit$consensus
-#save(corfit, file="~/Reg_Evo_Primates/ashlar-trial/analysis/corfit.genes.RDa")
-
-# Final voom on filtered data
-
-cpm.voom <- voom(dge_2_in_4, design, normalize.method="none", plot=TRUE, block=samples$Individual, correlation=corfit$consensus)
-save(cpm.voom, file="~/Reg_Evo_Primates/ashlar-trial/analysis/voom.genes.RDa")
-
-boxplot(cpm.voom$E, col = t(col))
-plotDensities(cpm.voom, group=samples$Tissue, col=pal[as.numeric(samples$Tissue)])
-
-col = as.data.frame(pal[as.numeric(samples$Species)])
-group = as.data.frame(samples$Species)
-
-# Density plots for each species 
-
-plotDensities(cpm.voom[,1:16], group=samples$Tissue, col=pal[as.numeric(samples$Tissue)])
-
-plotDensities(cpm.voom[,17:32], group=samples$Tissue, col=pal[as.numeric(samples$Tissue)])
-
-plotDensities(cpm.voom[,33:48], group=samples$Tissue, col=pal[as.numeric(samples$Tissue)])
 
 col = as.data.frame(pal[as.numeric(samples$Species)])
 col_hearts = col[all_hearts,]
@@ -385,201 +311,25 @@ group_kidneys = group[all_kidneys, ]
 group_livers = group[all_livers, ]
 group_lungs = group[all_lungs, ]
 
-# Density plots for each tissue
-
-plotDensities(cpm.voom[,all_hearts], col=col_hearts, legend = FALSE)
+plotDensities(cpm[,all_hearts], col=col_hearts, legend = FALSE)
 legend('topright', legend = levels(group_hearts), col = levels(col_hearts), pch = 20)
 
-plotDensities(cpm.voom[,all_kidneys], col=col_kidneys, legend = FALSE)
+plotDensities(cpm[,all_kidneys], col=col_kidneys, legend = FALSE)
 legend('topright', legend = levels(group_kidneys), col = levels(col_kidneys), pch = 20)
 
-plotDensities(cpm.voom[,all_livers], col=col_livers, legend = FALSE)
+plotDensities(cpm[,all_livers], col=col_livers, legend = FALSE)
 legend('topright', legend = levels(group_livers), col = levels(col_livers), pch = 20)
 
-plotDensities(cpm.voom[,all_lungs], col=col_lungs, legend = FALSE)
+plotDensities(cpm[,all_lungs], col=col_lungs, legend = FALSE)
 legend('topright', legend = levels(group_lungs), col = levels(col_lungs), pch = 20)
-```
 
-### PCA and clustering
+# Look at all tissues in each species
 
-```{r}
-# PCA 
-  # Load colors 
+plotDensities(cpm[,1:16], group=samples$Tissue, col=pal[as.numeric(samples$Tissue)], legend = "topright")
 
-colors <- colorRampPalette(c(brewer.pal(9, "Blues")[1],brewer.pal(9, "Blues")[9]))(100)
-pal <- c(brewer.pal(9, "Set1"), brewer.pal(8, "Set2"), brewer.pal(12, "Set3"))
+plotDensities(cpm[,17:32], group=samples$Tissue, col=pal[as.numeric(samples$Tissue)], legend = "topright")
 
-  # Check that there's no "NAs" in the data
-select <- counts_genes
-summary(apply(select, 1, var) == 0) 
-
-  # Perform PCA
-
-pca_genes <- prcomp(t(cpm.voom$E), scale = F)
-scores <- pca_genes$x
-
-
-#Make PCA plots with the factors colored by tissue
-
-### PCs 1-5 Raw Data
-for (n in 1:5){
-  col.v <- pal[as.integer(samples$Tissue)]
-  plot_scores(pca_genes, scores, n, n+1, col.v)
-}
-
-
-# Clustering (original code from Julien Roux)
-cors <- cor(cpm.voom$E, method="spearman", use="pairwise.complete.obs")
-
-
-heatmap.2( cors, scale="none", col = colors, margins = c(12, 12), trace='none', denscol="white", labCol=labels, ColSideColors=pal[as.integer(as.factor(samples$Species))], RowSideColors=pal[as.integer(as.factor(samples$Tissue))+9], cexCol = 0.2 + 1/log10(15), cexRow = 0.2 + 1/log10(15))
+plotDensities(cpm[,33:48], group=samples$Tissue, col=pal[as.numeric(samples$Tissue)], legend = "topright")
 
 ```
 
-
-##### fit.GC.norm <- lmFit(rpkm.GC.norm.voom, design, block=samples$Individual, #correlation=corfit.GC.norm$consensus)
-##### fit.GC.norm <- eBayes(fit.GC.norm)
-
-### Voom and corfit (filtering and cyclic loess normalization)
-
-```{r}
-# Voom with individual as a random variable
-
-cpm.voom.cyclic <- voom(dge_2_in_4, design, normalize.method="cyclicloess", plot=T)
-corfit <- duplicateCorrelation(cpm.voom.cyclic, design, block=samples$Individual)
-corfit$consensus
-#save(corfit, file="corfit.genes.cyclic.RDa")
-
-# Final voom on filtered data
-
-cpm.voom.cyclic <- voom(dge_2_in_4, design, normalize.method="cyclicloess", plot=TRUE, block=samples$Individual, correlation=corfit$consensus)
-#save(cpm.voom, file="voom.genes.RDa")
-
-boxplot(cpm.voom.cyclic$E, col = t(col))
-plotDensities(cpm.voom.cyclic, group=samples$Tissue, col=pal[as.numeric(samples$Tissue)])
-
-col = as.data.frame(pal[as.numeric(samples$Species)])
-group = as.data.frame(samples$Species)
-
-# Density plots for each species 
-
-plotDensities(cpm.voom.cyclic[,1:16], group=samples$Tissue, col=pal[as.numeric(samples$Tissue)])
-
-plotDensities(cpm.voom.cyclic[,17:32], group=samples$Tissue, col=pal[as.numeric(samples$Tissue)])
-
-plotDensities(cpm.voom.cyclic[,33:48], group=samples$Tissue, col=pal[as.numeric(samples$Tissue)])
-
-# Density plots for each tissue
-
-plotDensities(cpm.voom.cyclic[,all_hearts], col=col_hearts, legend = FALSE)
-legend('topright', legend = levels(group_hearts), col = levels(col_hearts), pch = 20)
-
-plotDensities(cpm.voom.cyclic[,all_kidneys], col=col_kidneys, legend = FALSE)
-legend('topright', legend = levels(group_kidneys), col = levels(col_kidneys), pch = 20)
-
-plotDensities(cpm.voom.cyclic[,all_livers], col=col_livers, legend = FALSE)
-legend('topright', legend = levels(group_livers), col = levels(col_livers), pch = 20)
-
-plotDensities(cpm.voom.cyclic[,all_lungs], col=col_lungs, legend = FALSE)
-legend('topright', legend = levels(group_lungs), col = levels(col_lungs), pch = 20)
-```
-
-### PCA and clustering
-
-```{r}
-# PCA 
-
-pca_genes <- prcomp(t(cpm.voom.cyclic$E), scale = F)
-scores <- pca_genes$x
-
-
-#Make PCA plots with the factors colored by tissue
-
-### PCs 1-10 Raw Data
-for (n in 1:5){
-  col.v <- pal[as.integer(samples$Tissue)]
-  plot_scores(pca_genes, scores, n, n+1, col.v)
-}
-
-
-# Clustering (original code from Julien Roux)
-cors <- cor(cpm.voom.cyclic$E, method="spearman", use="pairwise.complete.obs")
-
-
-heatmap.2( cors, scale="none", col = colors, margins = c(12, 12), trace='none', denscol="white", labCol=labels, ColSideColors=pal[as.integer(as.factor(samples$Species))], RowSideColors=pal[as.integer(as.factor(samples$Tissue))+9], cexCol = 0.2 + 1/log10(15), cexRow = 0.2 + 1/log10(15))
-
-```
-
-### Voom and corfit (filtering and quantile normalization)
-
-```{r}
-# Voom with individual as a random variable
-
-cpm.voom.quantile <- voom(dge_2_in_4, design, normalize.method="quantile", plot=T)
-corfit <- duplicateCorrelation(cpm.voom.quantile, design, block=samples$Individual)
-corfit$consensus
-#save(corfit, file="corfit.genes.cyclic.RDa")
-
-# Final voom on filtered data
-
-cpm.voom.quantile <- voom(dge_2_in_4, design, normalize.method="quantile", plot=TRUE, block=samples$Individual, correlation=corfit$consensus)
-#save(cpm.voom, file="voom.genes.RDa")
-
-boxplot(cpm.voom.quantile$E, col = t(col))
-plotDensities(cpm.voom.quantile, group=samples$Tissue, col=pal[as.numeric(samples$Tissue)])
-
-col = as.data.frame(pal[as.numeric(samples$Species)])
-group = as.data.frame(samples$Species)
-
-# Density plots for each species 
-
-plotDensities(cpm.voom.quantile[,1:16], group=samples$Tissue, col=pal[as.numeric(samples$Tissue)])
-
-plotDensities(cpm.voom.quantile[,17:32], group=samples$Tissue, col=pal[as.numeric(samples$Tissue)])
-
-plotDensities(cpm.voom.quantile[,33:48], group=samples$Tissue, col=pal[as.numeric(samples$Tissue)])
-
-# Density plots for each tissue
-
-plotDensities(cpm.voom.quantile[,all_hearts], col=col_hearts, legend = FALSE)
-legend('topright', legend = levels(group_hearts), col = levels(col_hearts), pch = 20)
-
-plotDensities(cpm.voom.quantile[,all_kidneys], col=col_kidneys, legend = FALSE)
-legend('topright', legend = levels(group_kidneys), col = levels(col_kidneys), pch = 20)
-
-plotDensities(cpm.voom.quantile[,all_livers], col=col_livers, legend = FALSE)
-legend('topright', legend = levels(group_livers), col = levels(col_livers), pch = 20)
-
-plotDensities(cpm.voom.quantile[,all_lungs], col=col_lungs, legend = FALSE)
-legend('topright', legend = levels(group_lungs), col = levels(col_lungs), pch = 20)
-```
-
-### PCA and clustering
-
-```{r}
-# PCA 
-
-pca_genes <- prcomp(t(cpm.voom.quantile$E), scale = F)
-scores <- pca_genes$x
-
-
-#Make PCA plots with the factors colored by tissue
-
-### PCs 1-5 Raw Data
-for (n in 1:5){
-  col.v <- pal[as.integer(samples$Tissue)]
-  plot_scores(pca_genes, scores, n, n+1, col.v)
-}
-
-
-# Clustering (original code from Julien Roux)
-cors <- cor(cpm.voom.quantile$E, method="spearman", use="pairwise.complete.obs")
-
-
-heatmap.2( cors, scale="none", col = colors, margins = c(12, 12), trace='none', denscol="white", labCol=labels, ColSideColors=pal[as.integer(as.factor(samples$Species))], RowSideColors=pal[as.integer(as.factor(samples$Tissue))+9], cexCol = 0.2 + 1/log10(15), cexRow = 0.2 + 1/log10(15))
-
-```
-
-### GC content normalization + filtering + TMM + voom + no normalization
-
-There could be different GC 

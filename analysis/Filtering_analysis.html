@@ -126,27 +126,20 @@ img {
 
 <div id="TOC">
 <ul>
-<li><a href="#the-goal-of-this-file-is-to-establish-filtering-criteria-for-multispecies-rna-seq-data.">The goal of this file is to establish filtering criteria for multispecies RNA-seq data.</a></li>
+<li><a href="#the-goal-of-this-file-is-to-establish-filtering-criteria-for-multispecies-rna-seq-data.-this-analysis-is-exploratory-our-final-scheme-can-be-found-in-the-beginning-of-the-gc-content-normalization-file.">The goal of this file is to establish filtering criteria for multispecies RNA-seq data. This analysis is exploratory; our final scheme can be found in the beginning of the GC content normalization file.</a></li>
 <li><a href="#introduction">Introduction</a></li>
 <li><a href="#patterns-of-log2cpm">Patterns of log2(CPM)</a></li>
 <li><a href="#patterns-of-log2cpm-for-each-species">Patterns of log2(CPM) for each species</a></li>
-<li><a href="#filtering-1-log2cpm-1-in-at-least-4-samples-original-filtering-scheme">Filtering 1: log2(CPM) &gt; 1 in at least 4 samples (original filtering scheme)</a></li>
+<li><a href="#filtering-1-log2cpm-1-in-at-least-4-samples-filtering-scheme-proposed-by-julien">Filtering 1: log2(CPM) &gt; 1 in at least 4 samples (filtering scheme proposed by Julien)</a></li>
 <li><a href="#different-log2cpm-thresholds-1-to-48-samples-required">Different log2(cpm) thresholds (1 to 48 samples required)</a></li>
 <li><a href="#filtering-2-log2cpm-a-particular-threshold-adjusted-for-library-size-in-44-samples-34-samples-and-24-samples-per-tissue-species-pair.">Filtering 2: Log2(CPM) &gt; a particular threshold adjusted for library size in 4/4 samples, 3/4 samples, and 2/4 samples per tissue-species pair.</a></li>
 <li><a href="#distribution-of-nas0-counts">Distribution of NAs/0 counts</a></li>
-<li><a href="#density-plots-of-gene-counts-when-we-require-24-samples-in-each-tissue-species-pair-to-have-log2cpm--5">Density plots of gene counts when we require 2/4 samples in each tissue-species pair to have log2(CPM) &gt; -5</a></li>
-<li><a href="#voom-and-corfit-filtering-but-no-additional-normalization">Voom and corfit (filtering but no additional normalization)</a></li>
-<li><a href="#pca-and-clustering">PCA and clustering</a></li>
-<li><a href="#voom-and-corfit-filtering-and-cyclic-loess-normalization">Voom and corfit (filtering and cyclic loess normalization)</a></li>
-<li><a href="#pca-and-clustering-1">PCA and clustering</a></li>
-<li><a href="#voom-and-corfit-filtering-and-quantile-normalization">Voom and corfit (filtering and quantile normalization)</a></li>
-<li><a href="#pca-and-clustering-2">PCA and clustering</a></li>
-<li><a href="#gc-content-normalization-filtering-tmm-voom-no-normalization">GC content normalization + filtering + TMM + voom + no normalization</a></li>
+<li><a href="#density-plots-of-gene-counts-when-we-require-24-samples-in-each-tissue-species-pair-to-have-log2cpm--5.5">Density plots of gene counts when we require 2/4 samples in each tissue-species pair to have log2(CPM) &gt; -5.5</a></li>
 </ul>
 </div>
 
-<div id="the-goal-of-this-file-is-to-establish-filtering-criteria-for-multispecies-rna-seq-data." class="section level3">
-<h3>The goal of this file is to establish filtering criteria for multispecies RNA-seq data.</h3>
+<div id="the-goal-of-this-file-is-to-establish-filtering-criteria-for-multispecies-rna-seq-data.-this-analysis-is-exploratory-our-final-scheme-can-be-found-in-the-beginning-of-the-gc-content-normalization-file." class="section level3">
+<h3>The goal of this file is to establish filtering criteria for multispecies RNA-seq data. This analysis is exploratory; our final scheme can be found in the beginning of the GC content normalization file.</h3>
 </div>
 <div id="introduction" class="section level3">
 <h3>Introduction</h3>
@@ -155,6 +148,7 @@ img {
 <li><p><strong>What to filter (raw counts or CPM).</strong> Our lab frequently uses CPM in human RNA-seq and multi-species RNA-seq data (e.g. Gallego Romero and Pavlovic et al. 2015).</p></li>
 <li><p><strong>What threshold(s) to filter</strong> at e.g. how many samples, tissues, and/or species should have a present value in order to include the gene in the later analysis. For example, Julien had used the cut-off of log2(cpm &gt; 1) in at least 4 of the samples for each gene. This is a potentially lax cutoff and may lead to us having lots of missing data when we perform the differential expression analysis. We have 12 tissue-species pairs. Therefore, we will evaluate the performance of 2/4, 3/4, and 4/4 samples in all 12 tissue-species pairs.</p></li>
 </ol>
+<p><em>Note: After this preliminary exploration, we SNP calling (via GATK) that the sample Human 1 Heart is Human 1 but most likely a Human 1 Liver. Therefore, in future analyses, we will drop this sample.</em></p>
 <pre class="r"><code># Load libraries 
 
 library(&quot;gplots&quot;)</code></pre>
@@ -306,7 +300,113 @@ pal &lt;- c(brewer.pal(9, &quot;Set1&quot;), brewer.pal(8, &quot;Set2&quot;), br
 
 counts_genes &lt;- read.delim(&quot;~/Reg_Evo_Primates/ashlar-trial/data/counts_genes.txt&quot;)
 
-  #Sample information
+summary(counts_genes)</code></pre>
+<pre><code>##       C1H                C1K                C1Li        
+##  Min.   :     0.0   Min.   :     0.0   Min.   :      0  
+##  1st Qu.:     0.0   1st Qu.:     0.0   1st Qu.:      0  
+##  Median :    24.0   Median :    36.0   Median :     18  
+##  Mean   :   908.2   Mean   :   968.3   Mean   :   1075  
+##  3rd Qu.:   490.0   3rd Qu.:   695.0   3rd Qu.:    397  
+##  Max.   :821596.0   Max.   :346199.0   Max.   :4072604  
+##       C1Lu               C2H                C2K          
+##  Min.   :     0.0   Min.   :     0.0   Min.   :     0.0  
+##  1st Qu.:     0.0   1st Qu.:     0.0   1st Qu.:     0.0  
+##  Median :    27.0   Median :    17.0   Median :    35.0  
+##  Mean   :   874.5   Mean   :   808.7   Mean   :   820.0  
+##  3rd Qu.:   598.0   3rd Qu.:   370.0   3rd Qu.:   634.8  
+##  Max.   :660655.0   Max.   :831150.0   Max.   :271404.0  
+##       C2Li              C2Lu             C3H               C3K          
+##  Min.   :      0   Min.   :     0   Min.   :      0   Min.   :     0.0  
+##  1st Qu.:      0   1st Qu.:     0   1st Qu.:      0   1st Qu.:     0.0  
+##  Median :     16   Median :    44   Median :     19   Median :    37.0  
+##  Mean   :   1178   Mean   :  1219   Mean   :   1013   Mean   :   883.5  
+##  3rd Qu.:    405   3rd Qu.:   875   3rd Qu.:    441   3rd Qu.:   672.0  
+##  Max.   :3938717   Max.   :716724   Max.   :1793508   Max.   :215725.0  
+##       C3Li                C3Lu               C4H          
+##  Min.   :      0.0   Min.   :     0.0   Min.   :     0.0  
+##  1st Qu.:      0.0   1st Qu.:     0.0   1st Qu.:     0.0  
+##  Median :     10.0   Median :    29.0   Median :    20.0  
+##  Mean   :    853.2   Mean   :   803.7   Mean   :   874.4  
+##  3rd Qu.:    267.0   3rd Qu.:   561.0   3rd Qu.:   445.0  
+##  Max.   :1945405.0   Max.   :510429.0   Max.   :698234.0  
+##       C4K                C4Li                C4Lu         
+##  Min.   :     0.0   Min.   :      0.0   Min.   :     0.0  
+##  1st Qu.:     0.0   1st Qu.:      0.0   1st Qu.:     0.0  
+##  Median :    29.0   Median :     10.0   Median :    35.0  
+##  Mean   :   758.1   Mean   :    791.6   Mean   :   898.2  
+##  3rd Qu.:   544.0   3rd Qu.:    256.0   3rd Qu.:   628.0  
+##  Max.   :326106.0   Max.   :3072954.0   Max.   :219491.0  
+##       H1H                 H1K                H1Li        
+##  Min.   :      0.0   Min.   :     0.0   Min.   :      0  
+##  1st Qu.:      0.0   1st Qu.:     0.0   1st Qu.:      0  
+##  Median :     17.0   Median :    37.0   Median :     18  
+##  Mean   :    995.8   Mean   :   915.4   Mean   :   1081  
+##  3rd Qu.:    383.0   3rd Qu.:   698.0   3rd Qu.:    408  
+##  Max.   :2680362.0   Max.   :280407.0   Max.   :2947309  
+##       H1Lu               H2H                H2K          
+##  Min.   :     0.0   Min.   :     0.0   Min.   :     0.0  
+##  1st Qu.:     0.0   1st Qu.:     0.0   1st Qu.:     0.0  
+##  Median :    31.0   Median :    11.0   Median :    14.0  
+##  Mean   :   727.1   Mean   :   593.3   Mean   :   411.5  
+##  3rd Qu.:   522.0   3rd Qu.:   301.0   3rd Qu.:   300.0  
+##  Max.   :229142.0   Max.   :369787.0   Max.   :263771.0  
+##       H2Li               H2Lu             H3H                H3K          
+##  Min.   :     0.0   Min.   :     0   Min.   :     0.0   Min.   :     0.0  
+##  1st Qu.:     0.0   1st Qu.:     0   1st Qu.:     0.0   1st Qu.:     0.0  
+##  Median :    15.0   Median :    36   Median :     7.0   Median :    38.0  
+##  Mean   :   690.9   Mean   :  1044   Mean   :   364.3   Mean   :   926.1  
+##  3rd Qu.:   361.0   3rd Qu.:   700   3rd Qu.:   193.0   3rd Qu.:   702.0  
+##  Max.   :741758.0   Max.   :234018   Max.   :507382.0   Max.   :470291.0  
+##       H3Li                H3Lu             H4H          
+##  Min.   :      0.0   Min.   :     0   Min.   :     0.0  
+##  1st Qu.:      0.0   1st Qu.:     0   1st Qu.:     0.0  
+##  Median :     10.0   Median :    41   Median :    19.0  
+##  Mean   :    644.1   Mean   :  1046   Mean   :   882.4  
+##  3rd Qu.:    249.0   3rd Qu.:   680   3rd Qu.:   434.0  
+##  Max.   :2281606.0   Max.   :451746   Max.   :992300.0  
+##       H4K                H4Li                H4Lu         
+##  Min.   :     0.0   Min.   :      0.0   Min.   :     0.0  
+##  1st Qu.:     0.0   1st Qu.:      0.0   1st Qu.:     0.0  
+##  Median :    38.0   Median :     17.0   Median :    54.0  
+##  Mean   :   969.9   Mean   :    723.2   Mean   :  1283.5  
+##  3rd Qu.:   719.8   3rd Qu.:    345.0   3rd Qu.:   905.8  
+##  Max.   :612986.0   Max.   :1039964.0   Max.   :382974.0  
+##       R1H                R1K                R1Li        
+##  Min.   :     0.0   Min.   :     0.0   Min.   :      0  
+##  1st Qu.:     0.0   1st Qu.:     0.0   1st Qu.:      0  
+##  Median :     8.0   Median :    18.0   Median :      7  
+##  Mean   :   556.8   Mean   :   598.5   Mean   :    827  
+##  3rd Qu.:   229.0   3rd Qu.:   420.0   3rd Qu.:    223  
+##  Max.   :747635.0   Max.   :326973.0   Max.   :4326316  
+##       R1Lu               R2H                R2K              R2Li        
+##  Min.   :     0.0   Min.   :     0.0   Min.   :     0   Min.   :      0  
+##  1st Qu.:     0.0   1st Qu.:     0.0   1st Qu.:     0   1st Qu.:      0  
+##  Median :    26.0   Median :    10.0   Median :    24   Median :     12  
+##  Mean   :   806.9   Mean   :   663.9   Mean   :   718   Mean   :   1200  
+##  3rd Qu.:   589.0   3rd Qu.:   276.0   3rd Qu.:   515   3rd Qu.:    342  
+##  Max.   :643878.0   Max.   :895632.0   Max.   :358835   Max.   :6121420  
+##       R2Lu               R3H               R3K                R3Li        
+##  Min.   :     0.0   Min.   :      0   Min.   :     0.0   Min.   :      0  
+##  1st Qu.:     0.0   1st Qu.:      0   1st Qu.:     0.0   1st Qu.:      0  
+##  Median :    39.0   Median :     16   Median :    22.0   Median :     11  
+##  Mean   :   977.8   Mean   :    945   Mean   :   824.6   Mean   :   1259  
+##  3rd Qu.:   739.0   3rd Qu.:    397   3rd Qu.:   526.0   3rd Qu.:    337  
+##  Max.   :404563.0   Max.   :1252730   Max.   :792396.0   Max.   :7576265  
+##       R3Lu             R4H                R4K              R4Li        
+##  Min.   :     0   Min.   :     0.0   Min.   :     0   Min.   :      0  
+##  1st Qu.:     0   1st Qu.:     0.0   1st Qu.:     0   1st Qu.:      0  
+##  Median :    42   Median :    11.0   Median :    29   Median :     20  
+##  Mean   :  1172   Mean   :   730.9   Mean   :  1001   Mean   :   1753  
+##  3rd Qu.:   875   3rd Qu.:   305.0   3rd Qu.:   665   3rd Qu.:    558  
+##  Max.   :583471   Max.   :933376.0   Max.   :714614   Max.   :7642934  
+##       R4Lu         
+##  Min.   :     0.0  
+##  1st Qu.:     0.0  
+##  Median :    39.0  
+##  Mean   :  1215.1  
+##  3rd Qu.:   884.8  
+##  Max.   :768328.0</code></pre>
+<pre class="r"><code>  #Sample information
 
 samples &lt;- read.csv(&quot;~/Reg_Evo_Primates/ashlar-trial/data/Sample_info_RNAseq.csv&quot;)
 
@@ -318,173 +418,12 @@ dim(counts_genes)</code></pre>
 <div id="patterns-of-log2cpm" class="section level3">
 <h3>Patterns of log2(CPM)</h3>
 <p>We are beginning with 30030 genes and 48 samples. Let’s do some preliminary analysis on the log2(CPM) to determine an appropriate cutoff</p>
-<pre class="r"><code># log2(CPM)
+<pre class="r"><code># log2(CPM) adjusted for library sizes
 
 dge_original &lt;- DGEList(counts=as.matrix(counts_genes), genes=rownames(counts_genes), group = as.character(t(labels)))
 dge_original &lt;- calcNormFactors(dge_original)
 
-cpm &lt;- cpm(dge_original, normalized.lib.sizes=FALSE, log=TRUE, prior.count = 0.25)
-head(cpm)</code></pre>
-<pre><code>##                      C1H       C1K      C1Li      C1Lu       C2H
-## ENSG00000000003 4.564233  6.789813  7.694441  5.773165 4.4726734
-## ENSG00000000005 2.412927 -1.244922 -1.959985 -3.017812 0.4520966
-## ENSG00000000419 5.837153  5.523265  5.371259  5.770149 5.4670113
-## ENSG00000000457 4.555262  5.520025  5.336291  5.264139 4.6200607
-## ENSG00000000460 1.502012  2.174569  1.515462  2.600163 1.4472195
-## ENSG00000000938 5.606913  4.124798  4.525030  7.842364 2.3194663
-##                        C2K      C2Li      C2Lu       C3H       C3K
-## ENSG00000000003  6.4669354  7.304196  4.912173  4.660650 6.8047482
-## ENSG00000000005 -0.8965488 -2.731302 -1.691078 -1.564830 0.3681473
-## ENSG00000000419  5.4907323  5.088292  5.547574  5.421215 5.5778059
-## ENSG00000000457  5.6797526  5.820056  5.333629  4.363949 5.6026369
-## ENSG00000000460  2.3578775  1.601344  2.370642  1.326532 1.8589657
-## ENSG00000000938  4.5683827  4.663360  8.431227  4.710417 4.6218065
-##                      C3Li      C3Lu      C4H       C4K      C4Li      C4Lu
-## ENSG00000000003  7.030339  6.248752 4.177820  6.829993  7.655935  5.802391
-## ENSG00000000005 -4.372920 -3.440579 3.790089 -1.156918 -4.284858 -2.109757
-## ENSG00000000419  5.659722  5.969468 5.727458  5.584174  5.083884  5.693946
-## ENSG00000000457  5.744087  5.541725 4.587350  5.349447  5.799782  5.635966
-## ENSG00000000460  1.591935  2.496838 1.398885  2.152351  1.411153  2.848369
-## ENSG00000000938  4.450615  7.533144 3.581034  3.947330  3.782970  8.089986
-##                       H1H      H1K      H1Li      H1Lu       H2H       H2K
-## ENSG00000000003  6.265972 7.273215  6.015802  5.452655  3.659762 7.5802425
-## ENSG00000000005 -6.758868 5.321511 -6.758868 -1.815873 -3.935356 0.8394441
-## ENSG00000000419  5.639117 5.996667  5.522744  6.164538  5.584985 5.8363059
-## ENSG00000000457  4.774197 4.693423  4.393684  4.855725  3.385361 4.5329953
-## ENSG00000000460  4.613997 3.174875  4.429190  3.671471  1.870941 2.3524392
-## ENSG00000000938  3.947240 4.467732  3.919882  8.231888  5.538700 4.1147845
-##                      H2Li      H2Lu        H3H       H3K      H3Li
-## ENSG00000000003  6.608150  4.459975  3.5039978 7.4343966  7.237241
-## ENSG00000000005 -6.758868 -6.758868 -6.7588684 0.4219297 -6.758868
-## ENSG00000000419  5.807652  5.592389  5.7112724 6.1977404  5.718164
-## ENSG00000000457  4.420058  4.480725  4.4010065 5.0655337  4.495164
-## ENSG00000000460  2.627178  2.831689 -0.1149462 3.3331039  2.739612
-## ENSG00000000938  5.959507  7.247870  4.0572218 2.9855411  5.242440
-##                      H3Lu       H4H         H4K      H4Li      H4Lu
-## ENSG00000000003  5.505916  4.140116  6.68759194  6.352921  4.840593
-## ENSG00000000005 -6.758868 -3.029836 -0.04309948 -6.758868 -4.032121
-## ENSG00000000419  5.225654  6.100413  5.92387644  5.596977  5.727622
-## ENSG00000000457  4.214922  3.168382  4.40317072  4.938968  4.550754
-## ENSG00000000460  2.672800  1.486298  2.29833654  2.900790  2.981219
-## ENSG00000000938  7.128595  4.774406  4.13651206  6.661918  8.626265
-##                        R1H       R1K      R1Li      R1Lu       R2H
-## ENSG00000000003  4.0140571  7.214370  7.348500  6.314288  4.323540
-## ENSG00000000005 -6.7588684 -6.758868 -4.336084 -2.520248 -3.190336
-## ENSG00000000419  5.1216748  5.673236  4.840308  5.285743  4.993661
-## ENSG00000000457  3.9429078  5.306239  4.158047  5.236055  4.009887
-## ENSG00000000460  0.9433609  1.835933 -1.144673  2.878777  1.115058
-## ENSG00000000938  1.4957372  2.845279  2.819237  6.914082  2.025755
-##                       R2K       R2Li      R2Lu       R3H       R3K
-## ENSG00000000003  7.433444  7.7041221  6.093623  4.139888  7.337622
-## ENSG00000000005 -2.052171 -2.1130703 -4.529840 -4.490910 -4.332980
-## ENSG00000000419  5.343035  4.7871522  5.320362  5.133729  5.538911
-## ENSG00000000457  5.454042  4.5751901  5.704555  3.912325  5.311336
-## ENSG00000000460  1.618307  0.5650698  2.833271  1.328409  2.045608
-## ENSG00000000938  2.980647  2.7370070  7.022367  2.541959  2.438501
-##                      R3Li      R3Lu        R4H       R4K       R4Li
-## ENSG00000000003  7.196496  5.890311  4.5640628  7.294732  6.9008780
-## ENSG00000000005 -4.008903 -3.404423 -2.7768148 -1.860417 -5.1464301
-## ENSG00000000419  4.984542  5.392903  5.0988865  5.415999  4.6598892
-## ENSG00000000457  4.353890  5.602235  4.1812679  5.344557  4.5139560
-## ENSG00000000460  0.412811  3.013578  0.7612432  1.709171  0.7331316
-## ENSG00000000938  2.631430  7.282752  2.1468329  2.510574  3.7052381
-##                      R4Lu
-## ENSG00000000003  5.760683
-## ENSG00000000005 -6.758868
-## ENSG00000000419  5.441185
-## ENSG00000000457  5.227764
-## ENSG00000000460  3.246643
-## ENSG00000000938  7.234341</code></pre>
-<pre class="r"><code>summary(cpm)</code></pre>
-<pre><code>##       C1H               C1K               C1Li              C1Lu         
-##  Min.   :-6.7589   Min.   :-6.7589   Min.   :-6.7589   Min.   :-6.75887  
-##  1st Qu.:-6.7589   1st Qu.:-6.7589   1st Qu.:-6.7589   1st Qu.:-6.75887  
-##  Median :-0.1695   Median : 0.3188   Median :-0.8191   Median : 0.05287  
-##  Mean   :-0.4730   Mean   :-0.1218   Mean   :-0.8821   Mean   :-0.28683  
-##  3rd Qu.: 4.1679   3rd Qu.: 4.5796   3rd Qu.: 3.6213   3rd Qu.: 4.50967  
-##  Max.   :14.8786   Max.   :13.5394   Max.   :16.9448   Max.   :14.61862  
-##       C2H               C2K                C2Li             C2Lu        
-##  Min.   :-6.7589   Min.   :-6.75887   Min.   :-6.759   Min.   :-6.7589  
-##  1st Qu.:-6.7589   1st Qu.:-6.75887   1st Qu.:-6.759   1st Qu.:-6.7589  
-##  Median :-0.4957   Median : 0.51662   Median :-1.115   Median : 0.2763  
-##  Mean   :-0.6939   Mean   :-0.01023   Mean   :-1.048   Mean   :-0.1516  
-##  3rd Qu.: 3.9302   3rd Qu.: 4.68856   3rd Qu.: 3.518   3rd Qu.: 4.5795  
-##  Max.   :15.0627   Max.   :13.42808   Max.   :16.765   Max.   :14.2569  
-##       C3H               C3K                C3Li             C3Lu       
-##  Min.   :-6.7589   Min.   :-6.75887   Min.   :-6.759   Min.   :-6.759  
-##  1st Qu.:-6.7589   1st Qu.:-6.75887   1st Qu.:-6.759   1st Qu.:-6.759  
-##  Median :-0.6576   Median : 0.48930   Median :-1.324   Median : 0.276  
-##  Mean   :-0.7559   Mean   :-0.04589   Mean   :-1.204   Mean   :-0.187  
-##  3rd Qu.: 3.8588   3rd Qu.: 4.66317   3rd Qu.: 3.383   3rd Qu.: 4.539  
-##  Max.   :15.8476   Max.   :12.98916   Max.   :16.212   Max.   :14.368  
-##       C4H               C4K               C4Li              C4Lu         
-##  Min.   :-6.7589   Min.   :-6.7589   Min.   :-6.7589   Min.   :-6.75887  
-##  1st Qu.:-6.7589   1st Qu.:-6.7589   1st Qu.:-6.7589   1st Qu.:-6.75887  
-##  Median :-0.3754   Median : 0.3595   Median :-1.2179   Median : 0.38612  
-##  Mean   :-0.5649   Mean   :-0.1023   Mean   :-0.9978   Mean   :-0.09651  
-##  3rd Qu.: 4.0837   3rd Qu.: 4.5792   3rd Qu.: 3.4301   3rd Qu.: 4.54180  
-##  Max.   :14.6987   Max.   :13.8061   Max.   :16.9800   Max.   :12.99041  
-##       H1H               H1K               H1Li              H1Lu        
-##  Min.   :-6.7589   Min.   :-6.7589   Min.   :-6.7589   Min.   :-6.7589  
-##  1st Qu.:-6.7589   1st Qu.:-6.7589   1st Qu.:-6.7589   1st Qu.:-6.7589  
-##  Median :-0.7915   Median : 0.4385   Median :-0.8268   Median : 0.5150  
-##  Mean   :-0.8851   Mean   :-0.1272   Mean   :-0.9555   Mean   :-0.1144  
-##  3rd Qu.: 3.6800   3rd Qu.: 4.6668   3rd Qu.: 3.6529   3rd Qu.: 4.5799  
-##  Max.   :16.4518   Max.   :13.3164   Max.   :16.4704   Max.   :13.3574  
-##       H2H               H2K               H2Li              H2Lu        
-##  Min.   :-6.7589   Min.   :-6.7589   Min.   :-6.7589   Min.   :-6.7589  
-##  1st Qu.:-6.7589   1st Qu.:-6.7589   1st Qu.:-6.7589   1st Qu.:-6.7589  
-##  Median :-0.6742   Median : 0.1916   Median :-0.4498   Median : 0.2104  
-##  Mean   :-0.7440   Mean   :-0.2992   Mean   :-0.6602   Mean   :-0.2730  
-##  3rd Qu.: 4.0793   3rd Qu.: 4.6019   3rd Qu.: 4.1216   3rd Qu.: 4.4807  
-##  Max.   :14.3413   Max.   :14.3815   Max.   :15.1256   Max.   :12.8652  
-##       H3H               H3K                H3Li              H3Lu        
-##  Min.   :-6.7589   Min.   :-6.75887   Min.   :-6.7589   Min.   :-6.7589  
-##  1st Qu.:-6.7589   1st Qu.:-6.75887   1st Qu.:-6.7589   1st Qu.:-6.7589  
-##  Median :-0.6233   Median : 0.46014   Median :-0.9261   Median : 0.3946  
-##  Mean   :-0.9993   Mean   :-0.08407   Mean   :-0.9843   Mean   :-0.1384  
-##  3rd Qu.: 4.1418   3rd Qu.: 4.65835   3rd Qu.: 3.6874   3rd Qu.: 4.4369  
-##  Max.   :15.5013   Max.   :14.04569   Max.   :16.8480   Max.   :13.8120  
-##       H4H               H4K               H4Li              H4Lu         
-##  Min.   :-6.7589   Min.   :-6.7589   Min.   :-6.7589   Min.   :-6.75887  
-##  1st Qu.:-6.7589   1st Qu.:-6.7589   1st Qu.:-6.7589   1st Qu.:-6.75887  
-##  Median :-0.4615   Median : 0.3939   Median :-0.3365   Median : 0.49597  
-##  Mean   :-0.6764   Mean   :-0.1016   Mean   :-0.6177   Mean   :-0.04764  
-##  3rd Qu.: 4.0344   3rd Qu.: 4.6276   3rd Qu.: 3.9904   3rd Qu.: 4.55514  
-##  Max.   :15.1925   Max.   :14.3613   Max.   :15.5473   Max.   :13.27849  
-##       R1H              R1K                R1Li             R1Lu        
-##  Min.   :-6.759   Min.   :-6.75887   Min.   :-6.759   Min.   :-6.7589  
-##  1st Qu.:-6.759   1st Qu.:-6.75887   1st Qu.:-6.759   1st Qu.:-6.7589  
-##  Median :-1.036   Median : 0.01536   Median :-1.780   Median : 0.1140  
-##  Mean   :-1.006   Mean   :-0.33006   Mean   :-1.406   Mean   :-0.3002  
-##  3rd Qu.: 3.777   3rd Qu.: 4.54701   3rd Qu.: 3.169   3rd Qu.: 4.6039  
-##  Max.   :15.448   Max.   :14.15101   Max.   :17.411   Max.   :14.6977  
-##       R2H               R2K               R2Li             R2Lu         
-##  Min.   :-6.7589   Min.   :-6.7589   Min.   :-6.759   Min.   :-6.75887  
-##  1st Qu.:-6.7589   1st Qu.:-6.7589   1st Qu.:-6.759   1st Qu.:-6.75887  
-##  Median :-0.9691   Median : 0.1664   Median :-1.547   Median : 0.41944  
-##  Mean   :-0.9545   Mean   :-0.2772   Mean   :-1.297   Mean   :-0.09506  
-##  3rd Qu.: 3.7921   3rd Qu.: 4.5786   3rd Qu.: 3.247   3rd Qu.: 4.65400  
-##  Max.   :15.4552   Max.   :14.0225   Max.   :17.374   Max.   :13.75005  
-##       R3H               R3K               R3Li             R3Lu        
-##  Min.   :-6.7589   Min.   :-6.7589   Min.   :-6.759   Min.   :-6.7589  
-##  1st Qu.:-6.7589   1st Qu.:-6.7589   1st Qu.:-6.759   1st Qu.:-6.7589  
-##  Median :-0.8032   Median :-0.1557   Median :-1.737   Median : 0.2656  
-##  Mean   :-0.8580   Mean   :-0.4112   Mean   :-1.359   Mean   :-0.1675  
-##  3rd Qu.: 3.8073   3rd Qu.: 4.4095   3rd Qu.: 3.157   3rd Qu.: 4.6359  
-##  Max.   :15.4300   Max.   :14.9658   Max.   :17.612   Max.   :14.0165  
-##       R4H               R4K               R4Li             R4Lu        
-##  Min.   :-6.7589   Min.   :-6.7589   Min.   :-6.759   Min.   :-6.7589  
-##  1st Qu.:-6.7589   1st Qu.:-6.7589   1st Qu.:-6.759   1st Qu.:-6.7589  
-##  Median :-0.9703   Median :-0.0379   Median :-1.361   Median : 0.1084  
-##  Mean   :-0.9282   Mean   :-0.3483   Mean   :-1.157   Mean   :-0.2538  
-##  3rd Qu.: 3.7975   3rd Qu.: 4.4682   3rd Qu.: 3.408   3rd Qu.: 4.6003  
-##  Max.   :15.3760   Max.   :14.5372   Max.   :17.148   Max.   :14.3620</code></pre>
-<pre class="r"><code>hist(cpm, xlab = &quot;Log2(CPM)&quot;, ylim = c(0, 500000))
-expr_cutoff &lt;- -5
-abline(v = expr_cutoff, col = &quot;red&quot;, lwd = 3)</code></pre>
-<p><img src="Filtering_analysis_files/figure-html/unnamed-chunk-2-1.png" title="" alt="" width="672" /></p>
-<pre class="r"><code># log2(CPM) adjusted for library sizes
+expr_cutoff &lt;- -5.5
 
 tmm_cpm &lt;- cpm(dge_original, normalized.lib.sizes=TRUE, log=TRUE, prior.count = 0.25)
 head(tmm_cpm)</code></pre>
@@ -636,58 +575,52 @@ head(tmm_cpm)</code></pre>
 ##  Mean   :-0.7790   Mean   :-0.5327   Mean   :-0.6591   Mean   :-0.5554  
 ##  3rd Qu.: 4.0563   3rd Qu.: 4.2217   3rd Qu.: 4.1858   3rd Qu.: 4.1870  
 ##  Max.   :15.6350   Max.   :14.2906   Max.   :17.9267   Max.   :13.9486</code></pre>
-<pre class="r"><code>hist(tmm_cpm, main = &quot;TMM/CPM values (n = 48 samples)&quot;)
+<pre class="r"><code>hist(tmm_cpm, main = &quot;log2(CPM) values in unfiltered data (n = 48 samples)&quot;, breaks = 100, ylim = c(0, 50000), xlab = &quot;log2(CPM) values&quot;)
 abline(v = expr_cutoff, col = &quot;red&quot;, lwd = 3)</code></pre>
-<p><img src="Filtering_analysis_files/figure-html/unnamed-chunk-2-2.png" title="" alt="" width="672" /></p>
-<pre class="r"><code># Median log2(CPM)
-
-cpm_log &lt;- cpm(counts_genes, log = TRUE, prior.count = 0.25)
-median_log2_cpm &lt;- apply(cpm_log, 1, median)
-hist(median_log2_cpm)
-abline(v = expr_cutoff, col = &quot;red&quot;, lwd = 3)</code></pre>
-<p><img src="Filtering_analysis_files/figure-html/unnamed-chunk-2-3.png" title="" alt="" width="672" /></p>
+<p><img src="Filtering_analysis_files/figure-html/unnamed-chunk-2-1.png" title="" alt="" width="672" /></p>
 <pre class="r"><code># Median log(CPM) adjusted for library sizes
 
 cpm_log &lt;- cpm(counts_genes, normalized.lib.sizes=TRUE, log = TRUE, prior.count = 0.25)
 median_log2_cpm &lt;- apply(cpm_log, 1, median)
-hist(median_log2_cpm)
+hist(median_log2_cpm, breaks = 100, ylim = c(0, 1500))
 abline(v = expr_cutoff, col = &quot;red&quot;, lwd = 3)</code></pre>
-<p><img src="Filtering_analysis_files/figure-html/unnamed-chunk-2-4.png" title="" alt="" width="672" /></p>
+<p><img src="Filtering_analysis_files/figure-html/unnamed-chunk-2-2.png" title="" alt="" width="672" /></p>
 <p>These plots are very similar.</p>
 </div>
 <div id="patterns-of-log2cpm-for-each-species" class="section level3">
 <h3>Patterns of log2(CPM) for each species</h3>
 <pre class="r"><code># Looking at chimpanzees
-hist(tmm_cpm[,1], main = &quot;TMM/CPM values for chimpanzee heart sample 1&quot;, breaks = 24)
+hist(tmm_cpm[,1], main = &quot;log2(CPM) values in unfiltered data (chimpanzee heart sample 1)&quot;, xlab = &quot;log2(CPM)&quot;, breaks = 100, ylim = c(0, 5000))
 abline(v = expr_cutoff, col = &quot;red&quot;, lwd = 3)</code></pre>
 <p><img src="Filtering_analysis_files/figure-html/unnamed-chunk-3-1.png" title="" alt="" width="672" /></p>
-<pre class="r"><code>hist(tmm_cpm[,1:16], main = &quot;TMM/CPM values for all chimpanzee samples&quot;, breaks = 24)
+<pre class="r"><code>hist(tmm_cpm[,1:16], main = &quot;log2(CPM) values in unfiltered chimpanzee samples&quot;, breaks = 100, xlab = &quot;log2(CPM)&quot;, ylim = c(0, 20000))
 abline(v = expr_cutoff, col = &quot;red&quot;, lwd = 3)</code></pre>
 <p><img src="Filtering_analysis_files/figure-html/unnamed-chunk-3-2.png" title="" alt="" width="672" /></p>
 <pre class="r"><code># Looking at humans
-hist(tmm_cpm[,17], main = &quot;TMM/CPM values for human heart sample 1&quot;, breaks = 24)
+hist(tmm_cpm[,17], main = &quot;log2(CPM) values in unfiltered data (human heart sample 1)&quot;, xlab = &quot;log2(CPM)&quot;, breaks = 100, ylim = c(0, 5000))
 abline(v = expr_cutoff, col = &quot;red&quot;, lwd = 3)</code></pre>
 <p><img src="Filtering_analysis_files/figure-html/unnamed-chunk-3-3.png" title="" alt="" width="672" /></p>
-<pre class="r"><code>hist(tmm_cpm[,17:32], main = &quot;TMM/CPM values for all human samples&quot;, breaks = 24)
+<pre class="r"><code>hist(tmm_cpm[,17:32], main = &quot;log2(CPM) values in unfiltered data (all human samples)&quot;, xlab = &quot;log2(CPM)&quot;, breaks = 100, ylim = c(0, 20000))
 abline(v = expr_cutoff, col = &quot;red&quot;, lwd = 3)</code></pre>
 <p><img src="Filtering_analysis_files/figure-html/unnamed-chunk-3-4.png" title="" alt="" width="672" /></p>
 <pre class="r"><code># Rhesus macaques
 
 # Looking at chimpanzees
-hist(tmm_cpm[,33], main = &quot;TMM/CPM values for rhesus macaque heart sample 1&quot;, breaks = 24)
+hist(tmm_cpm[,33], main = &quot;log2(CPM) values in unfiltered rhesus macaque heart sample 1&quot;, xlab = &quot;log2(CPM)&quot;, breaks = 100, ylim = c(0, 5000))
 abline(v = expr_cutoff, col = &quot;red&quot;, lwd = 3)</code></pre>
 <p><img src="Filtering_analysis_files/figure-html/unnamed-chunk-3-5.png" title="" alt="" width="672" /></p>
-<pre class="r"><code>hist(tmm_cpm[,33:48], main = &quot;TMM/CPM values for all rhesus macaque samples&quot;, breaks = 24)
+<pre class="r"><code>hist(tmm_cpm[,33:48], main = &quot;log2(CPM) vallues in rhesus macaque samples&quot;, xlab = &quot;log2(CPM)&quot;, breaks = 100, ylim = c(0, 20000))
 abline(v = expr_cutoff, col = &quot;red&quot;, lwd = 3)</code></pre>
 <p><img src="Filtering_analysis_files/figure-html/unnamed-chunk-3-6.png" title="" alt="" width="672" /></p>
 </div>
-<div id="filtering-1-log2cpm-1-in-at-least-4-samples-original-filtering-scheme" class="section level3">
-<h3>Filtering 1: log2(CPM) &gt; 1 in at least 4 samples (original filtering scheme)</h3>
-<p>What happens when we require keeping only those that have log2(CPM) &gt; 1 in at least 4 samples? (Julien’s analysis)</p>
-<pre class="r"><code>cpm_filtered &lt;- cpm[rowSums(cpm &gt; 1) &gt;= 4, ]
+<div id="filtering-1-log2cpm-1-in-at-least-4-samples-filtering-scheme-proposed-by-julien" class="section level3">
+<h3>Filtering 1: log2(CPM) &gt; 1 in at least 4 samples (filtering scheme proposed by Julien)</h3>
+<p>What happens when we require keeping only those that have log2(CPM) &gt; 1 in at least 4 samples?</p>
+<pre class="r"><code>cpm &lt;- cpm(dge_original, normalized.lib.sizes=TRUE, log=TRUE, prior.count=0.25)
+cpm_filtered &lt;- cpm[rowSums(cpm &gt; 1) &gt;= 4, ]
 dim(cpm_filtered)</code></pre>
-<pre><code>## [1] 17069    48</code></pre>
-<p>This leaves us with 16,934 genes.</p>
+<pre><code>## [1] 16934    48</code></pre>
+<p>This leaves us with 15,487 genes.</p>
 </div>
 <div id="different-log2cpm-thresholds-1-to-48-samples-required" class="section level3">
 <h3>Different log2(cpm) thresholds (1 to 48 samples required)</h3>
@@ -704,7 +637,7 @@ for (i in 1:48){
 # Plot the results
 plot(filtered_genes, pch = 16, xlab = &quot;Number of samples required to have log2(cpm) &gt; 1&quot;, ylab = &quot;Number of genes&quot;, main = &quot;Genes for each sample threshold&quot;)</code></pre>
 <p><img src="Filtering_analysis_files/figure-html/unnamed-chunk-5-1.png" title="" alt="" width="672" /></p>
-<p>There are 8492 genes when we require log2(cpm) &gt; 1 in all 48 samples.</p>
+<p>There are 8916 genes when we require log2(cpm) &gt; 1 in all 48 samples.</p>
 </div>
 <div id="filtering-2-log2cpm-a-particular-threshold-adjusted-for-library-size-in-44-samples-34-samples-and-24-samples-per-tissue-species-pair." class="section level3">
 <h3>Filtering 2: Log2(CPM) &gt; a particular threshold adjusted for library size in 4/4 samples, 3/4 samples, and 2/4 samples per tissue-species pair.</h3>
@@ -732,13 +665,13 @@ counts_genes_filtered_3 &lt;- tmm_cpm
 # Put the number of samples that you want to have for every tissue-species pair (count/4 samples)
 
 count = 2
-threshold = -5
+threshold = -5.5
 
 counts_genes_filtered_3A &lt;- counts_genes_filtered_3[rowSums(counts_genes_filtered_3[, chimp_hearts] &gt;= threshold) &gt;= count, ] 
 
-dim(counts_genes_filtered_3A)</code></pre>
-<pre><code>## [1] 21493    48</code></pre>
-<pre class="r"><code>counts_genes_filtered_3B &lt;- counts_genes_filtered_3A[rowSums(counts_genes_filtered_3A[, chimp_kidneys] &gt;= threshold) &gt;= count, ] 
+#dim(counts_genes_filtered_3A)
+
+counts_genes_filtered_3B &lt;- counts_genes_filtered_3A[rowSums(counts_genes_filtered_3A[, chimp_kidneys] &gt;= threshold) &gt;= count, ] 
 
 dim(counts_genes_filtered_3B)</code></pre>
 <pre><code>## [1] 20720    48</code></pre>
@@ -749,54 +682,52 @@ dim(counts_genes_filtered_3C)</code></pre>
 <pre class="r"><code>counts_genes_filtered_3D &lt;- counts_genes_filtered_3C[rowSums(counts_genes_filtered_3C[, chimp_lungs] &gt;= threshold) &gt;= count, ] 
 
 dim(counts_genes_filtered_3D)</code></pre>
-<pre><code>## [1] 19457    48</code></pre>
+<pre><code>## [1] 19514    48</code></pre>
 <pre class="r"><code>counts_genes_filtered_3E &lt;- counts_genes_filtered_3D[rowSums(counts_genes_filtered_3D[, human_hearts] &gt;= threshold) &gt;= count, ] 
 
 dim(counts_genes_filtered_3E)</code></pre>
-<pre><code>## [1] 18553    48</code></pre>
+<pre><code>## [1] 18583    48</code></pre>
 <pre class="r"><code>counts_genes_filtered_3F &lt;- counts_genes_filtered_3E[rowSums(counts_genes_filtered_3E[, human_kidneys] &gt;= threshold) &gt;= count, ] 
 
 dim(counts_genes_filtered_3F)</code></pre>
-<pre><code>## [1] 18408    48</code></pre>
+<pre><code>## [1] 18436    48</code></pre>
 <pre class="r"><code>counts_genes_filtered_3G &lt;- counts_genes_filtered_3F[rowSums(counts_genes_filtered_3F[, human_livers] &gt;= threshold) &gt;= count, ] 
 
 dim(counts_genes_filtered_3G)</code></pre>
-<pre><code>## [1] 18163    48</code></pre>
+<pre><code>## [1] 18187    48</code></pre>
 <pre class="r"><code>counts_genes_filtered_3H &lt;- counts_genes_filtered_3G[rowSums(counts_genes_filtered_3G[, human_lungs] &gt;= threshold) &gt;= count, ] 
 
 dim(counts_genes_filtered_3H)</code></pre>
-<pre><code>## [1] 18107    48</code></pre>
+<pre><code>## [1] 18143    48</code></pre>
 <pre class="r"><code>counts_genes_filtered_3I &lt;- counts_genes_filtered_3H[rowSums(counts_genes_filtered_3H[, rhesus_hearts] &gt;= threshold) &gt;= count, ] 
 
 dim(counts_genes_filtered_3I)</code></pre>
-<pre><code>## [1] 17477    48</code></pre>
+<pre><code>## [1] 17502    48</code></pre>
 <pre class="r"><code>counts_genes_filtered_3J &lt;- counts_genes_filtered_3I[rowSums(counts_genes_filtered_3I[, rhesus_kidneys] &gt;= threshold) &gt;= count, ] 
 
 dim(counts_genes_filtered_3J)</code></pre>
-<pre><code>## [1] 17360    48</code></pre>
+<pre><code>## [1] 17384    48</code></pre>
 <pre class="r"><code>counts_genes_filtered_3K &lt;- counts_genes_filtered_3J[rowSums(counts_genes_filtered_3J[, rhesus_livers] &gt;= threshold) &gt;= count, ] 
 
 dim(counts_genes_filtered_3K)</code></pre>
-<pre><code>## [1] 17114    48</code></pre>
+<pre><code>## [1] 17134    48</code></pre>
 <pre class="r"><code>counts_genes_filtered_3L &lt;- counts_genes_filtered_3K[rowSums(counts_genes_filtered_3K[, rhesus_lungs] &gt;= threshold) &gt;= count, ] 
 
 dim(counts_genes_filtered_3L)</code></pre>
-<pre><code>## [1] 17073    48</code></pre>
+<pre><code>## [1] 17109    48</code></pre>
 <pre class="r"><code>#counts_genes_filtered_3L_sums &lt;- rowSums(counts_genes_filtered_3L)
 #hist(counts_genes_filtered_3L_sums, main = &quot;Number of genes remaining (2/4 species-tissue criteria)&quot;, xlab = &quot;Number of genes&quot;)</code></pre>
-<p>When we require each sample in each tissue-species pair to have log2(raw counts) &gt;= 0 in each gene, we have 8,916 genes remaining.</p>
-<p>When we require 3/4 samples in each tissue-species pair to have log2(raw counts) &gt;= 0 in each gene, we have 15,801 genes remaining.</p>
-<p>When we require 2/4 samples in each tissue-species pair to have log2(raw counts) &gt;= 0 in each gene, we have 14,090 genes remaining.</p>
-<p>When we require each sample in each tissue-species pair to have log2(CPM) &gt; 1 in each gene, we have 8,916 genes remaining.</p>
-<p>When we require 3/4 samples in each tissue-species pair to have log2(CPM) &gt; 1 in each gene, we have 9,652 genes remaining.</p>
-<p>When we require 2/4 samples in each tissue-species pair to have log2(CPM) &gt; 1 in each gene, we have 10,157 genes remaining.</p>
-<p><strong>When we require each sample in each tissue-species pair to have log2(CPM) &gt; -5 in each gene, we have 14,077 genes remaining.</strong></p>
+<p><strong>When we require each sample in each tissue-species pair to have log2(CPM) &gt; -5 in each gene, we have 14,090 genes remaining.</strong></p>
 <p><strong>When we require 3/4 samples in each tissue-species pair to have log2(CPM) &gt; -5 in each gene, we have 15,776 genes remaining.</strong></p>
-<p><strong>When we require 2/4 samples in each tissue-species pair to have log2(CPM) &gt; -5 in each gene, we have 17,073 genes remaining.</strong></p>
+<p><strong>When we require 2/4 samples in each tissue-species pair to have log2(CPM) &gt; -5 in each gene, we have 17,109 genes remaining.</strong></p>
+<p>For comparison,</p>
+<p>When we require each sample in each tissue-species pair to have log2(CPM) &gt; 0 in each gene, we have 9,803 genes remaining.</p>
+<p>When we require 3/4 samples in each tissue-species pair to have log2(CPM) &gt; 0 in each gene, we have 10,579 genes remaining.</p>
+<p>When we require 2/4 samples in each tissue-species pair to have log2(CPM) &gt; 0 in each gene, we have 10,157 genes remaining.</p>
 </div>
 <div id="distribution-of-nas0-counts" class="section level3">
 <h3>Distribution of NAs/0 counts</h3>
-<p>We can get an idea about the distribution of the missing data (where log2(CPM) &gt; -5) e.g. if one species or tissue-species pair is over-represented in the missing genes</p>
+<p>We can get an idea about the distribution of the missing data (where log2(CPM) &gt; threshold) e.g. if one species or tissue-species pair is over-represented in the missing genes</p>
 <pre class="r"><code># Copy the raw counts table
 counts_genes_filtered &lt;- tmm_cpm
 
@@ -843,8 +774,8 @@ axis(side = 1, at = 1:48,labels = samples$Species)
 legend(&quot;topright&quot;, c(&quot;Heart&quot;, &quot;Kidney&quot;, &quot;Liver&quot;, &quot;Lung&quot;), lwd = c(2,2,2,2), col = c(&quot;black&quot;, &quot;red&quot;, &quot;green&quot;, &quot;blue&quot;))</code></pre>
 <p><img src="Filtering_analysis_files/figure-html/unnamed-chunk-7-1.png" title="" alt="" width="672" /></p>
 </div>
-<div id="density-plots-of-gene-counts-when-we-require-24-samples-in-each-tissue-species-pair-to-have-log2cpm--5" class="section level3">
-<h3>Density plots of gene counts when we require 2/4 samples in each tissue-species pair to have log2(CPM) &gt; -5</h3>
+<div id="density-plots-of-gene-counts-when-we-require-24-samples-in-each-tissue-species-pair-to-have-log2cpm--5.5" class="section level3">
+<h3>Density plots of gene counts when we require 2/4 samples in each tissue-species pair to have log2(CPM) &gt; -5.5</h3>
 <pre class="r"><code># Find the original counts of all of the genes that fit the 2/4 criteria and then re-do TMM
 
 inshared_lists = row.names(counts_genes) %in% rownames(counts_genes_filtered_3L)
@@ -861,147 +792,147 @@ dge_2_in_4 &lt;- calcNormFactors(dge_2_in_4)
 cpm &lt;- cpm(dge_2_in_4, normalized.lib.sizes=TRUE, log=TRUE, prior.count = 0.25)
 head(cpm)</code></pre>
 <pre><code>##                      C1H      C1K      C1Li     C1Lu      C2H      C2K
-## ENSG00000000003 4.563785 6.439524  8.212660 5.486490 4.666078 6.008684
-## ENSG00000000419 5.836715 5.173016  5.889395 5.483473 5.660462 5.032529
-## ENSG00000000457 4.554813 5.169776  5.854424 4.977482 4.813474 5.221537
-## ENSG00000000460 1.501426 1.824937  2.032187 2.313837 1.639961 1.900429
-## ENSG00000000938 5.606475 3.774659  5.043083 7.555655 2.512550 4.110266
-## ENSG00000000971 6.871795 4.406868 11.320011 6.105112 6.115177 4.819509
+## ENSG00000000003 4.563449 6.438719  8.212431 5.488075 4.665548 6.008089
+## ENSG00000000419 5.836379 5.172212  5.889166 5.485059 5.659932 5.031934
+## ENSG00000000457 4.554477 5.168972  5.854195 4.979067 4.812944 5.220942
+## ENSG00000000460 1.501091 1.824135  2.031958 2.315421 1.639432 1.899835
+## ENSG00000000938 5.606138 3.773854  5.042853 7.557241 2.512021 4.109671
+## ENSG00000000971 6.871459 4.406064 11.319781 6.106698 6.114647 4.818914
 ##                      C2Li     C2Lu      C3H      C3K      C3Li     C3Lu
-## ENSG00000000003  7.984095 4.515844 4.917136 6.330657  7.765757 5.832555
-## ENSG00000000419  5.768068 5.151202 5.677743 5.103769  6.395072 5.553281
-## ENSG00000000457  6.499894 4.937270 4.620412 5.128599  6.479443 5.125560
-## ENSG00000000460  2.279533 1.974894 1.582104 1.386091  2.325541 2.081273
-## ENSG00000000938  5.343083 8.034788 4.966906 4.147860  5.185820 7.116916
-## ENSG00000000971 11.341714 6.197858 5.608583 4.865414 11.401558 5.947349
+## ENSG00000000003  7.983392 4.517778 4.917708 6.330730  7.764720 5.832957
+## ENSG00000000419  5.767366 5.153136 5.678315 5.103842  6.394036 5.553683
+## ENSG00000000457  6.499192 4.939204 4.620984 5.128671  6.478407 5.125962
+## ENSG00000000460  2.278831 1.976825 1.582675 1.386164  2.324506 2.081675
+## ENSG00000000938  5.342381 8.036723 4.967478 4.147932  5.184783 7.117319
+## ENSG00000000971 11.341011 6.199793 5.609155 4.865487 11.400522 5.947752
 ##                      C4H      C4K      C4Li     C4Lu       H1H      H1K
-## ENSG00000000003 4.205242 6.441559  8.394173 5.367828  6.739120 6.812406
-## ENSG00000000419 5.754906 5.195783  5.821984 5.259388  6.112237 5.535899
-## ENSG00000000457 4.614782 4.961069  6.537946 5.201412  5.247250 4.232757
-## ENSG00000000460 1.426085 1.764681  2.147310 2.414299  5.087033 2.714525
-## ENSG00000000938 3.608437 3.559095  4.520828 7.655365  4.420179 4.007094
-## ENSG00000000971 6.814712 5.895681 11.271356 6.359020 11.162249 6.533292
+## ENSG00000000003 4.205792 6.441481  8.393234 5.368535  6.738935 6.812577
+## ENSG00000000419 5.755456 5.195705  5.821045 5.260095  6.112052 5.536069
+## ENSG00000000457 4.615332 4.960991  6.537007 5.202119  5.247065 4.232927
+## ENSG00000000460 1.426633 1.764602  2.146373 2.415005  5.086848 2.714696
+## ENSG00000000938 3.608987 3.559016  4.519890 7.656072  4.419994 4.007265
+## ENSG00000000971 6.815262 5.895603 11.270417 6.359727 11.162063 6.533463
 ##                      H1Li     H1Lu      H2H      H2K     H2Li     H2Lu
-## ENSG00000000003  6.536713 5.047269 3.695696 7.169172 6.628072 4.127242
-## ENSG00000000419  6.043628 5.759119 5.620963 5.425282 5.827569 5.259585
-## ENSG00000000457  4.914456 4.450383 3.421282 4.122069 4.439957 4.147990
-## ENSG00000000460  4.949966 3.266293 1.906727 1.942093 2.647005 2.499232
-## ENSG00000000938  4.440573 7.826429 5.574678 3.703914 5.979426 6.915025
-## ENSG00000000971 11.177273 7.509671 6.377930 4.700046 9.398602 7.256947
+## ENSG00000000003  6.536247 5.046849 3.695707 7.169375 6.627901 4.127429
+## ENSG00000000419  6.043162 5.758699 5.620974 5.425485 5.827399 5.259772
+## ENSG00000000457  4.913990 4.449963 3.421293 4.122272 4.439787 4.148177
+## ENSG00000000460  4.949500 3.265873 1.906738 1.942295 2.646835 2.499418
+## ENSG00000000938  4.440107 7.826009 5.574689 3.704116 5.979255 6.915212
+## ENSG00000000971 11.176806 7.509251 6.377941 4.700249 9.398431 7.257134
 ##                        H3H      H3K      H3Li     H3Lu      H4H      H4K
-## ENSG00000000003  3.4759740 7.006642  7.681177 5.177797 4.304746 6.320720
-## ENSG00000000419  5.6832619 5.770017  6.162052 4.897549 6.265120 5.557027
-## ENSG00000000457  4.3729906 4.637875  4.938954 3.886894 3.332912 4.036422
-## ENSG00000000460 -0.1431621 2.905723  3.182996 2.345064 1.650377 1.932100
-## ENSG00000000938  4.0292035 2.558268  5.686300 6.800435 4.939073 3.769795
-## ENSG00000000971  6.1574250 5.228335 10.291732 7.011938 6.947684 5.981551
-##                      H4Li     H4Lu      R1H      R1K      R1Li     R1Lu
-## ENSG00000000003  6.531062 4.362776 4.308486 6.860558  8.280774 5.886114
-## ENSG00000000419  5.775102 5.249731 5.416198 5.319464  5.772394 4.857622
-## ENSG00000000457  5.117069 4.072973 4.237328 4.952485  5.089993 4.807938
-## ENSG00000000460  3.078695 2.503825 1.236496 1.482977 -0.226967 2.451097
-## ENSG00000000938  6.840064 8.148299 1.789339 2.491881  3.750620 6.485891
-## ENSG00000000971 10.138544 8.176533 3.980030 6.503645 12.078713 7.416544
+## ENSG00000000003  3.4753896 7.005702  7.680534 5.177701 4.304531 6.320751
+## ENSG00000000419  5.6826771 5.769077  6.161409 4.897453 6.264904 5.557057
+## ENSG00000000457  4.3724059 4.636935  4.938312 3.886798 3.332697 4.036453
+## ENSG00000000460 -0.1437403 2.904784  3.182354 2.344969 1.650162 1.932131
+## ENSG00000000938  4.0286189 2.557329  5.685658 6.800339 4.938857 3.769826
+## ENSG00000000971  6.1568401 5.227395 10.291089 7.011842 6.947469 5.981581
+##                      H4Li     H4Lu      R1H      R1K       R1Li     R1Lu
+## ENSG00000000003  6.530672 4.364288 4.307204 6.860083  8.2805300 5.886189
+## ENSG00000000419  5.774711 5.251244 5.414915 5.318989  5.7721493 4.857696
+## ENSG00000000457  5.116679 4.074485 4.236046 4.952010  5.0897490 4.808012
+## ENSG00000000460  3.078304 2.505336 1.235218 1.482504 -0.2272079 2.451172
+## ENSG00000000938  6.839673 8.149812 1.788060 2.491407  3.7503762 6.485966
+## ENSG00000000971 10.138153 8.178046 3.978748 6.503170 12.0784687 7.416619
 ##                      R2H      R2K      R2Li     R2Lu      R3H      R3K
-## ENSG00000000003 4.630263 7.066232  8.595794 5.568472 4.472434 7.099464
-## ENSG00000000419 5.300437 4.975885  5.678623 4.795265 5.466363 5.300782
-## ENSG00000000457 4.316574 5.086886  5.466625 5.179428 4.244841 5.073213
-## ENSG00000000460 1.420581 1.252147  1.452452 2.308775 1.659897 1.807891
-## ENSG00000000938 2.331908 2.613833  3.627752 6.497180 2.874149 2.200676
-## ENSG00000000971 5.576608 6.710750 11.733756 7.145800 5.153890 5.987633
+## ENSG00000000003 4.630312 7.066419  8.595094 5.569369 4.473539 7.099195
+## ENSG00000000419 5.300487 4.976072  5.677923 4.796163 5.467468 5.300514
+## ENSG00000000457 4.316623 5.087073  5.465925 5.180325 4.245946 5.072945
+## ENSG00000000460 1.420630 1.252333  1.451755 2.309671 1.661000 1.807623
+## ENSG00000000938 2.331957 2.614020  3.627052 6.498078 2.875254 2.200409
+## ENSG00000000971 5.576657 6.710937 11.733056 7.146697 5.154995 5.987365
 ##                      R3Li     R3Lu      R4H      R4K      R4Li     R4Lu
-## ENSG00000000003  8.167616 5.397383 4.895839 7.030819  7.658015 5.305429
-## ENSG00000000419  5.955495 4.900009 5.430703 5.152123  5.416848 4.985950
-## ENSG00000000457  5.324725 5.109325 4.513004 5.080683  5.270891 4.772545
-## ENSG00000000460  1.378895 2.521163 1.091325 1.445899  1.486881 2.791765
-## ENSG00000000938  3.601505 6.789774 2.478042 2.247023  4.461985 6.779035
-## ENSG00000000971 12.052433 7.202149 6.412214 6.405451 11.648158 7.242391</code></pre>
+## ENSG00000000003  8.167106 5.397658 4.894500 7.030790  7.657883 5.306498
+## ENSG00000000419  5.954984 4.900284 5.429364 5.152094  5.416716 4.987019
+## ENSG00000000457  5.324215 5.109600 4.511665 5.080654  5.270759 4.773614
+## ENSG00000000460  1.378387 2.521438 1.089991 1.445871  1.486749 2.792833
+## ENSG00000000938  3.600995 6.790049 2.476704 2.246994  4.461853 6.780104
+## ENSG00000000971 12.051923 7.202424 6.410875 6.405422 11.648026 7.243461</code></pre>
 <pre class="r"><code>summary(cpm)</code></pre>
 <pre><code>##       C1H              C1K              C1Li             C1Lu       
 ##  Min.   :-6.808   Min.   :-6.808   Min.   :-6.808   Min.   :-6.808  
-##  1st Qu.: 1.094   1st Qu.: 1.203   1st Qu.: 1.004   1st Qu.: 1.113  
-##  Median : 3.691   Median : 3.757   Median : 3.625   Median : 3.727  
-##  Mean   : 3.239   Mean   : 3.282   Mean   : 3.196   Mean   : 3.210  
-##  3rd Qu.: 5.512   3rd Qu.: 5.530   3rd Qu.: 5.545   3rd Qu.: 5.538  
-##  Max.   :14.878   Max.   :13.189   Max.   :17.463   Max.   :14.332  
+##  1st Qu.: 1.069   1st Qu.: 1.185   1st Qu.: 1.004   1st Qu.: 1.093  
+##  Median : 3.682   Median : 3.748   Median : 3.620   Median : 3.722  
+##  Mean   : 3.227   Mean   : 3.269   Mean   : 3.184   Mean   : 3.196  
+##  3rd Qu.: 5.510   3rd Qu.: 5.525   3rd Qu.: 5.540   3rd Qu.: 5.535  
+##  Max.   :14.878   Max.   :13.188   Max.   :17.463   Max.   :14.333  
 ##       C2H               C2K              C2Li              C2Lu       
-##  Min.   :-6.8079   Min.   :-6.808   Min.   :-6.8079   Min.   :-6.808  
-##  1st Qu.: 0.9556   1st Qu.: 1.283   1st Qu.: 0.8281   1st Qu.: 1.183  
-##  Median : 3.6369   Median : 3.785   Median : 3.6657   Median : 3.700  
-##  Mean   : 3.1547   Mean   : 3.300   Mean   : 3.1578   Mean   : 3.233  
-##  3rd Qu.: 5.5313   3rd Qu.: 5.467   3rd Qu.: 5.6058   3rd Qu.: 5.482  
-##  Max.   :15.2562   Max.   :12.970   Max.   :17.4447   Max.   :13.860  
+##  Min.   :-6.8078   Min.   :-6.808   Min.   :-6.8078   Min.   :-6.808  
+##  1st Qu.: 0.9551   1st Qu.: 1.282   1st Qu.: 0.8274   1st Qu.: 1.172  
+##  Median : 3.6254   Median : 3.778   Median : 3.6547   Median : 3.695  
+##  Mean   : 3.1411   Mean   : 3.287   Mean   : 3.1444   Mean   : 3.220  
+##  3rd Qu.: 5.5263   3rd Qu.: 5.464   3rd Qu.: 5.5997   3rd Qu.: 5.480  
+##  Max.   :15.2556   Max.   :12.969   Max.   :17.4440   Max.   :13.862  
 ##       C3H               C3K              C3Li              C3Lu       
-##  Min.   :-6.8079   Min.   :-6.808   Min.   :-6.8079   Min.   :-6.808  
-##  1st Qu.: 0.8605   1st Qu.: 1.261   1st Qu.: 0.6494   1st Qu.: 1.105  
-##  Median : 3.5930   Median : 3.743   Median : 3.5491   Median : 3.628  
-##  Mean   : 3.1242   Mean   : 3.263   Mean   : 3.0239   Mean   : 3.169  
-##  3rd Qu.: 5.5323   3rd Qu.: 5.456   3rd Qu.: 5.6110   3rd Qu.: 5.468  
-##  Max.   :16.1042   Max.   :12.515   Max.   :16.9478   Max.   :13.952  
+##  Min.   :-6.8078   Min.   :-6.808   Min.   :-6.8078   Min.   :-6.808  
+##  1st Qu.: 0.8296   1st Qu.: 1.245   1st Qu.: 0.6483   1st Qu.: 1.085  
+##  Median : 3.5889   Median : 3.737   Median : 3.5401   Median : 3.618  
+##  Mean   : 3.1127   Mean   : 3.250   Mean   : 3.0117   Mean   : 3.154  
+##  3rd Qu.: 5.5279   3rd Qu.: 5.454   3rd Qu.: 5.6062   3rd Qu.: 5.462  
+##  Max.   :16.1048   Max.   :12.515   Max.   :16.9468   Max.   :13.953  
 ##       C4H               C4K              C4Li              C4Lu       
-##  Min.   :-6.8079   Min.   :-6.808   Min.   :-6.8079   Min.   :-6.808  
-##  1st Qu.: 0.9632   1st Qu.: 1.217   1st Qu.: 0.8746   1st Qu.: 1.158  
-##  Median : 3.6221   Median : 3.733   Median : 3.6111   Median : 3.655  
-##  Mean   : 3.1480   Mean   : 3.256   Mean   : 3.1089   Mean   : 3.208  
-##  3rd Qu.: 5.5041   3rd Qu.: 5.489   3rd Qu.: 5.5852   3rd Qu.: 5.415  
-##  Max.   :14.7261   Max.   :13.418   Max.   :17.7183   Max.   :12.556  
-##       H1H               H1K              H1Li              H1Lu       
-##  Min.   :-6.8079   Min.   :-6.808   Min.   :-6.8079   Min.   :-6.808  
-##  1st Qu.: 0.9353   1st Qu.: 1.318   1st Qu.: 0.9664   1st Qu.: 1.399  
-##  Median : 3.6109   Median : 3.754   Median : 3.6307   Median : 3.739  
-##  Mean   : 3.1826   Mean   : 3.262   Mean   : 3.1766   Mean   : 3.285  
-##  3rd Qu.: 5.5471   3rd Qu.: 5.467   3rd Qu.: 5.5681   3rd Qu.: 5.411  
-##  Max.   :16.9250   Max.   :12.856   Max.   :16.9914   Max.   :12.952  
+##  Min.   :-6.8078   Min.   :-6.808   Min.   :-6.8078   Min.   :-6.808  
+##  1st Qu.: 0.9638   1st Qu.: 1.196   1st Qu.: 0.8174   1st Qu.: 1.140  
+##  Median : 3.6136   Median : 3.726   Median : 3.6019   Median : 3.650  
+##  Mean   : 3.1360   Mean   : 3.244   Mean   : 3.0966   Mean   : 3.194  
+##  3rd Qu.: 5.5022   3rd Qu.: 5.483   3rd Qu.: 5.5780   3rd Qu.: 5.412  
+##  Max.   :14.7267   Max.   :13.418   Max.   :17.7174   Max.   :12.556  
+##       H1H               H1K              H1Li             H1Lu       
+##  Min.   :-6.8078   Min.   :-6.808   Min.   :-6.808   Min.   :-6.808  
+##  1st Qu.: 0.9351   1st Qu.: 1.303   1st Qu.: 0.933   1st Qu.: 1.379  
+##  Median : 3.5997   Median : 3.748   Median : 3.615   Median : 3.732  
+##  Mean   : 3.1719   Mean   : 3.250   Mean   : 3.165   Mean   : 3.271  
+##  3rd Qu.: 5.5440   3rd Qu.: 5.464   3rd Qu.: 5.564   3rd Qu.: 5.407  
+##  Max.   :16.9248   Max.   :12.856   Max.   :16.991   Max.   :12.951  
 ##       H2H               H2K              H2Li              H2Lu       
-##  Min.   :-6.8079   Min.   :-6.808   Min.   :-6.8079   Min.   :-6.808  
-##  1st Qu.: 0.8423   1st Qu.: 1.137   1st Qu.: 0.9734   1st Qu.: 1.225  
-##  Median : 3.5824   Median : 3.697   Median : 3.6233   Median : 3.674  
-##  Mean   : 3.0710   Mean   : 3.137   Mean   : 3.1339   Mean   : 3.211  
-##  3rd Qu.: 5.5799   3rd Qu.: 5.497   3rd Qu.: 5.5700   3rd Qu.: 5.432  
-##  Max.   :14.3773   Max.   :13.970   Max.   :15.1455   Max.   :12.532  
+##  Min.   :-6.8078   Min.   :-6.808   Min.   :-6.8078   Min.   :-6.808  
+##  1st Qu.: 0.8423   1st Qu.: 1.137   1st Qu.: 0.9733   1st Qu.: 1.210  
+##  Median : 3.5685   Median : 3.691   Median : 3.6174   Median : 3.669  
+##  Mean   : 3.0584   Mean   : 3.124   Mean   : 3.1217   Mean   : 3.196  
+##  3rd Qu.: 5.5764   3rd Qu.: 5.493   3rd Qu.: 5.5654   3rd Qu.: 5.427  
+##  Max.   :14.3773   Max.   :13.971   Max.   :15.1454   Max.   :12.533  
 ##       H3H               H3K              H3Li              H3Lu       
-##  Min.   :-6.8079   Min.   :-6.808   Min.   :-6.8079   Min.   :-6.808  
-##  1st Qu.: 0.9198   1st Qu.: 1.288   1st Qu.: 0.8215   1st Qu.: 1.333  
-##  Median : 3.6197   Median : 3.776   Median : 3.5977   Median : 3.668  
-##  Mean   : 2.7729   Mean   : 3.273   Mean   : 3.0769   Mean   : 3.262  
-##  3rd Qu.: 5.4722   3rd Qu.: 5.460   3rd Qu.: 5.5990   3rd Qu.: 5.382  
-##  Max.   :15.4733   Max.   :13.618   Max.   :17.2920   Max.   :13.484  
+##  Min.   :-6.8078   Min.   :-6.808   Min.   :-6.8078   Min.   :-6.808  
+##  1st Qu.: 0.9192   1st Qu.: 1.271   1st Qu.: 0.8209   1st Qu.: 1.304  
+##  Median : 3.6191   Median : 3.763   Median : 3.5886   Median : 3.662  
+##  Mean   : 2.7578   Mean   : 3.261   Mean   : 3.0639   Mean   : 3.247  
+##  3rd Qu.: 5.4687   3rd Qu.: 5.456   3rd Qu.: 5.5941   3rd Qu.: 5.377  
+##  Max.   :15.4727   Max.   :13.617   Max.   :17.2913   Max.   :13.484  
 ##       H4H              H4K              H4Li             H4Lu       
 ##  Min.   :-6.808   Min.   :-6.808   Min.   :-6.808   Min.   :-6.808  
-##  1st Qu.: 1.058   1st Qu.: 1.344   1st Qu.: 1.169   1st Qu.: 1.325  
-##  Median : 3.705   Median : 3.806   Median : 3.663   Median : 3.632  
-##  Mean   : 3.217   Mean   : 3.327   Mean   : 3.238   Mean   : 3.260  
-##  3rd Qu.: 5.551   3rd Qu.: 5.498   3rd Qu.: 5.550   3rd Qu.: 5.353  
-##  Max.   :15.357   Max.   :13.994   Max.   :15.725   Max.   :12.801  
+##  1st Qu.: 1.028   1st Qu.: 1.313   1st Qu.: 1.169   1st Qu.: 1.305  
+##  Median : 3.700   Median : 3.800   Median : 3.657   Median : 3.625  
+##  Mean   : 3.206   Mean   : 3.316   Mean   : 3.226   Mean   : 3.248  
+##  3rd Qu.: 5.547   3rd Qu.: 5.491   3rd Qu.: 5.548   3rd Qu.: 5.350  
+##  Max.   :15.357   Max.   :13.994   Max.   :15.725   Max.   :12.802  
 ##       R1H               R1K              R1Li              R1Lu       
-##  Min.   :-6.8079   Min.   :-6.808   Min.   :-6.8079   Min.   :-6.808  
-##  1st Qu.: 0.6317   1st Qu.: 1.069   1st Qu.: 0.6287   1st Qu.: 1.149  
-##  Median : 3.4989   Median : 3.694   Median : 3.5187   Median : 3.726  
-##  Mean   : 2.9586   Mean   : 3.153   Mean   : 2.9930   Mean   : 3.172  
-##  3rd Qu.: 5.5442   3rd Qu.: 5.501   3rd Qu.: 5.6452   3rd Qu.: 5.459  
-##  Max.   :15.7430   Max.   :13.797   Max.   :18.3432   Max.   :14.269  
+##  Min.   :-6.8078   Min.   :-6.808   Min.   :-6.8078   Min.   :-6.808  
+##  1st Qu.: 0.6304   1st Qu.: 1.039   1st Qu.: 0.6285   1st Qu.: 1.129  
+##  Median : 3.4883   Median : 3.683   Median : 3.5088   Median : 3.712  
+##  Mean   : 2.9445   Mean   : 3.141   Mean   : 2.9806   Mean   : 3.157  
+##  3rd Qu.: 5.5384   3rd Qu.: 5.496   3rd Qu.: 5.6405   3rd Qu.: 5.457  
+##  Max.   :15.7417   Max.   :13.797   Max.   :18.3429   Max.   :14.270  
 ##       R2H               R2K              R2Li              R2Lu       
-##  Min.   :-6.8079   Min.   :-6.808   Min.   :-6.8079   Min.   :-6.808  
-##  1st Qu.: 0.7521   1st Qu.: 1.162   1st Qu.: 0.7718   1st Qu.: 1.234  
-##  Median : 3.5452   Median : 3.742   Median : 3.5475   Median : 3.674  
-##  Mean   : 3.0432   Mean   : 3.222   Mean   : 3.0845   Mean   : 3.220  
-##  3rd Qu.: 5.5539   3rd Qu.: 5.512   3rd Qu.: 5.6360   3rd Qu.: 5.414  
-##  Max.   :15.7620   Max.   :13.655   Max.   :18.2653   Max.   :13.225  
+##  Min.   :-6.8078   Min.   :-6.808   Min.   :-6.8078   Min.   :-6.808  
+##  1st Qu.: 0.7521   1st Qu.: 1.139   1st Qu.: 0.7269   1st Qu.: 1.205  
+##  Median : 3.5298   Median : 3.735   Median : 3.5340   Median : 3.667  
+##  Mean   : 3.0312   Mean   : 3.210   Mean   : 3.0713   Mean   : 3.206  
+##  3rd Qu.: 5.5521   3rd Qu.: 5.509   3rd Qu.: 5.6323   3rd Qu.: 5.411  
+##  Max.   :15.7621   Max.   :13.655   Max.   :18.2646   Max.   :13.226  
 ##       R3H               R3K               R3Li              R3Lu       
-##  Min.   :-6.8079   Min.   :-6.8079   Min.   :-6.8079   Min.   :-6.808  
-##  1st Qu.: 0.8707   1st Qu.: 0.9458   1st Qu.: 0.6452   1st Qu.: 1.143  
-##  Median : 3.5893   Median : 3.6797   Median : 3.5321   Median : 3.694  
-##  Mean   : 3.1566   Mean   : 3.1322   Mean   : 3.0591   Mean   : 3.205  
-##  3rd Qu.: 5.5711   3rd Qu.: 5.5393   3rd Qu.: 5.6462   3rd Qu.: 5.434  
-##  Max.   :15.7627   Max.   :14.7276   Max.   :18.5831   Max.   :13.523  
+##  Min.   :-6.8078   Min.   :-6.8078   Min.   :-6.8078   Min.   :-6.808  
+##  1st Qu.: 0.8718   1st Qu.: 0.9197   1st Qu.: 0.6447   1st Qu.: 1.117  
+##  Median : 3.5743   Median : 3.6678   Median : 3.5251   Median : 3.686  
+##  Mean   : 3.1463   Mean   : 3.1205   Mean   : 3.0462   Mean   : 3.190  
+##  3rd Qu.: 5.5641   3rd Qu.: 5.5348   3rd Qu.: 5.6427   3rd Qu.: 5.430  
+##  Max.   :15.7638   Max.   :14.7274   Max.   :18.5826   Max.   :13.524  
 ##       R4H               R4K              R4Li              R4Lu       
-##  Min.   :-6.8079   Min.   :-6.808   Min.   :-6.8079   Min.   :-6.808  
-##  1st Qu.: 0.8828   1st Qu.: 1.061   1st Qu.: 0.7748   1st Qu.: 1.062  
-##  Median : 3.5980   Median : 3.710   Median : 3.6026   Median : 3.685  
-##  Mean   : 3.0947   Mean   : 3.196   Mean   : 3.1445   Mean   : 3.164  
-##  3rd Qu.: 5.5696   3rd Qu.: 5.529   3rd Qu.: 5.6358   3rd Qu.: 5.445  
-##  Max.   :15.7079   Max.   :14.273   Max.   :17.9050   Max.   :13.907</code></pre>
-<pre class="r"><code>hist(cpm, xlab = &quot;Log2(CPM)&quot;, main = &quot;Log2(CPM) values for genes meeting the filtering criteria&quot; )</code></pre>
+##  Min.   :-6.8078   Min.   :-6.808   Min.   :-6.8078   Min.   :-6.808  
+##  1st Qu.: 0.8359   1st Qu.: 1.042   1st Qu.: 0.7747   1st Qu.: 1.049  
+##  Median : 3.5898   Median : 3.704   Median : 3.5949   Median : 3.677  
+##  Mean   : 3.0819   Mean   : 3.185   Mean   : 3.1322   Mean   : 3.149  
+##  3rd Qu.: 5.5665   3rd Qu.: 5.526   3rd Qu.: 5.6301   3rd Qu.: 5.444  
+##  Max.   :15.7066   Max.   :14.273   Max.   :17.9049   Max.   :13.908</code></pre>
+<pre class="r"><code>hist(cpm, xlab = &quot;Log2(CPM)&quot;, main = &quot;Log2(CPM) values for genes meeting the filtering criteria&quot;, breaks = 100 )</code></pre>
 <p><img src="Filtering_analysis_files/figure-html/unnamed-chunk-8-1.png" title="" alt="" width="672" /></p>
 <pre class="r"><code>all_hearts &lt;- c(1,5,9,13,17, 21,25,29,33,37,41,45)
 all_kidneys &lt;- c(2,6,10,14,18, 22,26,30,34,38,42,46)
@@ -1009,72 +940,6 @@ all_livers &lt;- c(3,7,11,15,19, 23,27,31,35,39,43,47)
 all_lungs &lt;- c(4,8,12,16,20, 24,28,31,36,40,44,48)
 
 col = as.data.frame(pal[as.numeric(samples$Species)])
-
-plotDensities(cpm[,all_hearts], col=col[all_hearts, ], legend=&quot;topright&quot;)</code></pre>
-<p><img src="Filtering_analysis_files/figure-html/unnamed-chunk-9-1.png" title="" alt="" width="672" /></p>
-<pre class="r"><code>plotDensities(cpm[,all_kidneys], col=col[all_kidneys, ], legend=&quot;topright&quot;)</code></pre>
-<p><img src="Filtering_analysis_files/figure-html/unnamed-chunk-9-2.png" title="" alt="" width="672" /></p>
-<pre class="r"><code>plotDensities(cpm[,all_livers], col=col[all_livers, ], legend=&quot;topright&quot;)</code></pre>
-<p><img src="Filtering_analysis_files/figure-html/unnamed-chunk-9-3.png" title="" alt="" width="672" /></p>
-<pre class="r"><code>plotDensities(cpm[,all_lungs], col=col[all_lungs, ], legend=&quot;topright&quot;)</code></pre>
-<p><img src="Filtering_analysis_files/figure-html/unnamed-chunk-9-4.png" title="" alt="" width="672" /></p>
-<pre class="r"><code># Look at all tissues in each species
-
-col = as.data.frame(pal[as.numeric(samples$Tissue)])
-
-plotDensities(cpm[,1:16],col=col[1:16, ], legend=&quot;topright&quot;)</code></pre>
-<p><img src="Filtering_analysis_files/figure-html/unnamed-chunk-9-5.png" title="" alt="" width="672" /></p>
-<pre class="r"><code>plotDensities(cpm[,17:32], col=col[17:32, ], legend=&quot;topright&quot;)</code></pre>
-<p><img src="Filtering_analysis_files/figure-html/unnamed-chunk-9-6.png" title="" alt="" width="672" /></p>
-<pre class="r"><code>plotDensities(cpm[,33:48], col=col[33:48, ], legend=&quot;topright&quot;)</code></pre>
-<p><img src="Filtering_analysis_files/figure-html/unnamed-chunk-9-7.png" title="" alt="" width="672" /></p>
-</div>
-<div id="voom-and-corfit-filtering-but-no-additional-normalization" class="section level3">
-<h3>Voom and corfit (filtering but no additional normalization)</h3>
-<p>We will use voom in order to decouple the dependency between mean and variance. We will use corfit to model a within-individual term.</p>
-<pre class="r"><code>## Voom requires a design matrix as input                                                                                                                                                             
-## To make contrasts easier to formulate, we rename factors species and tissue in a single factor 
-
-condition &lt;- factor(paste(samples$Species,samples$Tissue,sep=&quot;.&quot;))
-design &lt;- model.matrix(~ 0 + condition)
-colnames(design) &lt;- gsub(&quot;condition&quot;, &quot;&quot;, dput(colnames(design)))</code></pre>
-<pre><code>## c(&quot;conditionchimpanzee.heart&quot;, &quot;conditionchimpanzee.kidney&quot;, 
-## &quot;conditionchimpanzee.liver&quot;, &quot;conditionchimpanzee.lung&quot;, &quot;conditionhuman.heart&quot;, 
-## &quot;conditionhuman.kidney&quot;, &quot;conditionhuman.liver&quot;, &quot;conditionhuman.lung&quot;, 
-## &quot;conditionrhesus macaque.heart&quot;, &quot;conditionrhesus macaque.kidney&quot;, 
-## &quot;conditionrhesus macaque.liver&quot;, &quot;conditionrhesus macaque.lung&quot;
-## )</code></pre>
-<pre class="r"><code># Voom with individual as a random variable
-
-cpm.voom &lt;- voom(dge_2_in_4, design, normalize.method=&quot;none&quot;, plot=T)</code></pre>
-<p><img src="Filtering_analysis_files/figure-html/unnamed-chunk-10-1.png" title="" alt="" width="672" /></p>
-<pre class="r"><code>corfit &lt;- duplicateCorrelation(cpm.voom, design, block=samples$Individual)
-corfit$consensus</code></pre>
-<pre><code>## [1] 0.1832181</code></pre>
-<pre class="r"><code>#save(corfit, file=&quot;~/Reg_Evo_Primates/ashlar-trial/analysis/corfit.genes.RDa&quot;)
-
-# Final voom on filtered data
-
-cpm.voom &lt;- voom(dge_2_in_4, design, normalize.method=&quot;none&quot;, plot=TRUE, block=samples$Individual, correlation=corfit$consensus)</code></pre>
-<p><img src="Filtering_analysis_files/figure-html/unnamed-chunk-10-2.png" title="" alt="" width="672" /></p>
-<pre class="r"><code>save(cpm.voom, file=&quot;~/Reg_Evo_Primates/ashlar-trial/analysis/voom.genes.RDa&quot;)
-
-boxplot(cpm.voom$E, col = t(col))</code></pre>
-<p><img src="Filtering_analysis_files/figure-html/unnamed-chunk-10-3.png" title="" alt="" width="672" /></p>
-<pre class="r"><code>plotDensities(cpm.voom, group=samples$Tissue, col=pal[as.numeric(samples$Tissue)])</code></pre>
-<p><img src="Filtering_analysis_files/figure-html/unnamed-chunk-10-4.png" title="" alt="" width="672" /></p>
-<pre class="r"><code>col = as.data.frame(pal[as.numeric(samples$Species)])
-group = as.data.frame(samples$Species)
-
-# Density plots for each species 
-
-plotDensities(cpm.voom[,1:16], group=samples$Tissue, col=pal[as.numeric(samples$Tissue)])</code></pre>
-<p><img src="Filtering_analysis_files/figure-html/unnamed-chunk-10-5.png" title="" alt="" width="672" /></p>
-<pre class="r"><code>plotDensities(cpm.voom[,17:32], group=samples$Tissue, col=pal[as.numeric(samples$Tissue)])</code></pre>
-<p><img src="Filtering_analysis_files/figure-html/unnamed-chunk-10-6.png" title="" alt="" width="672" /></p>
-<pre class="r"><code>plotDensities(cpm.voom[,33:48], group=samples$Tissue, col=pal[as.numeric(samples$Tissue)])</code></pre>
-<p><img src="Filtering_analysis_files/figure-html/unnamed-chunk-10-7.png" title="" alt="" width="672" /></p>
-<pre class="r"><code>col = as.data.frame(pal[as.numeric(samples$Species)])
 col_hearts = col[all_hearts,]
 col_kidneys = col[all_kidneys, ]
 col_livers = col[all_livers, ]
@@ -1086,204 +951,26 @@ group_kidneys = group[all_kidneys, ]
 group_livers = group[all_livers, ]
 group_lungs = group[all_lungs, ]
 
-# Density plots for each tissue
-
-plotDensities(cpm.voom[,all_hearts], col=col_hearts, legend = FALSE)
+plotDensities(cpm[,all_hearts], col=col_hearts, legend = FALSE)
 legend(&#39;topright&#39;, legend = levels(group_hearts), col = levels(col_hearts), pch = 20)</code></pre>
-<p><img src="Filtering_analysis_files/figure-html/unnamed-chunk-10-8.png" title="" alt="" width="672" /></p>
-<pre class="r"><code>plotDensities(cpm.voom[,all_kidneys], col=col_kidneys, legend = FALSE)
+<p><img src="Filtering_analysis_files/figure-html/unnamed-chunk-9-1.png" title="" alt="" width="672" /></p>
+<pre class="r"><code>plotDensities(cpm[,all_kidneys], col=col_kidneys, legend = FALSE)
 legend(&#39;topright&#39;, legend = levels(group_kidneys), col = levels(col_kidneys), pch = 20)</code></pre>
-<p><img src="Filtering_analysis_files/figure-html/unnamed-chunk-10-9.png" title="" alt="" width="672" /></p>
-<pre class="r"><code>plotDensities(cpm.voom[,all_livers], col=col_livers, legend = FALSE)
+<p><img src="Filtering_analysis_files/figure-html/unnamed-chunk-9-2.png" title="" alt="" width="672" /></p>
+<pre class="r"><code>plotDensities(cpm[,all_livers], col=col_livers, legend = FALSE)
 legend(&#39;topright&#39;, legend = levels(group_livers), col = levels(col_livers), pch = 20)</code></pre>
-<p><img src="Filtering_analysis_files/figure-html/unnamed-chunk-10-10.png" title="" alt="" width="672" /></p>
-<pre class="r"><code>plotDensities(cpm.voom[,all_lungs], col=col_lungs, legend = FALSE)
+<p><img src="Filtering_analysis_files/figure-html/unnamed-chunk-9-3.png" title="" alt="" width="672" /></p>
+<pre class="r"><code>plotDensities(cpm[,all_lungs], col=col_lungs, legend = FALSE)
 legend(&#39;topright&#39;, legend = levels(group_lungs), col = levels(col_lungs), pch = 20)</code></pre>
-<p><img src="Filtering_analysis_files/figure-html/unnamed-chunk-10-11.png" title="" alt="" width="672" /></p>
-</div>
-<div id="pca-and-clustering" class="section level3">
-<h3>PCA and clustering</h3>
-<pre class="r"><code># PCA 
-  # Load colors 
+<p><img src="Filtering_analysis_files/figure-html/unnamed-chunk-9-4.png" title="" alt="" width="672" /></p>
+<pre class="r"><code># Look at all tissues in each species
 
-colors &lt;- colorRampPalette(c(brewer.pal(9, &quot;Blues&quot;)[1],brewer.pal(9, &quot;Blues&quot;)[9]))(100)
-pal &lt;- c(brewer.pal(9, &quot;Set1&quot;), brewer.pal(8, &quot;Set2&quot;), brewer.pal(12, &quot;Set3&quot;))
-
-  # Check that there&#39;s no &quot;NAs&quot; in the data
-select &lt;- counts_genes
-summary(apply(select, 1, var) == 0) </code></pre>
-<pre><code>##    Mode   FALSE    TRUE    NA&#39;s 
-## logical   28253    1777       0</code></pre>
-<pre class="r"><code>  # Perform PCA
-
-pca_genes &lt;- prcomp(t(cpm.voom$E), scale = F)
-scores &lt;- pca_genes$x
-
-
-#Make PCA plots with the factors colored by tissue
-
-### PCs 1-5 Raw Data
-for (n in 1:5){
-  col.v &lt;- pal[as.integer(samples$Tissue)]
-  plot_scores(pca_genes, scores, n, n+1, col.v)
-}</code></pre>
-<p><img src="Filtering_analysis_files/figure-html/unnamed-chunk-11-1.png" title="" alt="" width="672" /><img src="Filtering_analysis_files/figure-html/unnamed-chunk-11-2.png" title="" alt="" width="672" /><img src="Filtering_analysis_files/figure-html/unnamed-chunk-11-3.png" title="" alt="" width="672" /><img src="Filtering_analysis_files/figure-html/unnamed-chunk-11-4.png" title="" alt="" width="672" /><img src="Filtering_analysis_files/figure-html/unnamed-chunk-11-5.png" title="" alt="" width="672" /></p>
-<pre class="r"><code># Clustering (original code from Julien Roux)
-cors &lt;- cor(cpm.voom$E, method=&quot;spearman&quot;, use=&quot;pairwise.complete.obs&quot;)
-
-
-heatmap.2( cors, scale=&quot;none&quot;, col = colors, margins = c(12, 12), trace=&#39;none&#39;, denscol=&quot;white&quot;, labCol=labels, ColSideColors=pal[as.integer(as.factor(samples$Species))], RowSideColors=pal[as.integer(as.factor(samples$Tissue))+9], cexCol = 0.2 + 1/log10(15), cexRow = 0.2 + 1/log10(15))</code></pre>
-<p><img src="Filtering_analysis_files/figure-html/unnamed-chunk-11-6.png" title="" alt="" width="672" /></p>
-<div id="fit.gc.norm---lmfitrpkm.gc.norm.voom-design-blocksamplesindividual-correlationcorfit.gc.normconsensus" class="section level5">
-<h5>fit.GC.norm &lt;- lmFit(rpkm.GC.norm.voom, design, block=samples<span class="math inline">\(Individual, #correlation=corfit.GC.norm\)</span>consensus)</h5>
-</div>
-<div id="fit.gc.norm---ebayesfit.gc.norm" class="section level5">
-<h5>fit.GC.norm &lt;- eBayes(fit.GC.norm)</h5>
-</div>
-</div>
-<div id="voom-and-corfit-filtering-and-cyclic-loess-normalization" class="section level3">
-<h3>Voom and corfit (filtering and cyclic loess normalization)</h3>
-<pre class="r"><code># Voom with individual as a random variable
-
-cpm.voom.cyclic &lt;- voom(dge_2_in_4, design, normalize.method=&quot;cyclicloess&quot;, plot=T)</code></pre>
-<p><img src="Filtering_analysis_files/figure-html/unnamed-chunk-12-1.png" title="" alt="" width="672" /></p>
-<pre class="r"><code>corfit &lt;- duplicateCorrelation(cpm.voom.cyclic, design, block=samples$Individual)
-corfit$consensus</code></pre>
-<pre><code>## [1] 0.1827305</code></pre>
-<pre class="r"><code>#save(corfit, file=&quot;corfit.genes.cyclic.RDa&quot;)
-
-# Final voom on filtered data
-
-cpm.voom.cyclic &lt;- voom(dge_2_in_4, design, normalize.method=&quot;cyclicloess&quot;, plot=TRUE, block=samples$Individual, correlation=corfit$consensus)</code></pre>
-<p><img src="Filtering_analysis_files/figure-html/unnamed-chunk-12-2.png" title="" alt="" width="672" /></p>
-<pre class="r"><code>#save(cpm.voom, file=&quot;voom.genes.RDa&quot;)
-
-boxplot(cpm.voom.cyclic$E, col = t(col))</code></pre>
-<p><img src="Filtering_analysis_files/figure-html/unnamed-chunk-12-3.png" title="" alt="" width="672" /></p>
-<pre class="r"><code>plotDensities(cpm.voom.cyclic, group=samples$Tissue, col=pal[as.numeric(samples$Tissue)])</code></pre>
-<p><img src="Filtering_analysis_files/figure-html/unnamed-chunk-12-4.png" title="" alt="" width="672" /></p>
-<pre class="r"><code>col = as.data.frame(pal[as.numeric(samples$Species)])
-group = as.data.frame(samples$Species)
-
-# Density plots for each species 
-
-plotDensities(cpm.voom.cyclic[,1:16], group=samples$Tissue, col=pal[as.numeric(samples$Tissue)])</code></pre>
-<p><img src="Filtering_analysis_files/figure-html/unnamed-chunk-12-5.png" title="" alt="" width="672" /></p>
-<pre class="r"><code>plotDensities(cpm.voom.cyclic[,17:32], group=samples$Tissue, col=pal[as.numeric(samples$Tissue)])</code></pre>
-<p><img src="Filtering_analysis_files/figure-html/unnamed-chunk-12-6.png" title="" alt="" width="672" /></p>
-<pre class="r"><code>plotDensities(cpm.voom.cyclic[,33:48], group=samples$Tissue, col=pal[as.numeric(samples$Tissue)])</code></pre>
-<p><img src="Filtering_analysis_files/figure-html/unnamed-chunk-12-7.png" title="" alt="" width="672" /></p>
-<pre class="r"><code># Density plots for each tissue
-
-plotDensities(cpm.voom.cyclic[,all_hearts], col=col_hearts, legend = FALSE)
-legend(&#39;topright&#39;, legend = levels(group_hearts), col = levels(col_hearts), pch = 20)</code></pre>
-<p><img src="Filtering_analysis_files/figure-html/unnamed-chunk-12-8.png" title="" alt="" width="672" /></p>
-<pre class="r"><code>plotDensities(cpm.voom.cyclic[,all_kidneys], col=col_kidneys, legend = FALSE)
-legend(&#39;topright&#39;, legend = levels(group_kidneys), col = levels(col_kidneys), pch = 20)</code></pre>
-<p><img src="Filtering_analysis_files/figure-html/unnamed-chunk-12-9.png" title="" alt="" width="672" /></p>
-<pre class="r"><code>plotDensities(cpm.voom.cyclic[,all_livers], col=col_livers, legend = FALSE)
-legend(&#39;topright&#39;, legend = levels(group_livers), col = levels(col_livers), pch = 20)</code></pre>
-<p><img src="Filtering_analysis_files/figure-html/unnamed-chunk-12-10.png" title="" alt="" width="672" /></p>
-<pre class="r"><code>plotDensities(cpm.voom.cyclic[,all_lungs], col=col_lungs, legend = FALSE)
-legend(&#39;topright&#39;, legend = levels(group_lungs), col = levels(col_lungs), pch = 20)</code></pre>
-<p><img src="Filtering_analysis_files/figure-html/unnamed-chunk-12-11.png" title="" alt="" width="672" /></p>
-</div>
-<div id="pca-and-clustering-1" class="section level3">
-<h3>PCA and clustering</h3>
-<pre class="r"><code># PCA 
-
-pca_genes &lt;- prcomp(t(cpm.voom.cyclic$E), scale = F)
-scores &lt;- pca_genes$x
-
-
-#Make PCA plots with the factors colored by tissue
-
-### PCs 1-10 Raw Data
-for (n in 1:5){
-  col.v &lt;- pal[as.integer(samples$Tissue)]
-  plot_scores(pca_genes, scores, n, n+1, col.v)
-}</code></pre>
-<p><img src="Filtering_analysis_files/figure-html/unnamed-chunk-13-1.png" title="" alt="" width="672" /><img src="Filtering_analysis_files/figure-html/unnamed-chunk-13-2.png" title="" alt="" width="672" /><img src="Filtering_analysis_files/figure-html/unnamed-chunk-13-3.png" title="" alt="" width="672" /><img src="Filtering_analysis_files/figure-html/unnamed-chunk-13-4.png" title="" alt="" width="672" /><img src="Filtering_analysis_files/figure-html/unnamed-chunk-13-5.png" title="" alt="" width="672" /></p>
-<pre class="r"><code># Clustering (original code from Julien Roux)
-cors &lt;- cor(cpm.voom.cyclic$E, method=&quot;spearman&quot;, use=&quot;pairwise.complete.obs&quot;)
-
-
-heatmap.2( cors, scale=&quot;none&quot;, col = colors, margins = c(12, 12), trace=&#39;none&#39;, denscol=&quot;white&quot;, labCol=labels, ColSideColors=pal[as.integer(as.factor(samples$Species))], RowSideColors=pal[as.integer(as.factor(samples$Tissue))+9], cexCol = 0.2 + 1/log10(15), cexRow = 0.2 + 1/log10(15))</code></pre>
-<p><img src="Filtering_analysis_files/figure-html/unnamed-chunk-13-6.png" title="" alt="" width="672" /></p>
-</div>
-<div id="voom-and-corfit-filtering-and-quantile-normalization" class="section level3">
-<h3>Voom and corfit (filtering and quantile normalization)</h3>
-<pre class="r"><code># Voom with individual as a random variable
-
-cpm.voom.quantile &lt;- voom(dge_2_in_4, design, normalize.method=&quot;quantile&quot;, plot=T)</code></pre>
-<p><img src="Filtering_analysis_files/figure-html/unnamed-chunk-14-1.png" title="" alt="" width="672" /></p>
-<pre class="r"><code>corfit &lt;- duplicateCorrelation(cpm.voom.quantile, design, block=samples$Individual)
-corfit$consensus</code></pre>
-<pre><code>## [1] 0.1847586</code></pre>
-<pre class="r"><code>#save(corfit, file=&quot;corfit.genes.cyclic.RDa&quot;)
-
-# Final voom on filtered data
-
-cpm.voom.quantile &lt;- voom(dge_2_in_4, design, normalize.method=&quot;quantile&quot;, plot=TRUE, block=samples$Individual, correlation=corfit$consensus)</code></pre>
-<p><img src="Filtering_analysis_files/figure-html/unnamed-chunk-14-2.png" title="" alt="" width="672" /></p>
-<pre class="r"><code>#save(cpm.voom, file=&quot;voom.genes.RDa&quot;)
-
-boxplot(cpm.voom.quantile$E, col = t(col))</code></pre>
-<p><img src="Filtering_analysis_files/figure-html/unnamed-chunk-14-3.png" title="" alt="" width="672" /></p>
-<pre class="r"><code>plotDensities(cpm.voom.quantile, group=samples$Tissue, col=pal[as.numeric(samples$Tissue)])</code></pre>
-<p><img src="Filtering_analysis_files/figure-html/unnamed-chunk-14-4.png" title="" alt="" width="672" /></p>
-<pre class="r"><code>col = as.data.frame(pal[as.numeric(samples$Species)])
-group = as.data.frame(samples$Species)
-
-# Density plots for each species 
-
-plotDensities(cpm.voom.quantile[,1:16], group=samples$Tissue, col=pal[as.numeric(samples$Tissue)])</code></pre>
-<p><img src="Filtering_analysis_files/figure-html/unnamed-chunk-14-5.png" title="" alt="" width="672" /></p>
-<pre class="r"><code>plotDensities(cpm.voom.quantile[,17:32], group=samples$Tissue, col=pal[as.numeric(samples$Tissue)])</code></pre>
-<p><img src="Filtering_analysis_files/figure-html/unnamed-chunk-14-6.png" title="" alt="" width="672" /></p>
-<pre class="r"><code>plotDensities(cpm.voom.quantile[,33:48], group=samples$Tissue, col=pal[as.numeric(samples$Tissue)])</code></pre>
-<p><img src="Filtering_analysis_files/figure-html/unnamed-chunk-14-7.png" title="" alt="" width="672" /></p>
-<pre class="r"><code># Density plots for each tissue
-
-plotDensities(cpm.voom.quantile[,all_hearts], col=col_hearts, legend = FALSE)
-legend(&#39;topright&#39;, legend = levels(group_hearts), col = levels(col_hearts), pch = 20)</code></pre>
-<p><img src="Filtering_analysis_files/figure-html/unnamed-chunk-14-8.png" title="" alt="" width="672" /></p>
-<pre class="r"><code>plotDensities(cpm.voom.quantile[,all_kidneys], col=col_kidneys, legend = FALSE)
-legend(&#39;topright&#39;, legend = levels(group_kidneys), col = levels(col_kidneys), pch = 20)</code></pre>
-<p><img src="Filtering_analysis_files/figure-html/unnamed-chunk-14-9.png" title="" alt="" width="672" /></p>
-<pre class="r"><code>plotDensities(cpm.voom.quantile[,all_livers], col=col_livers, legend = FALSE)
-legend(&#39;topright&#39;, legend = levels(group_livers), col = levels(col_livers), pch = 20)</code></pre>
-<p><img src="Filtering_analysis_files/figure-html/unnamed-chunk-14-10.png" title="" alt="" width="672" /></p>
-<pre class="r"><code>plotDensities(cpm.voom.quantile[,all_lungs], col=col_lungs, legend = FALSE)
-legend(&#39;topright&#39;, legend = levels(group_lungs), col = levels(col_lungs), pch = 20)</code></pre>
-<p><img src="Filtering_analysis_files/figure-html/unnamed-chunk-14-11.png" title="" alt="" width="672" /></p>
-</div>
-<div id="pca-and-clustering-2" class="section level3">
-<h3>PCA and clustering</h3>
-<pre class="r"><code># PCA 
-
-pca_genes &lt;- prcomp(t(cpm.voom.quantile$E), scale = F)
-scores &lt;- pca_genes$x
-
-
-#Make PCA plots with the factors colored by tissue
-
-### PCs 1-5 Raw Data
-for (n in 1:5){
-  col.v &lt;- pal[as.integer(samples$Tissue)]
-  plot_scores(pca_genes, scores, n, n+1, col.v)
-}</code></pre>
-<p><img src="Filtering_analysis_files/figure-html/unnamed-chunk-15-1.png" title="" alt="" width="672" /><img src="Filtering_analysis_files/figure-html/unnamed-chunk-15-2.png" title="" alt="" width="672" /><img src="Filtering_analysis_files/figure-html/unnamed-chunk-15-3.png" title="" alt="" width="672" /><img src="Filtering_analysis_files/figure-html/unnamed-chunk-15-4.png" title="" alt="" width="672" /><img src="Filtering_analysis_files/figure-html/unnamed-chunk-15-5.png" title="" alt="" width="672" /></p>
-<pre class="r"><code># Clustering (original code from Julien Roux)
-cors &lt;- cor(cpm.voom.quantile$E, method=&quot;spearman&quot;, use=&quot;pairwise.complete.obs&quot;)
-
-
-heatmap.2( cors, scale=&quot;none&quot;, col = colors, margins = c(12, 12), trace=&#39;none&#39;, denscol=&quot;white&quot;, labCol=labels, ColSideColors=pal[as.integer(as.factor(samples$Species))], RowSideColors=pal[as.integer(as.factor(samples$Tissue))+9], cexCol = 0.2 + 1/log10(15), cexRow = 0.2 + 1/log10(15))</code></pre>
-<p><img src="Filtering_analysis_files/figure-html/unnamed-chunk-15-6.png" title="" alt="" width="672" /></p>
-</div>
-<div id="gc-content-normalization-filtering-tmm-voom-no-normalization" class="section level3">
-<h3>GC content normalization + filtering + TMM + voom + no normalization</h3>
-<p>There could be different GC</p>
+plotDensities(cpm[,1:16], group=samples$Tissue, col=pal[as.numeric(samples$Tissue)], legend = &quot;topright&quot;)</code></pre>
+<p><img src="Filtering_analysis_files/figure-html/unnamed-chunk-9-5.png" title="" alt="" width="672" /></p>
+<pre class="r"><code>plotDensities(cpm[,17:32], group=samples$Tissue, col=pal[as.numeric(samples$Tissue)], legend = &quot;topright&quot;)</code></pre>
+<p><img src="Filtering_analysis_files/figure-html/unnamed-chunk-9-6.png" title="" alt="" width="672" /></p>
+<pre class="r"><code>plotDensities(cpm[,33:48], group=samples$Tissue, col=pal[as.numeric(samples$Tissue)], legend = &quot;topright&quot;)</code></pre>
+<p><img src="Filtering_analysis_files/figure-html/unnamed-chunk-9-7.png" title="" alt="" width="672" /></p>
 </div>
 
 

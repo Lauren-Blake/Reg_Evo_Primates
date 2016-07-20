@@ -1,0 +1,649 @@
+---
+title: "GC_content_normalization_CHT"
+author: "Lauren Blake"
+date: "July 13, 2016"
+output: html_document
+---
+
+
+### Part 1: Prior to spline fitting
+```{r}
+
+# Load libraries 
+
+library("gplots")
+library("ggplot2")
+library("RColorBrewer")
+library("scales")
+library("edgeR")
+library("R.utils")
+library("plyr")
+library("limma")
+library("EDASeq")
+source("~/Reg_Evo_Primates/ashlar-trial/analysis/functions.R")
+
+
+# Load the raw counts
+
+counts_genes <- read.delim("~/Reg_Evo_Primates/ashlar-trial/data/counts_genes.txt")
+
+dim(counts_genes)
+
+# Load Sample information
+
+samples <- read.csv("~/Reg_Evo_Primates/ashlar-trial/data/Sample_info_RNAseq.csv")
+
+labels <- paste(samples$Species, samples$Tissue, sep=" ")
+
+# We previously determined with SNP calling (via GATK) that the sample Human 1 Heart is Human 1 but most likely a Human 1 Liver. Therefore, we will remove H1H
+
+counts_genes <- counts_genes[,-17]
+samples <- samples[-17,]
+labels <- paste(samples$Species, samples$Tissue, sep=" ")
+
+# Eliminate the lowly expressed genes (see Filtering analysis for more information)
+
+  # Find the TMM
+dge_original <- DGEList(counts=as.matrix(counts_genes), genes=rownames(counts_genes), group = as.character(t(labels)))
+dge_original <- calcNormFactors(dge_original)
+tmm_cpm <- cpm(dge_original, normalized.lib.sizes=TRUE, log=TRUE, prior.count = 0.25)
+head(tmm_cpm)
+
+
+# Assign all 12 tissue-species pairs
+chimp_hearts <- c(1, 5, 9, 13)
+chimp_kidneys <- c(2,6,10,14)
+chimp_livers <- c(3,7,11,15)
+chimp_lungs <- c(4,8,12,16)
+
+human_hearts <- c(20,24,28)
+human_kidneys <- c(17,21,25,29)
+human_livers <- c(18,22,26,30)
+human_lungs <- c(19,23,27,31)
+
+rhesus_hearts <- c(32,36,40,44)
+rhesus_kidneys <- c(33,37,41,45)
+rhesus_livers <- c(34,38,42,46)
+rhesus_lungs <- c(35,39,43,47)
+
+# Save the counts
+                          # Raw counts = log2(counts_genes)
+                          # CPM = tmm_cpm
+counts_genes_filtered_3 <- tmm_cpm
+
+# Put the number of samples that you want to have for every tissue-species pair (count/4 samples)
+
+count = 2
+threshold = -5.5
+
+counts_genes_filtered_3A <- counts_genes_filtered_3[rowSums(counts_genes_filtered_3[, chimp_hearts] >= threshold) >= count, ] 
+
+#dim(counts_genes_filtered_3A)
+
+counts_genes_filtered_3B <- counts_genes_filtered_3A[rowSums(counts_genes_filtered_3A[, chimp_kidneys] >= threshold) >= count, ] 
+
+dim(counts_genes_filtered_3B)
+
+counts_genes_filtered_3C <- counts_genes_filtered_3B[rowSums(counts_genes_filtered_3B[, chimp_livers] >= threshold) >= count, ] 
+
+dim(counts_genes_filtered_3C)
+
+counts_genes_filtered_3D <- counts_genes_filtered_3C[rowSums(counts_genes_filtered_3C[, chimp_lungs] >= threshold) >= count, ] 
+
+dim(counts_genes_filtered_3D)
+
+counts_genes_filtered_3E <- counts_genes_filtered_3D[rowSums(counts_genes_filtered_3D[, human_hearts] >= threshold) >= count, ] 
+
+dim(counts_genes_filtered_3E)
+
+counts_genes_filtered_3F <- counts_genes_filtered_3E[rowSums(counts_genes_filtered_3E[, human_kidneys] >= threshold) >= count, ] 
+
+dim(counts_genes_filtered_3F)
+
+counts_genes_filtered_3G <- counts_genes_filtered_3F[rowSums(counts_genes_filtered_3F[, human_livers] >= threshold) >= count, ] 
+
+dim(counts_genes_filtered_3G)
+
+counts_genes_filtered_3H <- counts_genes_filtered_3G[rowSums(counts_genes_filtered_3G[, human_lungs] >= threshold) >= count, ] 
+
+dim(counts_genes_filtered_3H)
+
+counts_genes_filtered_3I <- counts_genes_filtered_3H[rowSums(counts_genes_filtered_3H[, rhesus_hearts] >= threshold) >= count, ] 
+
+dim(counts_genes_filtered_3I)
+
+counts_genes_filtered_3J <- counts_genes_filtered_3I[rowSums(counts_genes_filtered_3I[, rhesus_kidneys] >= threshold) >= count, ] 
+
+dim(counts_genes_filtered_3J)
+
+counts_genes_filtered_3K <- counts_genes_filtered_3J[rowSums(counts_genes_filtered_3J[, rhesus_livers] >= threshold) >= count, ] 
+
+dim(counts_genes_filtered_3K)
+
+counts_genes_filtered_3L <- counts_genes_filtered_3K[rowSums(counts_genes_filtered_3K[, rhesus_lungs] >= threshold) >= count, ] 
+
+dim(counts_genes_filtered_3L)
+```
+
+#### Find GC content for all of the filtered genes
+
+```{r}
+  # Load the GC content and gene length data
+
+gccontent.genes <- read.table("~/Reg_Evo_Primates/ashlar-trial/data/GC_content.genes.txt", sep="\t", h=T, row.names=1)
+gccontent.genes <- gccontent.genes[order(row.names(gccontent.genes)), ]
+
+lengths <- read.table("~/Reg_Evo_Primates/ashlar-trial/data/lengths.txt", sep="\t", h=T)
+lengths.genes <- aggregate(lengths[,3:5], list(lengths[,1]), sum)
+
+## Test that row names are identical to dge- we are expecting all true                                                                                                             
+
+summary(row.names(dge_original) ==  lengths.genes[,1])
+summary(row.names(dge_original) ==  row.names(gccontent.genes))
+
+```
+
+### About the GC content of different genes across species
+
+```{r}
+## include everything in single EDASeq object                                                                                                                                                        
+feature <- data.frame(gcHuman = gccontent.genes$humanGC, lengthHuman = lengths.genes$lengthHuman, gcChimp = gccontent.genes$chimpGC, lengthChimp = lengths.genes$lengthChimp, gcRhesus = gccontent.genes$rhesusGC, lengthRhesus = lengths.genes$lengthRhesus)
+row.names(feature) <- row.names(dge_original)
+pheno =  as.data.frame(samples)
+pheno = pheno[,3:4]
+row.names(pheno) <- colnames(dge_original$counts)
+
+## Make sure that the row names of phenoData and the column names of counts are the same
+summary(row.names(pheno) ==  colnames(dge_original$counts))
+
+## Make and display object
+EDAdata <- newSeqExpressionSet(counts = as.matrix(dge_original$counts), featureData = feature, phenoData = pheno)
+head(counts(EDAdata))
+
+## subset EDASeq object to genes with GC content available:                                                                                                                                          
+EDAdata <- EDAdata[!is.na(fData(EDAdata)$gcHuman),]
+EDAdata <- EDAdata[!is.na(fData(EDAdata)$gcChimp),]
+EDAdata <- EDAdata[!is.na(fData(EDAdata)$gcRhesus),]
+
+## What is the %GC difference between species. How many genes have a %GC diff > 5%                                                                                                                   
+gccontent.filtered <- gccontent.genes[!is.na(gccontent.genes$humanGC) & !is.na(gccontent.genes$chimpGC) & !is.na(gccontent.genes$rhesusGC), ]
+percent <- (apply(gccontent.filtered[,1:3], 1, max) - apply(gccontent.filtered[,1:3], 1, min)) / apply(gccontent.filtered[,1:3], 1, min)
+hist(percent, breaks = 100)
+summary(percent)
+summary(percent > 0)
+summary(percent > 0.05)
+
+## Maybe less confusing measure: what is the difference in GC-content between genes (absolute difference)?                                                                                           
+percent <- apply(gccontent.filtered[,1:3], 1, max) - apply(gccontent.filtered[,1:3], 1, min)
+hist(percent, breaks = 100)
+summary(percent) ## max 20% difference                                                                                                                                                               
+summary(percent > 0.05)
+```
+
+The GC content of 1901 genes (6.3%) differ by more than 5% (of the less rich gene) between species.
+
+The GC content of 98 genes have an absolute difference in GC-content of more than 5%. 
+
+```{r}
+# Filter the GC content list for genes we don't have GC content on
+
+GC_content_complete <- as.data.frame(gccontent.genes[!is.na(gccontent.genes["humanGC"]),])
+
+GC_content_complete_col <- as.data.frame(GC_content_complete[,1])
+rownames(GC_content_complete_col) <- rownames(GC_content_complete)
+colnames(GC_content_complete_col) <- c("HumanGC")
+
+# Find the raw counts of the genes that have met the criteria for expression 
+
+inshared_lists = row.names(counts_genes) %in% rownames(counts_genes_filtered_3L) 
+inshared_lists_data <- as.data.frame(inshared_lists)
+raw_counts_in <- cbind(counts_genes, inshared_lists_data)
+raw_counts_in_2_of_4 <- as.data.frame(subset(raw_counts_in, inshared_lists_data == "TRUE"))
+raw_counts_in_2_of_4_col <- as.data.frame(raw_counts_in_2_of_4[,1:47])
+rownames(raw_counts_in_2_of_4_col) <- rownames(raw_counts_in_2_of_4)
+
+dim(raw_counts_in_2_of_4_col)
+
+# Find the GC content of the genes that have met the criteria for expression
+
+inshared_lists = row.names(GC_content_complete_col) %in% rownames(raw_counts_in_2_of_4_col)
+inshared_lists_data <- as.data.frame(inshared_lists)
+gc_content_in <- cbind(GC_content_complete_col, inshared_lists_data)
+gc_content_in_2_of_4 <- as.data.frame(subset(gc_content_in, inshared_lists_data == "TRUE"))
+gc_content_in_2_of_4_col <- as.data.frame(gc_content_in_2_of_4[,1])
+rownames(gc_content_in_2_of_4_col) <- rownames(gc_content_in_2_of_4)
+colnames(gc_content_in_2_of_4_col) <- c("HumanGC")
+
+dim(gc_content_in_2_of_4_col)
+
+# Find the raw counts of the genes that have met the criteria for expression and that have a real-number GC count
+
+inshared_lists = row.names(raw_counts_in_2_of_4_col) %in% rownames(gc_content_in_2_of_4_col) 
+inshared_lists_data <- as.data.frame(inshared_lists)
+counts_in <- cbind(raw_counts_in_2_of_4_col, inshared_lists_data)
+counts_in_2_of_4 <- as.data.frame(subset(counts_in, inshared_lists_data == "TRUE"))
+counts_in_2_of_4_col <- as.data.frame(counts_in_2_of_4[,1:47])
+rownames(counts_in_2_of_4_col) <- rownames(counts_in_2_of_4)
+
+dim(counts_in_2_of_4_col)
+
+# Make sure that the row names for the GC content and the raw counts are the same
+
+summary(rownames(counts_in_2_of_4_col) %in% rownames(gc_content_in_2_of_4_col))
+
+```
+
+The problem(s):
+
+* None of the EDAseq normalizations were deemed to be sufficiently aggressive. 
+
+* There is a non-linear relationship between GC content and log2(read counts). We can see this illustrated here:
+
+```{r}
+
+# plot(data[,2],data[,3], xlim = c(0, 20e5), ylim = c(0,8e4), main = "Read counts in individual versus total", ylab = "Read counts in 1 individual", xlab = "Total reads across all individuals") #plot x=GC, y=counts in ind/counts in all inds
+
+# plot(data[,2],data[,3], main = "Read counts in individual versus total", ylab = "Read counts in 1 individual", xlab = "Total reads across all individuals") #plot x=GC, y=counts in ind/counts in all inds
+
+
+counts <- counts_in_2_of_4_col$CH1
+gc_content <- gc_content_in_2_of_4_col$HumanGC
+
+counts <- counts_in_2_of_4_col[1]
+gc_content <- gc_content_in_2_of_4_col[1]
+
+plot(t(gc_content), t(counts), ylab = "Counts", xlab = "GC content", main = "Counts versus GC content for each gene in sample (C1H)")
+
+counts <- log2(counts_in_2_of_4_col[1])
+gc_content <- gc_content_in_2_of_4_col[1]
+plot(t(gc_content), t(counts), ylab = "Log2(counts)", xlab = "GC content", main = "Log2(counts) versus GC content for each gene in sample (C1H)")
+
+counts <- counts_in_2_of_4_col$C1H
+total_counts <- rowSums(counts_in_2_of_4_col)
+divide_counts <- counts / total_counts
+
+# Comparison of all data versus subsetted data (large fraction for an individual)
+
+check <-  cbind(counts, total_counts)
+check2 <- cbind(check, divide_counts)
+check2 <- as.data.frame(check2)
+
+total_counts <- check2[which(check2$divide_counts > 0.1), ]
+total_counts <- as.data.frame(total_counts)
+
+mean(check2$total_counts)
+# 75878.85
+
+mean(total_counts$total_counts)
+#115192.9
+
+median(check2$total_counts)
+#23772
+
+median(total_counts$total_counts)
+# 14108
+
+plot(t(gc_content), t(divide_counts), xlim = c(0.3, 0.7), ylim = c(0, 0.05), ylab = "Fraction of counts from one individual", xlab = "GC content", main = "Fraction of counts versus gene GC content in one individual (C1H)")
+
+plot(t(gc_content), t(divide_counts), ylab = "Fraction of counts from one individual", xlab = "GC content", main = "Fraction of counts versus gene GC content in one individual (C1H)")
+
+```
+
+* Because GC content is species-specific, we want a scheme that will allow us to incorporate species-specific information (unlike in the analysis above). At the same time, gene GC content and species are confounded. Therefore, we argue that it makes sense to make different
+
+* In RNA-seq experiments, a handful of highly expressed genes take up a large fraction of the total number of mapped reads. Different genes are highly expressed in different tissues. Also, there could be variation in the amount of highly expressed genes and the overall relationship between these and the other expressed genes. We need to adjust for total read depth. 
+
+**Therefore, we will fit each spline for each tissue-species pair. Information from 4 samples (3 in the case of human hearts) will go into the information to fit the splines.**
+
+### Part 2: Adjust for GC content
+
+For more information about the method used for adjusting read depth and GC content, see pages 4-6 of the Supplementary Text and Figures from the following paper:
+
+van de Geijn B, McVicker G, Gilad Y, Pritchard JK. WASP: allele-specific software for robust molecular quantitative trait locus discovery. Nat Methods. 2015 Sep 14. doi: 10.1038/nmeth.3582
+
+
+#### Format GC content and raw counts so that they can go into the script to make the splines
+
+```{r}
+# Get GC content for all 3 species for all of the genes that we have data for (not just the human GC content which we had before)
+
+inshared_lists = row.names(GC_content_complete) %in% rownames(counts_in_2_of_4_col) 
+inshared_lists_data <- as.data.frame(inshared_lists)
+gc_counts_in <- cbind(GC_content_complete, inshared_lists_data)
+gc_counts_in_2_of_4 <- as.data.frame(subset(gc_counts_in, inshared_lists_data == "TRUE"))
+gc_counts_in_2_of_4_col <- as.data.frame(gc_counts_in_2_of_4[,1:3])
+rownames(gc_counts_in_2_of_4_col) <- rownames(gc_counts_in_2_of_4)
+
+# Split the samples into the 12 tissue-species pairs and then attach the GC content so that it is in the correct format for the next step. Make the first row is also the second row (because the next step will read the first row as the header). Then save this file, as it will be run in the next section. 
+
+  # Chimp hearts 
+
+# Subset the counts of genes for the chimp hearts
+
+counts_chimp_hearts <- counts_in_2_of_4_col[,chimp_hearts]
+
+# Find the total read depth for each gene
+
+read_depth_total <- rowSums(counts_chimp_hearts)
+
+# Make GC content the first column and read_depth_total for each gene the second column and then the raw counts for each individual 
+
+gc_counts_chimp_hearts <- cbind(gc_counts_in_2_of_4_col[,2], read_depth_total)
+gc_counts_chimp_hearts <- cbind(gc_counts_chimp_hearts, counts_chimp_hearts)
+
+# Add an extra row so there's not an issue with the headers 
+
+gc_counts_chimp_hearts <- rbind(gc_counts_chimp_hearts[1,], gc_counts_chimp_hearts)
+
+# Look at the data
+
+head(gc_counts_chimp_hearts)
+
+# Output this corrected file to the Desktop so that we can run it in Python (this command is commented out so that RMarkdown doesn't get confused when I try to load this to my personal site)
+
+# write.table(gc_counts_chimp_hearts,file="/Users/LEB/Reg_Evo_Primates/ashlar-trial/data/GC_counts_chimp_hearts.txt",sep="\t", col.names = F, row.names = F)
+
+  # Repeat for all of the other 11 tissue-species pairs. Here, we will repeat this process for Chimp kidneys
+
+counts_chimp_kidneys <- counts_in_2_of_4_col[,chimp_kidneys]
+read_depth_total <- rowSums(counts_chimp_kidneys)
+gc_counts_chimp_kidneys <- cbind(gc_counts_in_2_of_4_col[,2], read_depth_total)
+gc_counts_chimp_kidneys <- cbind(gc_counts_chimp_kidneys, counts_chimp_kidneys)
+gc_counts_chimp_kidneys <- rbind(gc_counts_chimp_kidneys[1,], gc_counts_chimp_kidneys)
+
+head(gc_counts_chimp_kidneys)
+
+# write.table(gc_counts_chimp_kidneys,file="/Users/LEB/Reg_Evo_Primates/ashlar-trial/data/GC_counts_chimp_kidneys.txt",sep="\t", col.names = F, row.names = F)
+
+  # Chimp livers
+
+counts_chimp_livers <- counts_in_2_of_4_col[,chimp_livers]
+read_depth_total <- rowSums(counts_chimp_livers)
+gc_counts_chimp_livers <- cbind(gc_counts_in_2_of_4_col[,2], read_depth_total)
+gc_counts_chimp_livers <- cbind(gc_counts_chimp_livers, counts_chimp_livers)
+gc_counts_chimp_livers <- rbind(gc_counts_chimp_livers[1,], gc_counts_chimp_livers)
+
+head(gc_counts_chimp_livers)
+
+# write.table(gc_counts_chimp_livers,file="/Users/LEB/Reg_Evo_Primates/ashlar-trial/data/GC_counts_chimp_livers.txt",sep="\t", col.names = F, row.names = F)
+
+  # Chimp lungs
+
+counts_chimp_lungs <- counts_in_2_of_4_col[,chimp_lungs]
+read_depth_total <- rowSums(counts_chimp_lungs)
+gc_counts_chimp_lungs <- cbind(gc_counts_in_2_of_4_col[,2], read_depth_total) 
+gc_counts_chimp_lungs <- cbind(gc_counts_chimp_lungs, counts_chimp_lungs)
+gc_counts_chimp_lungs <- rbind(gc_counts_chimp_lungs[1,], gc_counts_chimp_lungs)
+
+head(gc_counts_chimp_lungs)
+
+# write.table(gc_counts_chimp_lungs,file="/Users/LEB/Reg_Evo_Primates/ashlar-trial/data/GC_counts_chimp_lungs.txt",sep="\t", col.names = F, row.names = F)
+
+  # Human hearts
+
+counts_human_hearts <- counts_in_2_of_4_col[,human_hearts]
+read_depth_total <- rowSums(counts_human_hearts)
+gc_counts_human_hearts <- cbind(gc_counts_in_2_of_4_col[,1], read_depth_total)
+gc_counts_human_hearts <- cbind(gc_counts_human_hearts, counts_human_hearts)
+gc_counts_human_hearts <- rbind(gc_counts_human_hearts[1,], gc_counts_human_hearts)
+
+head(gc_counts_human_hearts)
+
+# write.table(gc_counts_human_hearts,file="/Users/LEB/Reg_Evo_Primates/ashlar-trial/data/GC_counts_human_hearts.txt",sep="\t", col.names = F, row.names = F)
+
+  # Human kidneys
+
+counts_human_kidneys <- counts_in_2_of_4_col[,human_kidneys]
+read_depth_total <- rowSums(counts_human_kidneys)
+gc_counts_human_kidneys <- cbind(gc_counts_in_2_of_4_col[,1], read_depth_total)
+gc_counts_human_kidneys <- cbind(gc_counts_human_kidneys, counts_human_kidneys)
+gc_counts_human_kidneys <- rbind(gc_counts_human_kidneys[1,], gc_counts_human_kidneys)
+
+head(gc_counts_human_kidneys)
+
+#write.table(gc_counts_human_kidneys,file="/Users/LEB/Reg_Evo_Primates/ashlar-trial/data/GC_counts_human_kidneys.txt",sep="\t", col.names = F, row.names = F)
+
+  # Human livers
+
+counts_human_livers <- counts_in_2_of_4_col[,human_livers]
+read_depth_total <- rowSums(counts_human_livers)
+gc_counts_human_livers <- cbind(gc_counts_in_2_of_4_col[,1], read_depth_total)
+gc_counts_human_livers <- cbind(gc_counts_human_livers, counts_human_livers)
+gc_counts_human_livers <- rbind(gc_counts_human_livers[1,], gc_counts_human_livers)
+
+head(gc_counts_human_livers)
+
+#write.table(gc_counts_human_livers,file="/Users/LEB/Reg_Evo_Primates/ashlar-trial/data/GC_counts_human_livers.txt",sep="\t", col.names = F, row.names = F)
+
+  # Human lungs
+
+counts_human_lungs <- counts_in_2_of_4_col[,human_lungs]
+read_depth_total <- rowSums(counts_human_lungs)
+gc_counts_human_lungs <- cbind(gc_counts_in_2_of_4_col[,1], read_depth_total)
+gc_counts_human_lungs <- cbind(gc_counts_human_lungs, counts_human_lungs)
+gc_counts_human_lungs <- rbind(gc_counts_human_lungs[1,], gc_counts_human_lungs)
+
+head(gc_counts_human_lungs)
+
+# write.table(gc_counts_human_lungs,file="/Users/LEB/Reg_Evo_Primates/ashlar-trial/data/GC_counts_human_lungs.txt",sep="\t", col.names = F, row.names = F)
+
+  # Rhesus hearts
+
+counts_rhesus_hearts <- counts_in_2_of_4_col[,rhesus_hearts]
+read_depth_total <- rowSums(counts_rhesus_hearts)
+gc_counts_rhesus_hearts <- cbind(gc_counts_in_2_of_4_col[,3], read_depth_total)
+gc_counts_rhesus_hearts <- cbind(gc_counts_rhesus_hearts, counts_rhesus_hearts)
+gc_counts_rhesus_hearts <- rbind(gc_counts_rhesus_hearts[1,], gc_counts_rhesus_hearts)
+
+head(gc_counts_rhesus_hearts)
+
+# write.table(gc_counts_rhesus_hearts,file="/Users/LEB/Reg_Evo_Primates/ashlar-trial/data/GC_counts_rhesus_hearts.txt",sep="\t", col.names = F, row.names = F)
+
+  # Rhesus kidneys
+
+counts_rhesus_kidneys <- counts_in_2_of_4_col[,rhesus_kidneys]
+read_depth_total <- rowSums(counts_rhesus_kidneys)
+gc_counts_rhesus_kidneys <- cbind(gc_counts_in_2_of_4_col[,3], read_depth_total)
+gc_counts_rhesus_kidneys <- cbind(gc_counts_rhesus_kidneys, counts_rhesus_kidneys)
+gc_counts_rhesus_kidneys <- rbind(gc_counts_rhesus_kidneys[1,], gc_counts_rhesus_kidneys)
+
+head(gc_counts_rhesus_kidneys)
+
+# write.table(gc_counts_rhesus_kidneys,file="/Users/LEB/Reg_Evo_Primates/ashlar-trial/data/GC_counts_rhesus_kidneys.txt",sep="\t", col.names = F, row.names = F)
+
+  # Rhesus livers
+
+counts_rhesus_livers <- counts_in_2_of_4_col[,rhesus_livers]
+read_depth_total <- rowSums(counts_rhesus_livers)
+gc_counts_rhesus_livers <- cbind(gc_counts_in_2_of_4_col[,3], read_depth_total)
+gc_counts_rhesus_livers <- cbind(gc_counts_rhesus_livers, counts_rhesus_livers)
+gc_counts_rhesus_livers <- rbind(gc_counts_rhesus_livers[1,], gc_counts_rhesus_livers)
+
+head(gc_counts_rhesus_livers)
+
+# write.table(gc_counts_rhesus_livers,file="/Users/LEB/Reg_Evo_Primates/ashlar-trial/data/GC_counts_rhesus_livers.txt",sep="\t", col.names = F, row.names = F)
+
+  # Rhesus lungs
+
+counts_rhesus_lungs <- counts_in_2_of_4_col[,rhesus_lungs]
+read_depth_total <- rowSums(counts_rhesus_lungs)
+gc_counts_rhesus_lungs <- cbind(gc_counts_in_2_of_4_col[,3], read_depth_total)
+gc_counts_rhesus_lungs  <- cbind(gc_counts_rhesus_lungs, counts_rhesus_lungs)
+gc_counts_rhesus_lungs <- rbind(gc_counts_rhesus_lungs[1,], gc_counts_rhesus_lungs)
+
+head(gc_counts_rhesus_lungs)
+
+# write.table(gc_counts_rhesus_lungs,file="/Users/LEB/Reg_Evo_Primates/ashlar-trial/data/GC_counts_rhesus_lungs.txt",sep="\t", col.names = F, row.names = F)
+
+```
+
+#### Executing the file to adjust for total read depth and GC content
+
+To execute this, run a Python script that uses parts of the Python script found here *https://github.com/bmvdgeijn/WASP/blob/master/CHT/update_total_depth.py* 
+
+From this, we will get coefficients for the quartic function for each individual. 
+
+### Part 3: 
+
+```{r}
+# Here's a file with GC content 
+
+GC_read_depth_coefficients <- read.csv("~/Reg_Evo_Primates/ashlar-trial/data/GC_read_depth_coefficients.csv", header=FALSE)
+
+coefs <- GC_read_depth_coefficients[,2:11]
+
+# Average gc content
+
+avg_chimp_gc <- mean(gc_counts_chimp_hearts[,1])
+
+# Here's a file with the GC content and all of the counts for chimps
+
+tot <- cbind(gc_counts_chimp_hearts[-2, 1:2], gc_counts_chimp_hearts[-2, 2], gc_counts_chimp_hearts[-2, 2], gc_counts_chimp_hearts[-2, 2], gc_counts_chimp_kidneys[-2,2], gc_counts_chimp_kidneys[-2,2], gc_counts_chimp_kidneys[-2,2], gc_counts_chimp_kidneys[-2,2], gc_counts_chimp_livers[-2,2], gc_counts_chimp_livers[-2,2], gc_counts_chimp_livers[-2,2], gc_counts_chimp_livers[-2,2], gc_counts_chimp_lungs[-2,2], gc_counts_chimp_lungs[-2,2], gc_counts_chimp_lungs[-2,2], gc_counts_chimp_lungs[-2,2])
+
+dim(tot)
+
+# Find the updated gene counts for the chimps
+
+updated_chimp_gc_avg <- array(NA, dim = c(16616, 16))
+updated_chimp_gc_all <- array(NA, dim = c(16616, 16))
+
+for (j in 1:16616){
+    for (i in 2:17){
+
+updated_chimp_gc_avg[j,i-1] <- exp(coefs[i-1,1] + avg_chimp_gc*coefs[i-1,2] + ((avg_chimp_gc)^2)*coefs[i-1,3] + ((avg_chimp_gc)^3)*coefs[i-1,4] + ((avg_chimp_gc)^4)*coefs[i-1,5])
+
+updated_chimp_gc_all[j,i-1] <- exp(coefs[i-1,1] + tot[j,1]*coefs[i-1,2] + ((tot[j,1])^2)*coefs[i-1,3] + ((tot[j,1])^3)*coefs[i-1,4] + ((tot[j,1])^4)*coefs[i-1,5])
+
+#updated_chimp_gene_counts[j,i-1] <- exp((coefs[i-1,1] + tot[j,1]*coefs[i-1,2] + ((tot[j,1])^2)*coefs[i-1,3] + ((tot[j,1])^3)*coefs[i-1,4] + ((tot[j,1])^4)*coefs[i-1,5]))*(0 + tot[j,i]*coefs[i-1,7] + ((tot[j, i])^2)*coefs[i-1,8] + ((tot[j, i])^3)*coefs[i-1,9] + ((tot[j, i])^4)*coefs[i-1,10])
+  }
+}
+
+# Calculate the adjustment factor
+
+gc_adj <- updated_chimp_gc_avg / updated_chimp_gc_all
+
+# Combine the counts for the chimps
+
+counts_chimps <- cbind(gc_counts_chimp_hearts[-2,3:6], gc_counts_chimp_kidneys[-2,3:6], gc_counts_chimp_livers[-2,3:6], gc_counts_chimp_lungs[-2,3:6])
+
+dim(counts_chimps)
+
+# Calculate the new counts
+
+gc_counts_chimps = counts_chimps*gc_adj 
+
+# Plots comparing raw and adjusted counts
+
+plot(gc_counts_chimp_hearts[-2,1], gc_counts_chimp_hearts[-2,3], xlab = "GC content", ylab = "Observed raw counts")
+plot(gc_counts_chimp_hearts[-2,1], gc_counts_chimps[,1], xlab = "GC content", ylab = "Adjusted raw counts")
+plot(gc_counts_chimp_hearts[-2,3], gc_counts_chimps[,1], ylab = "Expected counts", xlab = "Observed raw counts")
+abline(a = 0, b = 1, col = "red", lwd = 3)
+
+# Now repeat with humans
+
+# Average gc content
+
+avg_human_gc <- mean(gc_counts_human_hearts[,1])
+
+# Here's a file with the GC content and all of the counts for chimps
+
+tot <- cbind(gc_counts_human_hearts[-2, 1:2], gc_counts_human_hearts[-2, 2], gc_counts_human_hearts[-2, 2], gc_counts_human_kidneys[-2,2], gc_counts_human_kidneys[-2,2], gc_counts_human_kidneys[-2,2], gc_counts_human_kidneys[-2,2], gc_counts_human_livers[-2,2], gc_counts_human_livers[-2,2], gc_counts_human_livers[-2,2], gc_counts_human_livers[-2,2], gc_counts_human_lungs[-2,2], gc_counts_human_lungs[-2,2], gc_counts_human_lungs[-2,2], gc_counts_human_lungs[-2,2])
+
+dim(tot)
+
+# Find the updated gene counts for the chimps
+
+updated_human_gc_avg <- array(NA, dim = c(16616, 16))
+updated_human_gc_all <- array(NA, dim = c(16616, 16))
+
+for (j in 1:16616){
+    for (i in 17:31){
+
+updated_human_gc_avg[j,i-16] <- exp(coefs[i,1] + avg_human_gc*coefs[i,2] + ((avg_human_gc)^2)*coefs[i,3] + ((avg_human_gc)^3)*coefs[i,4] + ((avg_human_gc)^4)*coefs[i,5])
+
+updated_human_gc_all[j,i-16] <- exp(coefs[i,1] + tot[j,1]*coefs[i,2] + ((tot[j,1])^2)*coefs[i,3] + ((tot[j,1])^3)*coefs[i,4] + ((tot[j,1])^4)*coefs[i,5])
+
+#updated_chimp_gene_counts[j,i-1] <- exp((coefs[i-1,1] + tot[j,1]*coefs[i-1,2] + ((tot[j,1])^2)*coefs[i-1,3] + ((tot[j,1])^3)*coefs[i-1,4] + ((tot[j,1])^4)*coefs[i-1,5]))*(0 + tot[j,i]*coefs[i-1,7] + ((tot[j, i])^2)*coefs[i-1,8] + ((tot[j, i])^3)*coefs[i-1,9] + ((tot[j, i])^4)*coefs[i-1,10])
+  }
+}
+
+# Calculate the adjustment factor
+
+gc_adj <- updated_human_gc_avg / updated_human_gc_all
+
+# Combine the counts for the humans
+
+counts_humans <- cbind(gc_counts_human_hearts[-2,3:5], gc_counts_human_kidneys[-2,3:6], gc_counts_human_livers[-2,3:6], gc_counts_human_lungs[-2,3:6])
+
+dim(counts_humans)
+
+# Calculate the new counts
+
+gc_counts_humans = counts_humans*gc_adj 
+
+# Plot to see the relationship between the raw counts and the GC adjusted counts
+plot(gc_counts_human_hearts[-2,1], gc_counts_human_hearts[-2,3], xlab = "GC content", ylab = "Observed raw counts")
+plot(gc_counts_human_hearts[-2,1], gc_counts_humans[,1], xlab = "GC content", ylab = "Adjusted raw counts")
+plot(gc_counts_human_hearts[-2,3], gc_counts_humans[,1], ylab = "Expected counts", xlab = "Observed raw counts")
+abline(a = 0, b = 1, col = "red", lwd = 3)
+
+# Now repeat for rhesus
+
+# Average gc content
+
+avg_rhesus_gc <- mean(gc_counts_rhesus_hearts[,1])
+
+# Here's a file with the GC content and all of the counts for chimps
+
+tot <- cbind(gc_counts_rhesus_hearts[-2, 1:2], gc_counts_rhesus_hearts[-2, 2], gc_counts_rhesus_hearts[-2, 2], gc_counts_rhesus_hearts[-2, 2], gc_counts_rhesus_kidneys[-2,2], gc_counts_rhesus_kidneys[-2,2], gc_counts_rhesus_kidneys[-2,2], gc_counts_rhesus_kidneys[-2,2], gc_counts_rhesus_livers[-2,2], gc_counts_rhesus_livers[-2,2], gc_counts_rhesus_livers[-2,2], gc_counts_rhesus_livers[-2,2], gc_counts_rhesus_lungs[-2,2], gc_counts_rhesus_lungs[-2,2], gc_counts_rhesus_lungs[-2,2], gc_counts_rhesus_lungs[-2,2])
+
+dim(tot)
+
+# Find the updated gene counts for the chimps
+
+updated_rhesus_gc_avg <- array(NA, dim = c(16616, 16))
+updated_rhesus_gc_all <- array(NA, dim = c(16616, 16))
+
+for (j in 1:16616){
+    for (i in 32:47){
+
+updated_rhesus_gc_avg[j,i-31] <- exp(coefs[i-1,1] + avg_rhesus_gc*coefs[i-1,2] + ((avg_rhesus_gc)^2)*coefs[i-1,3] + ((avg_rhesus_gc)^3)*coefs[i-1,4] + ((avg_rhesus_gc)^4)*coefs[i-1,5])
+
+updated_rhesus_gc_all[j,i-31] <- exp(coefs[i-1,1] + tot[j,1]*coefs[i-1,2] + ((tot[j,1])^2)*coefs[i-1,3] + ((tot[j,1])^3)*coefs[i-1,4] + ((tot[j,1])^4)*coefs[i-1,5])
+
+  }
+}
+
+# Calculate the adjustment factor
+
+gc_adj <- updated_rhesus_gc_avg / updated_rhesus_gc_all
+
+# Combine the counts 
+
+counts_rhesus <- cbind(gc_counts_rhesus_hearts[-2,3:6], gc_counts_rhesus_kidneys[-2,3:6], gc_counts_rhesus_livers[-2,3:6], gc_counts_rhesus_lungs[-2,3:6])
+
+dim(counts_rhesus)
+
+# Calculate the new counts
+
+gc_counts_rhesus = counts_rhesus*gc_adj 
+
+# Plots comparing raw and adjusted counts
+
+plot(gc_counts_rhesus_hearts[-2,1], gc_counts_rhesus_hearts[-2,3], xlab = "GC content", ylab = "Observed raw counts")
+plot(gc_counts_rhesus_hearts[-2,1], gc_counts_rhesus[,1], xlab = "GC content", ylab = "Adjusted raw counts")
+plot(gc_counts_rhesus_hearts[-2,3], gc_counts_rhesus[,1], ylab = "Expected counts", xlab = "Observed raw counts")
+abline(a = 0, b = 1, col = "red", lwd = 3)
+
+# Combine the samples in the same order as before (all chimpanzee 1 samples together, etc. )
+
+chimps <- c(1, 5, 9, 13, 2, 6, 10, 14, 3, 7, 11, 15, 4, 8, 12, 16)
+humans <- c(4, 8, 12, 1, 5, 9, 13, 2, 6, 10, 14, 3, 7, 11, 15)
+
+counts_genes_gc <- cbind(gc_counts_chimps[, chimps], gc_counts_humans[ ,humans], gc_counts_rhesus[, chimps])
+
+# write.table(counts_genes_gc,file="/Users/LEB/Reg_Evo_Primates/ashlar-trial/data/gene_counts_with_gc_correction.txt",sep="\t", col.names = T, row.names = T)
+
+```
+
+**To do: Show that orthologous gene length (and exon length) is the same/similar across the different species and therefore we did not correct for it in the analysis. **
