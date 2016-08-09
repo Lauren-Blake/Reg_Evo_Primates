@@ -19,6 +19,7 @@ library("edgeR")
 library("R.utils")
 library("plyr")
 library("limma")
+library("statmod")
 source("~/Reg_Evo_Primates/ashlar-trial/analysis/functions.R")
 
 # Load colors 
@@ -65,7 +66,7 @@ Although we will use the cyclic loess normalization in future analyses (because 
 
 
 ```{r}
-## Voom requires a design matrix as input                                                                                                                                                             
+## Voom requires a design matrix as input                                                                                                                                                        
 ## To make contrasts easier to formulate, we rename factors species and tissue in a single factor 
 
 condition <- factor(paste(samples$Species,samples$Tissue,sep="."))
@@ -86,10 +87,14 @@ cpm.voom.cyclic <- voom(dge_gc, design, normalize.method="cyclicloess", plot=TRU
 boxplot(cpm.voom.cyclic$E, col = pal[as.numeric(samples$Tissue)])
 plotDensities(cpm.voom.cyclic, group=samples$Tissue, col=pal[as.numeric(samples$Tissue)])
 
-col = as.data.frame(pal[as.numeric(samples$Species)])
-group = as.data.frame(samples$Species)
+# Save the gene expression data
+
+#write.table(cpm.voom.cyclic$E,file="/Users/LEB/Reg_Evo_Primates/ashlar-trial/data/gc_cyclic_loess_random_var_gene_exp_counts",sep="\t", col.names = T, row.names = T)
+
 
 # Density plots for each tissue
+col = as.data.frame(pal[as.numeric(samples$Species)])
+group = as.data.frame(samples$Species)
 
 all_hearts <- c(1,5,9,13, 20,24,28,32,36,40,44)
 all_kidneys <- c(2,6,10,14,17, 21,25,29,33,37,41,45)
@@ -130,6 +135,9 @@ legend('topright', legend = levels(group_lungs), col = levels(col_lungs), pch = 
 pca_genes <- prcomp(t(cpm.voom.cyclic$E), scale = F)
 scores <- pca_genes$x
 
+# Save this PCA data
+
+write.table(scores,file="/Users/LEB/Reg_Evo_Primates/ashlar-trial/data/PC_gc_cyclic_loess_random_var_gene_exp",sep="\t", col.names = T, row.names = T)
 
 #Make PCA plots with the factors colored by tissue
 

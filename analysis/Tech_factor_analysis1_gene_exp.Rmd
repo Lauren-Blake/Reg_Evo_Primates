@@ -1,0 +1,533 @@
+---
+title: "Analysis_of_potential_confounders_gene_expression"
+author: "Lauren Blake"
+date: "July 20, 2016"
+output: html_document
+---
+
+### PART ONE: See if any of the variables for RNA-Seq correlate with the expression PCs for genes
+
+#### Load libraries and data
+
+```{r}
+# Load libraries
+
+# install.packages("polycor")
+library("polycor")
+
+# Load PCs from data that is GC content normalized, cyclic loess normalized with voom and a random variable for individual
+
+gene_pcs <- read.delim("~/Reg_Evo_Primates/ashlar-trial/data/PC_gc_cyclic_loess_random_var_gene_exp")
+
+# Load list of technical factors
+RNA_seq_info <- read.csv("~/Reg_Evo_Primates/ashlar-trial/data/RNA_seq_info.csv")
+RNA_seq_info <- as.data.frame(RNA_seq_info)
+
+dim(RNA_seq_info)
+
+#Create plots for each of the possible confounders versus PCs 1-5
+
+pdf('~/Reg_Evo_Primates/ashlar-trial/data/VarVsGenePCs.pdf')
+
+for (i in 3:length(RNA_seq_info)) { 
+  par(mfrow=c(1,5))
+  plot(RNA_seq_info[,i], gene_pcs[,1],  ylab = "PC1", xlab = " ")
+  plot(RNA_seq_info[,i], gene_pcs[,2],  ylab = "PC2", xlab = " ")
+  plot(RNA_seq_info[,i], gene_pcs[,3],  ylab = "PC3", xlab = " ")
+  plot(RNA_seq_info[,i], gene_pcs[,4],  ylab = "PC4", xlab = " ")
+  plot(RNA_seq_info[,i], gene_pcs[,5],  ylab = "PC5", xlab = " ")
+  title(xlab = substitute(paste(k), list(k=colnames(RNA_seq_info)[i])), outer = TRUE, line = -2)
+  mtext(substitute(paste('PCs vs. ', k), list(k=colnames(RNA_seq_info)[i])), side = 3, line = -2, outer = TRUE)
+  
+}
+dev.off()
+
+```
+
+#### Testing association between a particular variable and PCs with a linear model
+
+```{r}
+#Make an empty matrix to put all of the data in
+
+pvaluesandr2 = matrix(data = NA, nrow = 5, ncol = 22*2, dimnames = list(c("PC1", "PC2", "PC3", "PC4", "PC5"), c("Species", "Species R^2", "Tissue", "Tissue R^2", "Individual", "Ind. R^2", "RNA extraction date", "Extract. date R^2", "Multiplexing index sequence", "Multi. index R^2", "Multiplexing mix codes", "Multi. mix R^2", "Sequencing location: at UCGF", "Location R^2", "Total number of reads sequenced", "Read Seq R^2", "Percentage of bps trimmed (adapters)", "Trimmed R^2", "Number of reads shorter than 20bp removed", "Removed R^2", "Maximum read length after trimming", "Max. length R^2", "Total number of reads processed in tophat", "Reads processed R^2", "Total number of mapped reads", "Mapped reads R^2", "Percentage of mapped reads overlapping a junction", "Perc. junction R^2", "Number of junctions", "Num. junctions R^2", "Number of reads mapped on orthologous exons", "OrthoExons R^2", "Number of orthologous exons with at least 1 mapped read", "Ortho exons read R^2", "Number of orthologous genes with at least 1 mapped read", "Ortho genes read R^2", "RNA concentration (ng/uL)", "RNA conc. R^2", "RIN score", "RIN R^2", "Library concentration (ng/uL)", "Lib. conc. R^2", "Library fragments size (bp)", "Lib. frag. R^2")))
+
+#Check lm to see how well the variables containing ordinal data are correlated with a PC
+
+#For PCs 1-5
+j=1
+for (i in 3:9){
+  for (j in 1:5){
+  
+  checkPC1 <- lm(gene_pcs[,j] ~ as.factor(RNA_seq_info[,i]))
+
+#Get the summary statistics from it
+  summary(checkPC1)
+
+#Get the p-value of the F-statistic
+  summary(checkPC1)$fstatistic
+
+  fstat <- as.data.frame(summary(checkPC1)$fstatistic)
+  p_fstat <- 1-pf(fstat[1,], fstat[2,], fstat[3,])
+  
+#Fraction of the variance explained by the model
+  r2_value <- summary(checkPC1)$r.squared
+
+#Put the summary statistics into the matrix w
+
+  pvaluesandr2[j, (2*i-5)] <- p_fstat
+  pvaluesandr2[j, (2*i-4)] <- r2_value
+  
+  }
+}
+
+#Check lm to see how well the variables containing numerical data are correlated with a PC
+
+j=1
+for (j in 1:5){
+  
+  for (i in 10:24){
+      
+  checkPC <- lm(gene_pcs[,j] ~ RNA_seq_info[,i])
+      
+  #Get the summary statistics from it
+  summary(checkPC)
+  
+  #Get the p-value of the F-statistic
+  summary(checkPC)$fstatistic
+  
+  fstat <- as.data.frame(summary(checkPC)$fstatistic)
+  p_fstat <- 1-pf(fstat[1,], fstat[2,], fstat[3,])
+  
+  #Fraction of the variance explained by the model
+  r2_value <- summary(checkPC)$r.squared
+  
+  #Put the summary statistics into the matrix a
+  
+  pvaluesandr2[j, 2*i-5] <- p_fstat
+  pvaluesandr2[j, 2*i-4] <- r2_value
+  
+  i = i+1
+  }
+  j=j+1
+}
+
+```
+
+#### Test for potential violations of the assumptions of the linear model
+
+```{r}
+#Plot the residuals to look for violations of the assumptions of lm
+
+pdf('~/Reg_Evo_Primates/ashlar-trial/data/Residuals_vs_var_GenePCs.pdf')
+
+i = 3
+  for (i in 3:9){
+    par(mfrow=c(1,5))
+   
+    checkPC1 <- lm(gene_pcs[,1] ~ as.factor(RNA_seq_info[,i]))
+    plot(RNA_seq_info[,i], resid(checkPC1), ylab = "Residuals (lm with PC1)", xlab = " ")
+
+    checkPC2 <- lm(gene_pcs[,2] ~ as.factor(RNA_seq_info[,i]))
+    plot(RNA_seq_info[,i], resid(checkPC2),  ylab = "Residuals (lm with PC2)", xlab = " ")
+    
+    checkPC3 <- lm(gene_pcs[,3] ~ as.factor(RNA_seq_info[,i]))
+    plot(RNA_seq_info[,i], resid(checkPC3),  ylab = "Residuals (lm with PC3)", xlab = " ")
+    
+    checkPC4 <- lm(gene_pcs[,4] ~ as.factor(RNA_seq_info[,i]))
+    plot(RNA_seq_info[,i], resid(checkPC4),  ylab = "Residuals (lm with PC4)", xlab = " ")
+    
+    checkPC5 <- lm(gene_pcs[,5] ~ as.factor(RNA_seq_info[,i]))
+    plot(RNA_seq_info[,i], resid(checkPC5),  ylab = "Residuals (lm with PC5)", xlab = " ")
+    
+    title(xlab = substitute(paste(k), list(k=colnames(RNA_seq_info)[i])), outer = TRUE, line = -2)
+    mtext(substitute(paste('Residuals vs. ', k), list(k=colnames(RNA_seq_info)[i])), side = 3, line = -2, outer = TRUE)
+    
+  }
+
+#Need to divide this up because #22 has an NA in it 
+i = 10
+  for (i in 10:21){
+    
+    par(mfrow=c(1,5))
+    
+    checkPC1 <- lm(gene_pcs[,1] ~ RNA_seq_info[,i])
+    plot(RNA_seq_info[,i], resid(checkPC1), ylab = "Residuals (lm with PC1)", xlab = " ")
+    
+    checkPC2 <- lm(gene_pcs[,2] ~ RNA_seq_info[,i])
+    plot(RNA_seq_info[,i], resid(checkPC2), ylab = "Residuals (lm with PC2)", xlab = " ")
+    
+    checkPC3 <- lm(gene_pcs[,3] ~ RNA_seq_info[,i])
+    plot(RNA_seq_info[,i], resid(checkPC3), ylab = "Residuals (lm with PC3)", xlab = " ")
+    
+    checkPC4 <- lm(gene_pcs[,4] ~ RNA_seq_info[,i])
+    plot(RNA_seq_info[,i], resid(checkPC4), ylab = "Residuals (lm with PC4)", xlab = " ")
+    
+    checkPC5 <- lm(gene_pcs[,5] ~ RNA_seq_info[,i])
+    plot(RNA_seq_info[,i], resid(checkPC5), ylab = "Residuals (lm with PC5)", xlab = " ")
+    
+    title(xlab = substitute(paste(k), list(k=colnames(RNA_seq_info)[i])), outer = TRUE, line = -2)
+    mtext(substitute(paste('Residuals vs. ', k), list(k=colnames(RNA_seq_info)[i])), side = 3, line = -2, outer = TRUE)
+    
+  }
+
+#Skip #22 because there is an NA in it
+
+for (i in 23:24){
+  
+  par(mfrow=c(1,5))
+  
+  checkPC1 <- lm(gene_pcs[,1] ~ RNA_seq_info[,i])
+  plot(RNA_seq_info[,i], resid(checkPC1), ylab = "Residuals (lm with PC1)", xlab = " ")
+  
+  checkPC2 <- lm(gene_pcs[,2] ~ RNA_seq_info[,i])
+  plot(RNA_seq_info[,i], resid(checkPC2), ylab = "Residuals (lm with PC2)", xlab = " ")
+  
+  checkPC3 <- lm(gene_pcs[,3] ~ RNA_seq_info[,i])
+  plot(RNA_seq_info[,i], resid(checkPC3), ylab = "Residuals (lm with PC3)", xlab = " ")
+  
+  checkPC4 <- lm(gene_pcs[,4] ~ RNA_seq_info[,i])
+  plot(RNA_seq_info[,i], resid(checkPC4), ylab = "Residuals (lm with PC4)", xlab = " ")
+  
+  checkPC5 <- lm(gene_pcs[,5] ~ RNA_seq_info[,i])
+  plot(RNA_seq_info[,i], resid(checkPC5), ylab = "Residuals (lm with PC5)", xlab = " ")
+  
+  title(xlab = substitute(paste(k), list(k=colnames(RNA_seq_info)[i])), outer = TRUE, line = -2)
+  mtext(substitute(paste('Residuals vs. ', k), list(k=colnames(RNA_seq_info)[i])), side = 3, line = -2, outer = TRUE)
+  
+}
+  
+
+```
+
+#### Look at significant p-values
+
+```{r}
+#Get rid of the R^2 values
+all_col <- 1:ncol(pvaluesandr2)
+matrix_pval <- pvaluesandr2[ , all_col%%2==1 ]
+
+#Find which variables/PC combinations are p-value < 0.05
+TorF_matrix <- matrix_pval <=0.05
+sum(matrix_pval <= 0.05/(22*5))
+
+#Find which variables/PC combinations are p-value < 0.05 not including species or tissue (because those explain PC1 and PC2)
+matrix_pval_no_tissue_or_species = matrix_pval[ , 3:22]
+matrix_pval_no_tissue_or_species
+
+sum(matrix_pval_no_tissue_or_species <= 0.05/(20*5))
+
+#Distribution of p-values adjusted by FDR not including species or tissue
+
+fdr_val = p.adjust(matrix_pval_no_tissue_or_species, method = "fdr", n = length(matrix_pval_no_tissue_or_species))
+fdr_val_order = fdr_val[order(fdr_val)]
+hist(fdr_val_order, ylab = "BH-adjusted p-values", main = "Distribution of Benjamini and Hochberg adjusted p-values", breaks = 10)
+
+```
+
+
+```{r}
+matrix_fdr_val = matrix(data = fdr_val, nrow = 5, ncol = 20, dimnames = list(c("PC1", "PC2", "PC3", "PC4", "PC5"), c("Individual", "RNA extraction date", "Multiplexing index sequence", "Multiplexing mix codes", "Sequencing location: at UCGF", "Total number of reads sequenced", "Percentage of bps trimmed (adapters)", "Number of reads shorter than 20bp removed", "Maximum read length after trimming", "Total number of reads processed in tophat", "Total number of mapped reads", "Percentage of mapped reads overlapping a junction", "Number of junctions", "Number of reads mapped on orthologous exons", "Number of orthologous exons with at least 1 mapped read", "Number of orthologous genes with at least 1 mapped read", "RNA concentration (ng/uL)", "RIN score", "Library concentration (ng/uL)",  "Library fragments size (bp)"))) 
+
+matrix_fdr_val
+
+# Number of values significant at 10% FDR not including species or tissue
+
+sum(matrix_fdr_val <= 0.1)
+
+#Get the coordinates of which variables/PC combinations are significant at FDR 10%
+
+TorF_matrix_fdr <- matrix_fdr_val <=0.1
+coor_to_check <- which(matrix_fdr_val <= 0.1, arr.ind=T)
+coor_to_check <- as.data.frame(coor_to_check)
+
+# Number of variables significant at 10% FDR not including species or tissue (note: off by 4 from column number in RNA_seq_info file; see notes in Part Two)
+
+coor_to_check_col <- coor_to_check$col
+unique(coor_to_check_col)
+
+length(unique(coor_to_check_col))
+```
+
+** Conclusions from Part I**
+
+The following variables are associated with one of the PCs tested and will be investigated further in Part 2.
+
+*	Individual
+*	RNA extraction date
+*	Multiplexing index sequence
+*	Multiplexing mix codes
+*	Percentage of bps trimmed (adapters)
+*	Number of reads shorter than 20 bp removed
+*	Percentage of mapped reads overlapping a junction
+*	Number of junctions
+*	Number of reads mapped on orthologous exons
+*	Number of orthologous exons with at least 1 mapped read
+*	Number of orthologous genes with at least 1 mapped read
+*	RNA concentration
+*	RIN score
+*	Library concentration
+*	Library fragments size
+
+### For the variable(s) that correlate, see if these segregate with either species or tissue
+
+In coor_to_check_col, row is the PC # and col is the column # -4 that is associated with the PC Want to take the coor_to_check_col column # and add four. That is the variable that we should check to see if it correlates with tissue or species.
+
+```{r}
+var_numb = unique(coor_to_check_col) + 4
+#Making the variable versus species and tissue graphs into a file called VarVsSpeciesTissue.pdf
+var.numb <- as.data.frame(var_numb)
+
+pdf('~/Reg_Evo_Primates/ashlar-trial/data/Var_GenePCsVsSpeciesTissue.pdf.pdf')
+
+for (i in var.numb[1:nrow(var.numb),]) { 
+par(mfrow=c(1,2))
+plot(RNA_seq_info$Species, RNA_seq_info[,i], xlab = "Species", ylab = substitute(paste(k), list(k=colnames(RNA_seq_info)[i])))
+
+plot(RNA_seq_info$Tissue, RNA_seq_info[,i], xlab = "Tissue", ylab = substitute(paste(k), list(k=colnames(RNA_seq_info)[i])))
+
+mtext(substitute(paste(k, ' vs. Species and Tissue'), list(k=colnames(RNA_seq_info)[i])), side = 3, line = -2, outer = TRUE)
+
+}
+dev.off()
+
+#Testing to see if differences across variable groups are statistically significant for species. If statistically significant, then we should investigate further whether this variable is confounded with species or tissue. 
+
+#Make a matrix to store the p-values
+
+pvalues_species = matrix(data = NA, nrow = 1, ncol = nrow(var.numb), dimnames = list(c("p-value"), c("Individual", "RNA extraction date", "Multiplexing index sequence", "Multiplexing mix codes", "Percentage of bps trimmed (adaptors)", "Number of reads shorter than 20bp removed", "Percentage of mapped reads overlapping a junction", "Number of junctions", "Number of reads mapped on orthologous exons", "Number of orthologous exons with at least 1 mapped read", "Number of orthologous genes with at least 1 mapped read", "RNA concentration (ng/uL)", "RIN score", "Library concentration (ng/uL)", "Library fragments size (bp)")))
+
+#Performing this test of significance for variables that are categorical data (Using Pearson's chi-squared test)
+j=1
+for (i in var.numb[1:4,]) { 
+
+pval_chi <- chisq.test(as.factor(RNA_seq_info[,i]), as.factor(RNA_seq_info$Species))$p.value
+pvalues_species[,j] <- pval_chi  
+j=j+1
+
+}
+
+#Performing this test of significance for variables that are numerical data (Using an ANOVA)
+j=5
+for (i in var.numb[5:nrow(var.numb),]) {  
+summary_anova = summary(aov(RNA_seq_info[,i]~ as.factor(RNA_seq_info$Species)))
+data_summary_anova <- as.data.frame(summary_anova[[1]]$`Pr(>F)`)
+p_val_anova <- data_summary_anova[1,]
+pvalues_species[,j] <- p_val_anova  
+j=j+1
+}
+
+#Testing to see if differences across variable groups are statistically significant for tissues. If statistically significant, then we should investigate further whether this variable is confounded with species or tissue. 
+
+#Make a matrix to store the p-values
+
+pvalues_tissues = matrix(data = NA, nrow = 1, ncol = nrow(var.numb), dimnames = list(c("p-value"), c("Individual", "RNA extraction date", "Multiplexing index sequence", "Multiplexing mix codes", "Percentage of bps trimmed (adaptors)", "Number of reads shorter than 20bp removed", "Percentage of mapped reads overlapping a junction", "Number of junctions", "Number of reads mapped on orthologous exons", "Number of orthologous exons with at least 1 mapped read", "Number of orthologous genes with at least 1 mapped read", "RNA concentration (ng/uL)", "RIN score", "Library concentration (ng/uL)", "Library fragments size (bp)")))
+
+#Performing this test of significance for variables that are categorical data (Using Pearson's chi-squared test)
+j=1
+for (i in var.numb[1:4,]) { 
+  
+  pval_chi <- chisq.test(as.factor(RNA_seq_info[,i]), as.factor(RNA_seq_info$Tissue))$p.value
+  pvalues_tissues[,j] <- pval_chi  
+  j=j+1
+  
+}
+
+#Performing this test of significance for variables that are numerical data (Using an ANOVA)
+j=5
+for (i in var.numb[5:nrow(var.numb),]) {  
+  summary_anova = summary(aov(RNA_seq_info[,i]~ as.factor(RNA_seq_info$Tissue)))
+  data_summary_anova <- as.data.frame(summary_anova[[1]]$`Pr(>F)`)
+  p_val_anova <- data_summary_anova[1,]
+  pvalues_tissues[,j] <- p_val_anova  
+  j=j+1
+}
+
+collapse_table <- rbind(pvalues_species, pvalues_tissues)
+colnames(collapse_table) <- c("Individual", "RNA extraction date", "Multiplexing index sequence", "Multiplexing mix codes", "Percentage of bps trimmed (adaptors)", "Number of reads shorter than 20bp removed", "Percentage of mapped reads overlapping a junction", "Number of junctions", "Number of reads mapped on orthologous exons", "Number of orthologous exons with at least 1 mapped read", "Number of orthologous genes with at least 1 mapped read", "RNA concentration (ng/uL)", "RIN score", "Library concentration (ng/uL)", "Library fragments size (bp)")
+
+rownames(collapse_table) <- c("Species", "Tissue")
+
+collapse_table
+
+#Calculate q-values (FDR = 10%)
+
+fdr_val = p.adjust(collapse_table, method = "fdr", n = length(collapse_table)*2)
+fdr_val_order = fdr_val[order(fdr_val)]
+hist(fdr_val_order, ylab = "BH-adjusted p-values", main = "Distribution of Benjamini and Hochberg adjusted p-values", breaks = 10)
+
+collapse_table_fdr_val = matrix(data = fdr_val, nrow = 2, ncol = nrow(var.numb), dimnames = list(c("Species", "Tissue"), c("Individual", "RNA extraction date", "Multiplexing index sequence", "Multiplexing mix codes", "Percentage of bps trimmed (adaptors)", "Number of reads shorter than 20bp removed", "Percentage of mapped reads overlapping a junction", "Number of junctions", "Number of reads mapped on orthologous exons", "Number of orthologous exons with at least 1 mapped read", "Number of orthologous genes with at least 1 mapped read", "RNA concentration (ng/uL)", "RIN score", "Library concentration (ng/uL)", "Library fragments size (bp)")))
+
+collapse_table_fdr_val
+
+#Find number below it
+sum(collapse_table_fdr_val <= 0.1)
+
+
+```
+
+**Conclusions from Part 2:**
+
+The following variables are associated with species:
+*	Individual
+*	RNA extraction date
+*	Multiplexing mix codes
+*	Percentage of bps trimmed (adaptors)
+*	Number of reads shorter than 20bp removed
+*	Number of junctions
+*	RNA concentration
+*	RIN score
+*	Library concentration
+*	Library fragments size
+
+
+The following variables are associated with tissue:
+*	Multiplexing index sequence
+*	Percentage of mapped reads overlapping a junction
+*	Number of junctions
+*	Number of reads mapped on othologous exons
+*	Number of orthologous exons with at least 1 mapped read
+*	Number of orthologous genes with at least 1 mapped read
+*	RNA concentration
+
+### Part 3: Which variables to put in the model?
+
+Check for degree of similarity between the values of the different variables (not including species or tissue) For ones that show high correlation (multi-colinearity), we will only want to incorporate one of these variables into the model Note: the first 4 variables are ordinal, the others are numerical. 
+
+```{r}
+number_to_check <- var.numb
+number_to_check <- as.data.frame(number_to_check)
+number_to_check
+
+#Make the matrix
+
+#Make the matrix
+eval_multicolinearity = matrix(data = NA, nrow = nrow(var.numb), ncol = nrow(var.numb), dimnames = list(c("Individual", "RNA extraction date", "Multiplexing index sequence", "Multiplexing mix codes", "Percentage of bps trimmed (adaptors)", "Number of reads shorter than 20bp removed", "Percentage of mapped reads overlapping a junction", "Number of junctions", "Number of reads mapped on orthologous exons", "Number of orthologous exons with at least 1 mapped read", "Number of orthologous genes with at least 1 mapped read", "RNA concentration (ng/uL)", "RIN score", "Library concentration (ng/uL)", "Library fragments size (bp)")))
+
+#Comparing two variables that are categorical (using the library polycor)
+
+for (i in number_to_check[1:4,]){ 
+  for (j in number_to_check[1:4,]){ 
+    if (i==j) break
+    corr_ord = polychor(RNA_seq_info[,i], RNA_seq_info[,j], ML=FALSE, std.err=T)
+    corr_ord$rho
+    eval_multicolinearity[i-4,j-4] <- (corr_ord$rho)^2  
+    
+  }
+  
+}
+
+for (j in number_to_check[1:4,]){ 
+  for (i in number_to_check[1:4,]){ 
+    if (i==j) eval_multicolinearity[i-4,j-4] = 1 
+    if (i==j) break
+    corr_ord = polychor(RNA_seq_info[,i], RNA_seq_info[,j], ML=FALSE, std.err=T)
+    corr_ord$rho
+    eval_multicolinearity[i-4,j-4] <- (corr_ord$rho)^2  
+    
+  }
+  
+}
+
+#Comparing one variable that is categorical with one that is numerical 
+
+#For putting the percentage of bp trimmed into the correct location 
+
+for (j in number_to_check[5:6,]){
+  
+  for (i in number_to_check[1:4,]){
+    eval_multicolinearity[i-4,j-6] <- (polyserial(RNA_seq_info[ ,j], as.factor(RNA_seq_info[ ,i])))^2
+    
+  }
+}
+
+
+
+
+for (i in number_to_check[1:4,]){
+  for (j in number_to_check[5:6,]){
+    eval_multicolinearity[j-6,i-4] <- (polyserial(RNA_seq_info[ ,j], as.factor(RNA_seq_info[ ,i])))^2
+    
+  }
+}
+
+
+# All others
+
+for (j in number_to_check[7:15,]){
+  
+  for (i in number_to_check[1:4,]){
+    eval_multicolinearity[i-4,j-9] <- (polyserial(RNA_seq_info[ ,j], as.factor(RNA_seq_info[ ,i])))^2
+    
+  }
+}
+
+
+
+
+for (i in number_to_check[1:4,]){
+  for (j in number_to_check[7:15,]){
+    eval_multicolinearity[j-9,i-4] <- (polyserial(RNA_seq_info[ ,j], as.factor(RNA_seq_info[ ,i])))^2
+    
+  }
+}
+
+
+#Comparing two numerical variables
+
+#Put the percentage of bps trimmed and number of reads shorter than 20bp in the correct location
+eval_multicolinearity[5,5] = 1
+eval_multicolinearity[6,6] = 1
+for (j in number_to_check[5:6,]){
+  
+  for (i in number_to_check[7:15,]){
+
+    checkPC1 <- lm(RNA_seq_info[,j] ~ RNA_seq_info[,i])
+    eval_multicolinearity[i-9,j-6] <-  summary(checkPC1)$r.squared
+    
+  }
+}
+
+for (j in number_to_check[7:15,]){
+  
+  for (i in number_to_check[5:6,]){
+    
+    checkPC1 <- lm(RNA_seq_info[,j] ~ RNA_seq_info[,i])
+    eval_multicolinearity[i-6,j-9] <-  summary(checkPC1)$r.squared
+    
+  }
+}
+
+# All others
+for (j in number_to_check[7:15,]){
+  
+  for (i in number_to_check[7:15,]){
+    
+    checkPC1 <- lm(RNA_seq_info[,j] ~ RNA_seq_info[,i])
+    eval_multicolinearity[i-9,j-9] <-  summary(checkPC1)$r.squared
+    
+  }
+}
+
+colnames(eval_multicolinearity) <- rownames(eval_multicolinearity)
+eval_multicolinearity
+
+
+
+#Find how many pairs have a correlation greater than 0.9, not including variables paired with themselves 
+
+length(eval_multicolinearity [eval_multicolinearity  >= 0.9])
+
+#Find these pairs with correlation >=0.9 not including variables compared to themselves
+
+coor_to_check <- which(eval_multicolinearity >= 0.9, arr.ind=T)
+coor_to_check <- as.data.frame(coor_to_check)
+new_coor <- subset(coor_to_check, row != col, sel = c(row, col))
+
+new_coor
+
+```
+
+**Conclusions from Part 3:**
+
+There is one pair of correlated variables: the number of orthologous exons with at least 1 mapped read and number of orthologous genes with at least 1 mapped read.
+

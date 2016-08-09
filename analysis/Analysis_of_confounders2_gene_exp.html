@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+<head>
+
+<meta charset="utf-8">
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<meta name="generator" content="pandoc" />
+
+
+<meta name="author" content="Lauren Blake" />
+
+<meta name="date" content="2016-07-21" />
+
+<title>Analysis_of_counfounders2_gene_exp</title>
+
+<script src="libs/jquery-1.11.3/jquery.min.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link href="libs/bootstrap-3.3.5/css/united.min.css" rel="stylesheet" />
+<script src="libs/bootstrap-3.3.5/js/bootstrap.min.js"></script>
+<script src="libs/bootstrap-3.3.5/shim/html5shiv.min.js"></script>
+<script src="libs/bootstrap-3.3.5/shim/respond.min.js"></script>
+
+<style type="text/css">
+
+/* padding for bootstrap navbar */
+body {
+  padding-top: 50px;
+  padding-bottom: 40px;
+}
+
+
+/* offset scroll position for anchor links (for fixed navbar)  */
+.section h2 {
+  padding-top: 55px;
+  margin-top: -55px;
+}
+.section h3 {
+  padding-top: 55px;
+  margin-top: -55px;
+}
+
+
+
+/* don't use link color in navbar */
+.dropdown-menu>li>a {
+  color: black;
+}
+
+/* some padding for disqus */
+#disqus_thread {
+  margin-top: 45px;
+}
+
+</style>
+
+<link rel="stylesheet" href="libs/font-awesome-4.1.0/css/font-awesome.min.css"/>
+
+<style type="text/css">code{white-space: pre;}</style>
+<link rel="stylesheet"
+      href="libs/highlight/textmate.css"
+      type="text/css" />
+<script src="libs/highlight/highlight.js"></script>
+<style type="text/css">
+  pre:not([class]) {
+    background-color: white;
+  }
+</style>
+<script type="text/javascript">
+if (window.hljs && document.readyState && document.readyState === "complete") {
+   window.setTimeout(function() {
+      hljs.initHighlighting();
+   }, 0);
+}
+</script>
+
+
+
+<style type="text/css">
+h1 {
+  font-size: 34px;
+}
+h1.title {
+  font-size: 38px;
+}
+h2 {
+  font-size: 30px;
+}
+h3 {
+  font-size: 24px;
+}
+h4 {
+  font-size: 18px;
+}
+h5 {
+  font-size: 16px;
+}
+h6 {
+  font-size: 12px;
+}
+.table th:not([align]) {
+  text-align: left;
+}
+</style>
+
+
+</head>
+
+<body>
+
+<style type = "text/css">
+.main-container {
+  max-width: 940px;
+  margin-left: auto;
+  margin-right: auto;
+}
+code {
+  color: inherit;
+  background-color: rgba(0, 0, 0, 0.04);
+}
+img {
+  max-width:100%;
+  height: auto;
+}
+.tabbed-pane {
+  padding-top: 12px;
+}
+button.code-folding-btn:focus {
+  outline: none;
+}
+</style>
+
+
+<div class="container-fluid main-container">
+
+<!-- tabsets -->
+<script src="libs/navigation-1.1/tabsets.js"></script>
+<script>
+$(document).ready(function () {
+  window.buildTabsets("TOC");
+});
+</script>
+
+<!-- code folding -->
+
+
+
+
+
+
+<div class="navbar navbar-default navbar-fixed-top" role="navigation">
+  <div class="container">
+    <div class="navbar-header">
+      <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar">
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+      </button>
+      <a class="navbar-brand" href="index.html">RegulatoryEvolutionInPrimates</a>
+    </div>
+    <div id="navbar" class="navbar-collapse collapse">
+      <ul class="nav navbar-nav">
+        <li><a href="index.html">Home</a></li>
+        <li><a href="about.html">About</a></li>
+        <li><a href="license.html">License</a></li>
+        <li><a href="https://github.com/Lauren-Blake/Reg_Evo_Primates">GitHub</a></li>
+    </div><!--/.nav-collapse -->
+  </div><!--/.container -->
+</div><!--/.navbar -->
+
+<div class="fluid-row" id="header">
+
+
+
+<h1 class="title toc-ignore">Analysis_of_counfounders2_gene_exp</h1>
+<h4 class="author"><em>Lauren Blake</em></h4>
+<h4 class="date"><em>July 21, 2016</em></h4>
+
+</div>
+
+<div id="TOC">
+<ul>
+<li><a href="#the-impact-of-when-the-samples-were-collected-relative-to-time-of-death">The impact of when the samples were collected (relative to time of death)</a></li>
+</ul>
+</div>
+
+<p>This script is a follow up to the analysis of technical variables for the gene expression data.</p>
+<div id="the-impact-of-when-the-samples-were-collected-relative-to-time-of-death" class="section level3">
+<h3>The impact of when the samples were collected (relative to time of death)</h3>
+<p>There was a concern that “Hours post-mortem” were confounded by species. For example, according to the documentation that we received from the different sites, the rhesus macaque samples were collected earlier than the chimpanzee samples and the chimpanzee samples were collected earlier than humans. These differences could impact the quality of the RNA. We can look at RIN score as a proxy for RNA quality. Therefore, we will look to see if there are differences in RIN score</p>
+<p>Note: RIN score is missing for H4Lu</p>
+<pre class="r"><code># Load libraries
+
+library(&quot;ggplot2&quot;)
+
+# Load information about the 
+
+RNA_seq_info &lt;- read.csv(&quot;~/Reg_Evo_Primates/ashlar-trial/data/RNA_seq_info.csv&quot;)
+
+# Boxplot RIN score by species
+
+new_plot &lt;- ggplot(data = RNA_seq_info, aes(y = RIN.score, x = Species)) + geom_boxplot() + geom_point(aes(color = Tissue), size = 5,  position=position_jitter(width=0.2, height=0.1))
+new_plot + labs(title = &quot;RIN score versus species by tissue&quot;, y = &quot;RIN score&quot;, x = &quot;Species&quot;)</code></pre>
+<pre><code>## Warning: Removed 1 rows containing non-finite values (stat_boxplot).</code></pre>
+<pre><code>## Warning: Removed 1 rows containing missing values (geom_point).</code></pre>
+<p><img src="Analysis_of_confounders2_gene_exp_files/figure-html/unnamed-chunk-1-1.png" width="672" /></p>
+<pre class="r"><code># RIN score by species with individual name
+
+new_plot &lt;- ggplot(data = RNA_seq_info, aes(y = RIN.score, x = Species, label = RNA_seq_info$Individual)) + geom_point(aes(color = Tissue), size = 5)
+new_plot + geom_text(vjust = -0.4, nudge_y = 1.5) + labs(title = &quot;RIN score versus species by tissue&quot;, y = &quot;RIN score&quot;, x = &quot;Species&quot;)</code></pre>
+<pre><code>## Warning: Removed 1 rows containing missing values (geom_point).</code></pre>
+<pre><code>## Warning: Removed 1 rows containing missing values (geom_text).</code></pre>
+<p><img src="Analysis_of_confounders2_gene_exp_files/figure-html/unnamed-chunk-1-2.png" width="672" /></p>
+<pre class="r"><code># Boxplot RIN score by tissue
+
+new_plot &lt;- ggplot(data = RNA_seq_info, aes(y = RIN.score, x = Tissue)) + geom_boxplot() + geom_point(aes(color = Species), size = 5,  position=position_jitter(width=0.2, height=0.1))
+new_plot + labs(title = &quot;RIN score versus tissue by species&quot;, y = &quot;RIN score&quot;, x = &quot;Tissue&quot;)</code></pre>
+<pre><code>## Warning: Removed 1 rows containing non-finite values (stat_boxplot).</code></pre>
+<pre><code>## Warning: Removed 1 rows containing missing values (geom_point).</code></pre>
+<p><img src="Analysis_of_confounders2_gene_exp_files/figure-html/unnamed-chunk-1-3.png" width="672" /></p>
+<pre class="r"><code># RIN score by species with individual name
+
+new_plot &lt;- ggplot(data = RNA_seq_info, aes(y = RIN.score, x = Tissue, label = RNA_seq_info$Individual)) + geom_point(aes(color = Species), size = 5)
+new_plot + geom_text(vjust = -0.4, nudge_y = 1.5) + labs(title = &quot;RIN score versus tissue by species&quot;, y = &quot;RIN score&quot;, x = &quot;Tissue&quot;)</code></pre>
+<pre><code>## Warning: Removed 1 rows containing missing values (geom_point).</code></pre>
+<pre><code>## Warning: Removed 1 rows containing missing values (geom_text).</code></pre>
+<p><img src="Analysis_of_confounders2_gene_exp_files/figure-html/unnamed-chunk-1-4.png" width="672" /></p>
+</div>
+
+
+<!-- some extra javascript for older browsers -->
+<script type="text/javascript" src="libs/polyfill.js"></script>
+
+<script>
+
+// manage active state of menu based on current page
+$(document).ready(function () {
+
+    // active menu
+    href = window.location.pathname
+    href = href.substr(href.lastIndexOf('/') + 1)
+    $('a[href="' + href + '"]').parent().addClass('active');
+
+    // manage active menu header
+    if (href.startsWith('authoring_'))
+      $('a[href="' + 'authoring' + '"]').parent().addClass('active');
+    else if (href.endsWith('_format.html'))
+      $('a[href="' + 'formats' + '"]').parent().addClass('active');
+    else if (href.startsWith('developer_'))
+      $('a[href="' + 'developer' + '"]').parent().addClass('active');
+
+});
+
+</script>
+
+
+
+</div>
+
+<script>
+
+// add bootstrap table styles to pandoc tables
+$(document).ready(function () {
+  $('tr.header').parent('thead').parent('table').addClass('table table-condensed');
+});
+
+</script>
+
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src  = "https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML";
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
+
+</body>
+</html>

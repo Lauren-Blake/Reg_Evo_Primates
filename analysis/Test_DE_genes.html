@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+<head>
+
+<meta charset="utf-8">
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<meta name="generator" content="pandoc" />
+
+
+<meta name="author" content="Lauren Blake" />
+
+
+<title>Test_DE_genes</title>
+
+<script src="libs/jquery-1.11.3/jquery.min.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link href="libs/bootstrap-3.3.5/css/united.min.css" rel="stylesheet" />
+<script src="libs/bootstrap-3.3.5/js/bootstrap.min.js"></script>
+<script src="libs/bootstrap-3.3.5/shim/html5shiv.min.js"></script>
+<script src="libs/bootstrap-3.3.5/shim/respond.min.js"></script>
+
+<style type="text/css">
+
+/* padding for bootstrap navbar */
+body {
+  padding-top: 50px;
+  padding-bottom: 40px;
+}
+
+
+/* offset scroll position for anchor links (for fixed navbar)  */
+.section h2 {
+  padding-top: 55px;
+  margin-top: -55px;
+}
+.section h3 {
+  padding-top: 55px;
+  margin-top: -55px;
+}
+
+
+
+/* don't use link color in navbar */
+.dropdown-menu>li>a {
+  color: black;
+}
+
+/* some padding for disqus */
+#disqus_thread {
+  margin-top: 45px;
+}
+
+</style>
+
+<link rel="stylesheet" href="libs/font-awesome-4.1.0/css/font-awesome.min.css"/>
+
+<style type="text/css">code{white-space: pre;}</style>
+<link rel="stylesheet"
+      href="libs/highlight/textmate.css"
+      type="text/css" />
+<script src="libs/highlight/highlight.js"></script>
+<style type="text/css">
+  pre:not([class]) {
+    background-color: white;
+  }
+</style>
+<script type="text/javascript">
+if (window.hljs && document.readyState && document.readyState === "complete") {
+   window.setTimeout(function() {
+      hljs.initHighlighting();
+   }, 0);
+}
+</script>
+
+
+
+<style type="text/css">
+h1 {
+  font-size: 34px;
+}
+h1.title {
+  font-size: 38px;
+}
+h2 {
+  font-size: 30px;
+}
+h3 {
+  font-size: 24px;
+}
+h4 {
+  font-size: 18px;
+}
+h5 {
+  font-size: 16px;
+}
+h6 {
+  font-size: 12px;
+}
+.table th:not([align]) {
+  text-align: left;
+}
+</style>
+
+
+</head>
+
+<body>
+
+<style type = "text/css">
+.main-container {
+  max-width: 940px;
+  margin-left: auto;
+  margin-right: auto;
+}
+code {
+  color: inherit;
+  background-color: rgba(0, 0, 0, 0.04);
+}
+img {
+  max-width:100%;
+  height: auto;
+}
+.tabbed-pane {
+  padding-top: 12px;
+}
+button.code-folding-btn:focus {
+  outline: none;
+}
+</style>
+
+
+<div class="container-fluid main-container">
+
+<!-- tabsets -->
+<script src="libs/navigation-1.1/tabsets.js"></script>
+<script>
+$(document).ready(function () {
+  window.buildTabsets("TOC");
+});
+</script>
+
+<!-- code folding -->
+
+
+
+
+
+
+<div class="navbar navbar-default navbar-fixed-top" role="navigation">
+  <div class="container">
+    <div class="navbar-header">
+      <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar">
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+      </button>
+      <a class="navbar-brand" href="index.html">RegulatoryEvolutionInPrimates</a>
+    </div>
+    <div id="navbar" class="navbar-collapse collapse">
+      <ul class="nav navbar-nav">
+        <li><a href="index.html">Home</a></li>
+        <li><a href="about.html">About</a></li>
+        <li><a href="license.html">License</a></li>
+        <li><a href="https://github.com/Lauren-Blake/Reg_Evo_Primates">GitHub</a></li>
+    </div><!--/.nav-collapse -->
+  </div><!--/.container -->
+</div><!--/.navbar -->
+
+<div class="fluid-row" id="header">
+
+
+
+<h1 class="title toc-ignore">Test_DE_genes</h1>
+<h4 class="author"><em>Lauren Blake</em></h4>
+<h4 class="date"><em>August 3, 2016</em></h4>
+
+</div>
+
+<div id="TOC">
+<ul>
+<li><a href="#make-the-design-matrix">Make the design matrix</a></li>
+<li><a href="#fit-the-linear-model">Fit the linear model</a></li>
+<li><a href="#find-tissue-specific-genes-that-are-conserved-in-all-species">Find tissue-specific genes that are conserved in all species</a></li>
+<li><a href="#find-tissue-specific-genes-found-in-each-species-first-and-then-combine-the-results-in-a-venn-diagram-no-rin-score">Find tissue specific genes found in each species first and then combine the results in a Venn Diagram (no RIN score)</a></li>
+<li><a href="#find-tissue-specific-genes-found-in-each-species-first-and-then-combine-the-results-in-a-venn-diagram-design-matrix-includes-rin-score">Find tissue specific genes found in each species first and then combine the results in a Venn Diagram (design matrix includes RIN score)</a></li>
+<li><a href="#pairwise-comparisons-for-each-species-with-rin">Pairwise comparisons for each species (with RIN)</a></li>
+<li><a href="#test-for-genes-that-have-a-species-specific-and-tissue-specific-component-significant-interaction-term">Test for genes that have a species-specific and tissue-specific component (significant interaction term)</a></li>
+</ul>
+</div>
+
+<p>The goal of this script is to find a list of differentially expressed genes between tissues and between species. The majority of the code for this section was written by Julien Roux.</p>
+<pre class="r"><code># Load libraries
+
+library(&quot;gplots&quot;)</code></pre>
+<pre><code>## 
+## Attaching package: &#39;gplots&#39;</code></pre>
+<pre><code>## The following object is masked from &#39;package:stats&#39;:
+## 
+##     lowess</code></pre>
+<pre class="r"><code>library(&quot;ggplot2&quot;)
+library(&quot;RColorBrewer&quot;)
+library(&quot;scales&quot;)
+library(&quot;edgeR&quot;)</code></pre>
+<pre><code>## Loading required package: limma</code></pre>
+<pre class="r"><code>library(&quot;R.utils&quot;)</code></pre>
+<pre><code>## Loading required package: R.oo</code></pre>
+<pre><code>## Loading required package: R.methodsS3</code></pre>
+<pre><code>## R.methodsS3 v1.7.1 (2016-02-15) successfully loaded. See ?R.methodsS3 for help.</code></pre>
+<pre><code>## R.oo v1.20.0 (2016-02-17) successfully loaded. See ?R.oo for help.</code></pre>
+<pre><code>## 
+## Attaching package: &#39;R.oo&#39;</code></pre>
+<pre><code>## The following objects are masked from &#39;package:methods&#39;:
+## 
+##     getClasses, getMethods</code></pre>
+<pre><code>## The following objects are masked from &#39;package:base&#39;:
+## 
+##     attach, detach, gc, load, save</code></pre>
+<pre><code>## R.utils v2.3.0 (2016-04-13) successfully loaded. See ?R.utils for help.</code></pre>
+<pre><code>## 
+## Attaching package: &#39;R.utils&#39;</code></pre>
+<pre><code>## The following object is masked from &#39;package:utils&#39;:
+## 
+##     timestamp</code></pre>
+<pre><code>## The following objects are masked from &#39;package:base&#39;:
+## 
+##     cat, commandArgs, getOption, inherits, isOpen, parse, warnings</code></pre>
+<pre class="r"><code>library(&quot;plyr&quot;)
+library(&quot;limma&quot;)
+library(&quot;VennDiagram&quot;)</code></pre>
+<pre><code>## Loading required package: grid</code></pre>
+<pre><code>## Loading required package: futile.logger</code></pre>
+<pre class="r"><code>source(&quot;~/Reg_Evo_Primates/ashlar-trial/analysis/functions.R&quot;)
+
+# Load colors 
+
+colors &lt;- colorRampPalette(c(brewer.pal(9, &quot;Blues&quot;)[1],brewer.pal(9, &quot;Blues&quot;)[9]))(100)
+pal &lt;- c(brewer.pal(9, &quot;Set1&quot;), brewer.pal(8, &quot;Set2&quot;), brewer.pal(12, &quot;Set3&quot;))
+
+# Load the data (GC content normalization+TMM+voom+cyclic loess normalization)
+
+GC.loess.norm.voom &lt;- read.delim(&quot;~/Reg_Evo_Primates/ashlar-trial/data/gc_cyclic_loess_random_var_gene_exp_counts&quot;)
+
+samples &lt;- read.delim(&quot;~/Reg_Evo_Primates/ashlar-trial/data/Sample_info_RNAseq_limma.txt&quot;)
+
+# Eliminate H1H
+samples &lt;- samples[-17,]
+dim(samples)</code></pre>
+<pre><code>## [1] 47  4</code></pre>
+<pre class="r"><code># Make labels
+
+labels &lt;- paste(samples$Species, samples$Tissue, sep=&quot; &quot;)</code></pre>
+<div id="make-the-design-matrix" class="section level3">
+<h3>Make the design matrix</h3>
+<pre class="r"><code>## To make contrasts easier to formulate, we rename factors species and tissue in a single factor 
+
+condition &lt;- factor(paste(samples$Species,samples$Tissue,sep=&quot;.&quot;))
+design &lt;- model.matrix(~ 0 + condition)
+colnames(design) &lt;- gsub(&quot;condition&quot;, &quot;&quot;, dput(colnames(design)))</code></pre>
+<pre><code>## c(&quot;conditionChimp.heart&quot;, &quot;conditionChimp.kidney&quot;, &quot;conditionChimp.liver&quot;, 
+## &quot;conditionChimp.lung&quot;, &quot;conditionHuman.heart&quot;, &quot;conditionHuman.kidney&quot;, 
+## &quot;conditionHuman.liver&quot;, &quot;conditionHuman.lung&quot;, &quot;conditionRhesus.heart&quot;, 
+## &quot;conditionRhesus.kidney&quot;, &quot;conditionRhesus.liver&quot;, &quot;conditionRhesus.lung&quot;
+## )</code></pre>
+</div>
+<div id="fit-the-linear-model" class="section level3">
+<h3>Fit the linear model</h3>
+<pre class="r"><code># From TMM_voom_on_GC_normalized_data
+corfit_consensus = 0.1888776
+
+# Run lmFit and eBayes in limma
+fit.GC.loess.norm &lt;- lmFit(GC.loess.norm.voom, design, block=samples$Individual, correlation=corfit_consensus)
+fit.GC.loess.norm &lt;- eBayes(fit.GC.loess.norm)
+
+# MA Plots
+## If &#39;MA&#39; is an &#39;MArrayLM&#39; object, then the plot is a fitted model MA-plot in which the estimated coefficient is on the y-axis and the average A-value is on the x-axis.                
+
+limma::plotMA(fit.GC.loess.norm, array=1, xlab=&quot;average coefficient&quot;, ylab=&quot;estimated coefficient&quot;)</code></pre>
+<pre><code>## Warning in plot.window(...): &quot;array&quot; is not a graphical parameter</code></pre>
+<pre><code>## Warning in plot.xy(xy, type, ...): &quot;array&quot; is not a graphical parameter</code></pre>
+<pre><code>## Warning in axis(side = side, at = at, labels = labels, ...): &quot;array&quot; is not
+## a graphical parameter
+
+## Warning in axis(side = side, at = at, labels = labels, ...): &quot;array&quot; is not
+## a graphical parameter</code></pre>
+<pre><code>## Warning in box(...): &quot;array&quot; is not a graphical parameter</code></pre>
+<pre><code>## Warning in title(...): &quot;array&quot; is not a graphical parameter</code></pre>
+<p><img src="Test_DE_genes_files/figure-html/unnamed-chunk-3-1.png" width="672" /></p>
+<pre class="r"><code>## - Potential caveat: variances could be different between human, chimp and rhesus (see Gordon Smyth email, 7 June 2013).                                                               
+##  We look at the standard error for each condition                                                    
+hist(fit.GC.loess.norm$stdev.unscaled * fit.GC.loess.norm$sigma, breaks=100)</code></pre>
+<p><img src="Test_DE_genes_files/figure-html/unnamed-chunk-3-2.png" width="672" /></p>
+<pre class="r"><code>hist(log2(fit.GC.loess.norm$stdev.unscaled * fit.GC.loess.norm$sigma), breaks=100)</code></pre>
+<p><img src="Test_DE_genes_files/figure-html/unnamed-chunk-3-3.png" width="672" /></p>
+<pre class="r"><code>boxplot(log2(fit.GC.loess.norm$stdev.unscaled * fit.GC.loess.norm$sigma))</code></pre>
+<p><img src="Test_DE_genes_files/figure-html/unnamed-chunk-3-4.png" width="672" /></p>
+<pre class="r"><code>## This seems to be pretty comparable between conditions. The human heart is higher, probably because of H1H missing and H3H with a bit strange behavior                                     
+stderror &lt;- log2(fit.GC.loess.norm$stdev.unscaled * fit.GC.loess.norm$sigma)
+boxplot(list(stderror[,1:4], stderror[,5:8], stderror[,9:12]))</code></pre>
+<p><img src="Test_DE_genes_files/figure-html/unnamed-chunk-3-5.png" width="672" /></p>
+<pre class="r"><code>## A bit higher for human, and a bit lower for rhesus                                                                                                                                    
+boxplot(list(stderror[,2:4], stderror[,6:8], stderror[,8:12])) ## excluding heart samples  </code></pre>
+<p><img src="Test_DE_genes_files/figure-html/unnamed-chunk-3-6.png" width="672" /></p>
+</div>
+<div id="find-tissue-specific-genes-that-are-conserved-in-all-species" class="section level3">
+<h3>Find tissue-specific genes that are conserved in all species</h3>
+<pre class="r"><code># One tissue versus all the others in all species
+
+cm1 &lt;- makeContrasts(
+                     KidneyvsOthers = (Chimp.kidney+Human.kidney+Rhesus.kidney)-((Chimp.liver+Human.liver+Rhesus.liver)+(Chimp.heart+Human.heart+Rhesus.heart)+(Chimp.lung+Human.lung+Rhesus.lung))/3,
+                     LivervsOthers = (Chimp.liver+Human.liver+Rhesus.liver)-((Chimp.kidney+Human.kidney+Rhesus.kidney)+(Chimp.heart+Human.heart+Rhesus.heart)+(Chimp.lung+Human.lung+Rhesus.lung))/3,
+                     HeartvsOthers = (Chimp.heart+Human.heart+Rhesus.heart)-((Chimp.liver+Human.liver+Rhesus.liver)+(Chimp.kidney+Human.kidney+Rhesus.kidney)+(Chimp.lung+Human.lung+Rhesus.lung))/3,
+                     LungvsOthers = (Chimp.lung+Human.lung+Rhesus.lung)-((Chimp.liver+Human.liver+Rhesus.liver)+(Chimp.heart+Human.heart+Rhesus.heart)+(Chimp.kidney+Human.kidney+Rhesus.kidney))/3, levels=design
+                     )
+fit1 &lt;- contrasts.fit(fit.GC.loess.norm, cm1)
+fit1 &lt;- eBayes(fit1)
+top1 &lt;- list(Kidney=topTable(fit1, coef=1, adjust=&quot;BH&quot;, number=Inf, sort.by=&quot;none&quot;), Liver=topTable(fit1, coef=2, adjust=&quot;BH&quot;, number=Inf, sort.by=&quot;none&quot;), Heart=topTable(fit1, coef=3,adjust=&quot;BH&quot;, number=Inf, sort.by=&quot;none&quot;), Lung=topTable(fit1, coef=4, adjust=&quot;BH&quot;, number=Inf, sort.by=&quot;none&quot;))
+
+# Sort by p-value
+lapply(top1, function(x) { summary(x$adj.P.Val &lt; 0.01) } ) ## ~ 10,000 significant hits in each list</code></pre>
+<pre><code>## $Kidney
+##    Mode   FALSE    TRUE    NA&#39;s 
+## logical    8118    8498       0 
+## 
+## $Liver
+##    Mode   FALSE    TRUE    NA&#39;s 
+## logical    6128   10488       0 
+## 
+## $Heart
+##    Mode   FALSE    TRUE    NA&#39;s 
+## logical    6661    9955       0 
+## 
+## $Lung
+##    Mode   FALSE    TRUE    NA&#39;s 
+## logical    6372   10244       0</code></pre>
+<pre class="r"><code># Apply a more stringent p-value cutoff                                                      
+lapply(top1, function(x) { summary(x$adj.P.Val &lt; 1e-10) } ) ## ~2,300 significant hits in each list</code></pre>
+<pre><code>## $Kidney
+##    Mode   FALSE    TRUE    NA&#39;s 
+## logical   15061    1555       0 
+## 
+## $Liver
+##    Mode   FALSE    TRUE    NA&#39;s 
+## logical   13401    3215       0 
+## 
+## $Heart
+##    Mode   FALSE    TRUE    NA&#39;s 
+## logical   14076    2540       0 
+## 
+## $Lung
+##    Mode   FALSE    TRUE    NA&#39;s 
+## logical   14229    2387       0</code></pre>
+</div>
+<div id="find-tissue-specific-genes-found-in-each-species-first-and-then-combine-the-results-in-a-venn-diagram-no-rin-score" class="section level3">
+<h3>Find tissue specific genes found in each species first and then combine the results in a Venn Diagram (no RIN score)</h3>
+<pre class="r"><code># Make the contrast matrix
+cm2 &lt;- makeContrasts(
+                     ChimpKidneyvsOthers = Chimp.kidney-(Chimp.liver+Chimp.heart+Chimp.lung)/3,
+                     HumanKidneyvsOthers = Human.kidney-(Human.liver+Human.heart+Human.lung)/3,
+                     RhesusKidneyvsOthers = Rhesus.kidney-(Rhesus.liver+Rhesus.heart+Rhesus.lung)/3,
+                     ChimpLivervsOthers = Chimp.liver-(Chimp.kidney+Chimp.heart+Chimp.lung)/3,
+                     HumanLivervsOthers = Human.liver-(Human.kidney+Human.heart+Human.lung)/3,
+                     RhesusLivervsOthers = Rhesus.liver-(Rhesus.kidney+Rhesus.heart+Rhesus.lung)/3,
+                     ChimpHeartvsOthers = Chimp.heart-(Chimp.liver+Chimp.kidney+Chimp.lung)/3,
+                     HumanHeartvsOthers = Human.heart-(Human.liver+Human.kidney+Human.lung)/3,
+                     RhesusHeartvsOthers = Rhesus.heart-(Rhesus.liver+Rhesus.kidney+Rhesus.lung)/3,
+                     ChimpLungvsOthers = Chimp.lung-(Chimp.liver+Chimp.heart+Chimp.kidney)/3,
+                     HumanLungvsOthers = Human.lung-(Human.liver+Human.heart+Human.kidney)/3,
+                     RhesusLungvsOthers = Rhesus.lung-(Rhesus.liver+Rhesus.heart+Rhesus.kidney)/3,
+                     levels=design
+                     )
+fit2 &lt;- contrasts.fit(fit.GC.loess.norm, cm2)
+fit2 &lt;- eBayes(fit2)
+
+# Find the top hits by BH adjusted p-value
+top2 &lt;- list(ChimpKidney=topTable(fit2, coef=1, adjust=&quot;BH&quot;, number=Inf, sort.by=&quot;none&quot;), ChimpLiver=topTable(fit2, coef=4, adjust=&quot;BH&quot;, number=Inf, sort.by=&quot;none&quot;), ChimpHeart=topTable(fit2, coef=7, adjust=&quot;BH&quot;, number=Inf, sort.by=&quot;none&quot;), ChimpLung=topTable(fit2, coef=10, adjust=&quot;BH&quot;, number=Inf, sort.by=&quot;none&quot;), HumanKidney=topTable(fit2, coef=2, adjust=&quot;BH&quot;, number=Inf, sort.by=&quot;none&quot;), HumanLiver=topTable(fit2, coef=5, adjust=&quot;BH&quot;, number=Inf, sort.by=&quot;none&quot;), HumanHeart=topTable(fit2, coef=8, adjust=&quot;BH&quot;, number=Inf, sort.by=&quot;none&quot;), HumanLung=topTable(fit2, coef=11, adjust=&quot;BH&quot;, number=Inf, sort.by=&quot;none&quot;), RhesusKidney=topTable(fit2, coef=3, adjust=&quot;BH&quot;, number=Inf, sort.by=&quot;none&quot;), RhesusLiver=topTable(fit2, coef=6, adjust=&quot;BH&quot;, number=Inf, sort.by=&quot;none&quot;), RhesusHeart=topTable(fit2, coef=9, adjust=&quot;BH&quot;, number=Inf, sort.by=&quot;none&quot;), RhesusLung=topTable(fit2, coef=12, adjust=&quot;BH&quot;, number=Inf, sort.by=&quot;none&quot;))
+
+# Find number of DE genes at FDR cutoff &lt; 1% for each tissue in all 3 species
+
+summary(top2$ChimpKidney$adj.P.Val &lt; 0.01 &amp; top2$HumanKidney$adj.P.Val &lt; 0.01 &amp; top2$RhesusKidney$adj.P.Val &lt; 0.01) ## 2363                                                              </code></pre>
+<pre><code>##    Mode   FALSE    TRUE    NA&#39;s 
+## logical   14253    2363       0</code></pre>
+<pre class="r"><code>summary(top2$ChimpHeart$adj.P.Val &lt; 0.01 &amp; top2$HumanHeart$adj.P.Val &lt; 0.01 &amp; top2$RhesusHeart$adj.P.Val &lt; 0.01) ## 3079                                                                 </code></pre>
+<pre><code>##    Mode   FALSE    TRUE    NA&#39;s 
+## logical   13537    3079       0</code></pre>
+<pre class="r"><code>summary(top2$ChimpLiver$adj.P.Val &lt; 0.01 &amp; top2$HumanLiver$adj.P.Val &lt; 0.01 &amp; top2$RhesusLiver$adj.P.Val &lt; 0.01) ## 4031                                                                </code></pre>
+<pre><code>##    Mode   FALSE    TRUE    NA&#39;s 
+## logical   12585    4031       0</code></pre>
+<pre class="r"><code>summary(top2$ChimpLung$adj.P.Val &lt; 0.01 &amp; top2$HumanLung$adj.P.Val &lt; 0.01 &amp; top2$RhesusLung$adj.P.Val &lt; 0.01) ## 3468  </code></pre>
+<pre><code>##    Mode   FALSE    TRUE    NA&#39;s 
+## logical   13148    3468       0</code></pre>
+<pre class="r"><code>### Make a Venn Diagram of the results
+Tissues &lt;- c(&quot;Heart&quot;, &quot;Kidney&quot;, &quot;Liver&quot;, &quot;Lung&quot;)
+
+for(i in 1:4){
+  title &lt;- paste(Tissues[i], &quot;specific DE genes&quot;, sep=&quot; &quot;)
+  
+  mylist &lt;- list()
+  mylist[[&quot;Chimpanzee&quot;]] &lt;- row.names(top2[[names(top2)[i]]])[top2[[names(top2)[i]]]$adj.P.Val &lt; 0.01] 
+  mylist[[&quot;Human&quot;]] &lt;-  row.names(top2[[names(top2)[i+4]]])[top2[[names(top2)[i+4]]]$adj.P.Val &lt; 0.01]      
+  mylist[[&quot;Rhesus Macaque&quot;]] &lt;-  row.names(top2[[names(top2)[i+8]]])[top2[[names(top2)[i+8]]]$adj.P.Val &lt; 0.01]       
+
+  venn.diagram(mylist, filename = paste(Tissues[i], &quot;specific DE genes.png&quot;, sep=&quot; &quot;), imagetype = &quot;png&quot;, main=title, cex=1.5 , fill = pal[1:3], lty=1, height=2000, width=2000)
+}
+
+rl &lt;- lapply(list(&quot;Heart specific DE Genes.png&quot;, &quot;Kidney specific DE Genes.png&quot;, &quot;Liver specific DE Genes.png&quot;, &quot;Lung specific DE Genes.png&quot;), png::readPNG)
+gl &lt;- lapply(rl, grid::rasterGrob)
+do.call(gridExtra::grid.arrange, gl)</code></pre>
+<p><img src="Test_DE_genes_files/figure-html/unnamed-chunk-6-1.png" width="672" /></p>
+</div>
+<div id="find-tissue-specific-genes-found-in-each-species-first-and-then-combine-the-results-in-a-venn-diagram-design-matrix-includes-rin-score" class="section level3">
+<h3>Find tissue specific genes found in each species first and then combine the results in a Venn Diagram (design matrix includes RIN score)</h3>
+<p>We saw in the technical factor analysis that the hours post-mortem that the sample was collected was confounded by species. This could affect the quality of RNA. We will use RIN score as a proxy for RNA quality. Let see how adding RIN score into the model (via the design matrix) affects the amount of tissue-specific DE genes.</p>
+<pre class="r"><code># Retrieve RIN score for each sample
+RNA_seq_info &lt;- read.csv(&quot;~/Reg_Evo_Primates/ashlar-trial/data/RNA_seq_info.csv&quot;)
+RIN &lt;- as.data.frame(RNA_seq_info[,22])
+RIN &lt;- RIN[-31,]
+
+# Remake design matrix
+
+condition &lt;- factor(paste(samples$Species,samples$Tissue,sep=&quot;.&quot;))
+condition &lt;- as.data.frame(condition)
+condition &lt;- condition[-31,]
+design &lt;- model.matrix(~ 0 + condition + RIN)
+colnames(design) &lt;- gsub(&quot;condition&quot;, &quot;&quot;, dput(colnames(design)))</code></pre>
+<pre><code>## c(&quot;conditionChimp.heart&quot;, &quot;conditionChimp.kidney&quot;, &quot;conditionChimp.liver&quot;, 
+## &quot;conditionChimp.lung&quot;, &quot;conditionHuman.heart&quot;, &quot;conditionHuman.kidney&quot;, 
+## &quot;conditionHuman.liver&quot;, &quot;conditionHuman.lung&quot;, &quot;conditionRhesus.heart&quot;, 
+## &quot;conditionRhesus.kidney&quot;, &quot;conditionRhesus.liver&quot;, &quot;conditionRhesus.lung&quot;, 
+## &quot;RIN&quot;)</code></pre>
+<pre class="r"><code># Run lmFit and eBayes in limma (we have to take out sample 31 because its RIN score was not recorded)
+samples &lt;- samples[-31,]
+fit.GC.loess.norm &lt;- lmFit(GC.loess.norm.voom[,-31], design, block=samples$Individual, correlation=corfit_consensus)
+fit.GC.loess.norm &lt;- eBayes(fit.GC.loess.norm)
+
+# Make the contrast matrix
+cm2 &lt;- makeContrasts(
+                     ChimpKidneyvsOthers = Chimp.kidney-(Chimp.liver+Chimp.heart+Chimp.lung)/3,
+                     HumanKidneyvsOthers = Human.kidney-(Human.liver+Human.heart+Human.lung)/3,
+                     RhesusKidneyvsOthers = Rhesus.kidney-(Rhesus.liver+Rhesus.heart+Rhesus.lung)/3,
+                     ChimpLivervsOthers = Chimp.liver-(Chimp.kidney+Chimp.heart+Chimp.lung)/3,
+                     HumanLivervsOthers = Human.liver-(Human.kidney+Human.heart+Human.lung)/3,
+                     RhesusLivervsOthers = Rhesus.liver-(Rhesus.kidney+Rhesus.heart+Rhesus.lung)/3,
+                     ChimpHeartvsOthers = Chimp.heart-(Chimp.liver+Chimp.kidney+Chimp.lung)/3,
+                     HumanHeartvsOthers = Human.heart-(Human.liver+Human.kidney+Human.lung)/3,
+                     RhesusHeartvsOthers = Rhesus.heart-(Rhesus.liver+Rhesus.kidney+Rhesus.lung)/3,
+                     ChimpLungvsOthers = Chimp.lung-(Chimp.liver+Chimp.heart+Chimp.kidney)/3,
+                     HumanLungvsOthers = Human.lung-(Human.liver+Human.heart+Human.kidney)/3,
+                     RhesusLungvsOthers = Rhesus.lung-(Rhesus.liver+Rhesus.heart+Rhesus.kidney)/3,
+                     levels=design
+                     )
+fit2 &lt;- contrasts.fit(fit.GC.loess.norm, cm2)
+fit2 &lt;- eBayes(fit2)
+
+# Find the top hits by BH adjusted p-value
+top2 &lt;- list(ChimpKidney=topTable(fit2, coef=1, adjust=&quot;BH&quot;, number=Inf, sort.by=&quot;none&quot;), ChimpLiver=topTable(fit2, coef=4, adjust=&quot;BH&quot;, number=Inf, sort.by=&quot;none&quot;), ChimpHeart=topTable(fit2, coef=7, adjust=&quot;BH&quot;, number=Inf, sort.by=&quot;none&quot;), ChimpLung=topTable(fit2, coef=10, adjust=&quot;BH&quot;, number=Inf, sort.by=&quot;none&quot;), HumanKidney=topTable(fit2, coef=2, adjust=&quot;BH&quot;, number=Inf, sort.by=&quot;none&quot;), HumanLiver=topTable(fit2, coef=5, adjust=&quot;BH&quot;, number=Inf, sort.by=&quot;none&quot;), HumanHeart=topTable(fit2, coef=8, adjust=&quot;BH&quot;, number=Inf, sort.by=&quot;none&quot;), HumanLung=topTable(fit2, coef=11, adjust=&quot;BH&quot;, number=Inf, sort.by=&quot;none&quot;), RhesusKidney=topTable(fit2, coef=3, adjust=&quot;BH&quot;, number=Inf, sort.by=&quot;none&quot;), RhesusLiver=topTable(fit2, coef=6, adjust=&quot;BH&quot;, number=Inf, sort.by=&quot;none&quot;), RhesusHeart=topTable(fit2, coef=9, adjust=&quot;BH&quot;, number=Inf, sort.by=&quot;none&quot;), RhesusLung=topTable(fit2, coef=12, adjust=&quot;BH&quot;, number=Inf, sort.by=&quot;none&quot;))
+
+# Find number of DE genes at FDR cutoff &lt; 1% for each tissue in all 3 species
+
+summary(top2$ChimpKidney$adj.P.Val &lt; 0.01 &amp; top2$HumanKidney$adj.P.Val &lt; 0.01 &amp; top2$RhesusKidney$adj.P.Val &lt; 0.01) ## 2363 (no RIN) v. 2331 (RIN)                                                              </code></pre>
+<pre><code>##    Mode   FALSE    TRUE    NA&#39;s 
+## logical   14285    2331       0</code></pre>
+<pre class="r"><code>summary(top2$ChimpHeart$adj.P.Val &lt; 0.01 &amp; top2$HumanHeart$adj.P.Val &lt; 0.01 &amp; top2$RhesusHeart$adj.P.Val &lt; 0.01) ## 3079 (no RIN) v. 3148 (RIN)                                                                 </code></pre>
+<pre><code>##    Mode   FALSE    TRUE    NA&#39;s 
+## logical   13468    3148       0</code></pre>
+<pre class="r"><code>summary(top2$ChimpLiver$adj.P.Val &lt; 0.01 &amp; top2$HumanLiver$adj.P.Val &lt; 0.01 &amp; top2$RhesusLiver$adj.P.Val &lt; 0.01) ## 4031 (no RIN) v. 4003 (RIN)                                                                </code></pre>
+<pre><code>##    Mode   FALSE    TRUE    NA&#39;s 
+## logical   12613    4003       0</code></pre>
+<pre class="r"><code>summary(top2$ChimpLung$adj.P.Val &lt; 0.01 &amp; top2$HumanLung$adj.P.Val &lt; 0.01 &amp; top2$RhesusLung$adj.P.Val &lt; 0.01) ## 3468 (no RIN) v. 2759 (RIN)</code></pre>
+<pre><code>##    Mode   FALSE    TRUE    NA&#39;s 
+## logical   13857    2759       0</code></pre>
+<pre class="r"><code>### Make a Venn Diagram of the results
+
+Tissues &lt;- c(&quot;Heart&quot;, &quot;Kidney&quot;, &quot;Liver&quot;, &quot;Lung&quot;)
+
+for(i in 1:4){
+  title &lt;- paste(Tissues[i], &quot;specific DE genes&quot;, sep=&quot; &quot;)
+  
+  mylist &lt;- list()
+  mylist[[&quot;Chimpanzee&quot;]] &lt;- row.names(top2[[names(top2)[i]]])[top2[[names(top2)[i]]]$adj.P.Val &lt; 0.01] 
+  mylist[[&quot;Human&quot;]] &lt;-  row.names(top2[[names(top2)[i+4]]])[top2[[names(top2)[i+4]]]$adj.P.Val &lt; 0.01]      
+  mylist[[&quot;Rhesus Macaque&quot;]] &lt;-  row.names(top2[[names(top2)[i+8]]])[top2[[names(top2)[i+8]]]$adj.P.Val &lt; 0.01]       
+
+  venn.diagram(mylist, filename = paste(Tissues[i], &quot;specific DE genes (with RIN).png&quot;, sep=&quot; &quot;), imagetype = &quot;png&quot;, main=title, cex=1.5 , fill = pal[1:3], lty=1, height=2000, width=2000)
+}
+
+# View the Venn Diagram
+
+rl &lt;- lapply(list(&quot;Heart specific DE Genes (with RIN).png&quot;, &quot;Kidney specific DE Genes (with RIN).png&quot;, &quot;Liver specific DE Genes (with RIN).png&quot;, &quot;Lung specific DE Genes (with RIN).png&quot;), png::readPNG)
+gl &lt;- lapply(rl, grid::rasterGrob)
+do.call(gridExtra::grid.arrange, gl)</code></pre>
+<p><img src="Test_DE_genes_files/figure-html/unnamed-chunk-7-1.png" width="672" /></p>
+</div>
+<div id="pairwise-comparisons-for-each-species-with-rin" class="section level3">
+<h3>Pairwise comparisons for each species (with RIN)</h3>
+<pre class="r"><code># Make new contrast matrix
+
+cm4 &lt;- makeContrasts(
+                     ChimpKidneyvsLiver = Chimp.kidney-Chimp.liver,
+                     HumanKidneyvsLiver = Human.kidney-Human.liver,
+                     RhesusKidneyvsLiver = Rhesus.kidney-Rhesus.liver,
+                     ChimpKidneyvsLung = Chimp.kidney-Chimp.lung,
+                     HumanKidneyvsLung = Human.kidney-Human.lung,
+                     RhesusKidneyvsLung = Rhesus.kidney-Rhesus.lung,
+                     ChimpKidneyvsHeart = Chimp.kidney-Chimp.heart,
+                     HumanKidneyvsHeart = Human.kidney-Human.heart,
+                     RhesusKidneyvsHeart = Rhesus.kidney-Rhesus.heart,
+                     ChimpHeartvsLiver = Chimp.heart-Chimp.liver,
+                     HumanHeartvsLiver = Human.heart-Human.liver,
+                     RhesusHeartvsLiver = Rhesus.heart-Rhesus.liver,
+                     ChimpHeartvsLung = Chimp.heart-Chimp.lung,
+                     HumanHeartvsLung = Human.heart-Human.lung,
+                     RhesusHeartvsLung = Rhesus.heart-Rhesus.lung,
+                     ChimpLungvsLiver = Chimp.lung-Chimp.liver,
+                     HumanLungvsLiver = Human.lung-Human.liver,
+                     RhesusLungvsLiver = Rhesus.lung-Rhesus.liver,
+                     levels=design
+                     )
+fit4 &lt;- contrasts.fit(fit.GC.loess.norm[-31,], cm4)
+fit4 &lt;- eBayes(fit4)
+
+top4 &lt;- list(ChimpKidneyvsLiver=topTable(fit4, coef=1, adjust=&quot;BH&quot;, number=Inf, sort.by=&quot;none&quot;), ChimpKidneyvsLung=topTable(fit4, coef=4, adjust=&quot;BH&quot;, number=Inf, sort.by=&quot;none&quot;), ChimpKidneyvsHeart=topTable(fit4, coef=7, adjust=&quot;BH&quot;, number=Inf, sort.by=&quot;none&quot;), ChimpHeartvsLiver=topTable(fit4, coef=10, adjust=&quot;BH&quot;, number=Inf, sort.by=&quot;none&quot;), ChimpHeartvsLung=topTable(fit4, coef=13, adjust=&quot;BH&quot;, number=Inf, sort.by=&quot;none&quot;), ChimpLungvsLiver=topTable(fit4, coef=16, adjust=&quot;BH&quot;, number=Inf, sort.by=&quot;none&quot;), HumanKidneyvsLiver=topTable(fit4, coef=2, adjust=&quot;BH&quot;, number=Inf, sort.by=&quot;none&quot;), HumanKidneyvsLung=topTable(fit4, coef=5, adjust=&quot;BH&quot;, number=Inf, sort.by=&quot;none&quot;), HumanKidneyvsHeart=topTable(fit4, coef=8, adjust=&quot;BH&quot;, number=Inf, sort.by=&quot;none&quot;), HumanHeartvsLiver=topTable(fit4, coef=11, adjust=&quot;BH&quot;, number=Inf, sort.by=&quot;none&quot;), HumanHeartvsLung=topTable(fit4, coef=14, adjust=&quot;BH&quot;, number=Inf, sort.by=&quot;none&quot;), HumanLungvsLiver=topTable(fit4, coef=17, adjust=&quot;BH&quot;, number=Inf, sort.by=&quot;none&quot;), RhesusKidneyvsLiver=topTable(fit4, coef=3, adjust=&quot;BH&quot;, number=Inf, sort.by=&quot;none&quot;), RhesusKidneyvsLung=topTable(fit4, coef=6, adjust=&quot;BH&quot;, number=Inf, sort.by=&quot;none&quot;), RhesusKidneyvsHeart=topTable(fit4, coef=9, adjust=&quot;BH&quot;, number=Inf, sort.by=&quot;none&quot;), RhesusHeartvsLiver=topTable(fit4, coef=12, adjust=&quot;BH&quot;, number=Inf, sort.by=&quot;none&quot;), RhesusHeartvsLung=topTable(fit4, coef=15, adjust=&quot;BH&quot;, number=Inf, sort.by=&quot;none&quot;), RhesusLungvsLiver=topTable(fit4, coef=18, adjust=&quot;BH&quot;, number=Inf, sort.by=&quot;none&quot;))</code></pre>
+</div>
+<div id="test-for-genes-that-have-a-species-specific-and-tissue-specific-component-significant-interaction-term" class="section level3">
+<h3>Test for genes that have a species-specific and tissue-specific component (significant interaction term)</h3>
+<pre class="r"><code># Remake design matrix
+
+samples_no_NA &lt;- samples
+
+design &lt;- model.matrix(~ 0 + factor(samples_no_NA$Species) + factor(samples_no_NA$Tissue) + factor(samples_no_NA$Species):factor(samples_no_NA$Tissue) + RIN)
+colnames(design) &lt;- gsub(&quot;condition&quot;, &quot;&quot;, dput(colnames(design)))</code></pre>
+<pre><code>## c(&quot;factor(samples_no_NA$Species)Chimp&quot;, &quot;factor(samples_no_NA$Species)Human&quot;, 
+## &quot;factor(samples_no_NA$Species)Rhesus&quot;, &quot;factor(samples_no_NA$Tissue)kidney&quot;, 
+## &quot;factor(samples_no_NA$Tissue)liver&quot;, &quot;factor(samples_no_NA$Tissue)lung&quot;, 
+## &quot;RIN&quot;, &quot;factor(samples_no_NA$Species)Human:factor(samples_no_NA$Tissue)kidney&quot;, 
+## &quot;factor(samples_no_NA$Species)Rhesus:factor(samples_no_NA$Tissue)kidney&quot;, 
+## &quot;factor(samples_no_NA$Species)Human:factor(samples_no_NA$Tissue)liver&quot;, 
+## &quot;factor(samples_no_NA$Species)Rhesus:factor(samples_no_NA$Tissue)liver&quot;, 
+## &quot;factor(samples_no_NA$Species)Human:factor(samples_no_NA$Tissue)lung&quot;, 
+## &quot;factor(samples_no_NA$Species)Rhesus:factor(samples_no_NA$Tissue)lung&quot;
+## )</code></pre>
+<pre class="r"><code># Run lmFit and eBayes in limma (we have to take out sample 31 because its RIN score was not recorded)
+
+fit.GC.loess.norm &lt;- lmFit(GC.loess.norm.voom[,-31], design, block=samples_no_NA$Individual, correlation=corfit_consensus)
+fit.GC.loess.norm &lt;- eBayes(fit.GC.loess.norm)
+
+# p_value_interaction &lt;- fit.GC.loess.norm$p.value
+# p_value_interaction &lt;- p.adjust(p_value_interaction , method = &quot;fdr&quot;)
+# p_value_interaction_count &lt;- p_value_interaction[ p_value_interaction[,1] &lt;= abs(0.1), ] </code></pre>
+</div>
+
+
+<!-- some extra javascript for older browsers -->
+<script type="text/javascript" src="libs/polyfill.js"></script>
+
+<script>
+
+// manage active state of menu based on current page
+$(document).ready(function () {
+
+    // active menu
+    href = window.location.pathname
+    href = href.substr(href.lastIndexOf('/') + 1)
+    $('a[href="' + href + '"]').parent().addClass('active');
+
+    // manage active menu header
+    if (href.startsWith('authoring_'))
+      $('a[href="' + 'authoring' + '"]').parent().addClass('active');
+    else if (href.endsWith('_format.html'))
+      $('a[href="' + 'formats' + '"]').parent().addClass('active');
+    else if (href.startsWith('developer_'))
+      $('a[href="' + 'developer' + '"]').parent().addClass('active');
+
+});
+
+</script>
+
+
+
+</div>
+
+<script>
+
+// add bootstrap table styles to pandoc tables
+$(document).ready(function () {
+  $('tr.header').parent('thead').parent('table').addClass('table table-condensed');
+});
+
+</script>
+
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src  = "https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML";
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
+
+</body>
+</html>

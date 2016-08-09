@@ -644,6 +644,10 @@ counts_genes_gc <- cbind(gc_counts_chimps[, chimps], gc_counts_humans[ ,humans],
 
 # write.table(counts_genes_gc,file="/Users/LEB/Reg_Evo_Primates/ashlar-trial/data/gene_counts_with_gc_correction.txt",sep="\t", col.names = T, row.names = T)
 
+plot(counts_genes_gc[,1], dge_original$counts[,1])
+cor(counts_genes_gc[,1], dge_original$counts[,1])
+abline(a = 0, b = 1, col = "red", lwd = 3)
+
 ```
 
 **To do: Show that orthologous gene length (and exon length) is the same/similar across the different species and therefore we did not correct for it in the analysis. **
