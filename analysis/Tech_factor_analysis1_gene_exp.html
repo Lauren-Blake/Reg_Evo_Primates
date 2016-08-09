@@ -1,0 +1,1221 @@
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+<head>
+
+<meta charset="utf-8">
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<meta name="generator" content="pandoc" />
+
+
+<meta name="author" content="Lauren Blake" />
+
+<meta name="date" content="2016-07-20" />
+
+<title>Analysis_of_potential_confounders_gene_expression</title>
+
+<script src="libs/jquery-1.11.3/jquery.min.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link href="libs/bootstrap-3.3.5/css/united.min.css" rel="stylesheet" />
+<script src="libs/bootstrap-3.3.5/js/bootstrap.min.js"></script>
+<script src="libs/bootstrap-3.3.5/shim/html5shiv.min.js"></script>
+<script src="libs/bootstrap-3.3.5/shim/respond.min.js"></script>
+
+<style type="text/css">
+
+/* padding for bootstrap navbar */
+body {
+  padding-top: 50px;
+  padding-bottom: 40px;
+}
+
+
+/* offset scroll position for anchor links (for fixed navbar)  */
+.section h2 {
+  padding-top: 55px;
+  margin-top: -55px;
+}
+.section h3 {
+  padding-top: 55px;
+  margin-top: -55px;
+}
+
+
+
+/* don't use link color in navbar */
+.dropdown-menu>li>a {
+  color: black;
+}
+
+/* some padding for disqus */
+#disqus_thread {
+  margin-top: 45px;
+}
+
+</style>
+
+<link rel="stylesheet" href="libs/font-awesome-4.1.0/css/font-awesome.min.css"/>
+
+<style type="text/css">code{white-space: pre;}</style>
+<link rel="stylesheet"
+      href="libs/highlight/textmate.css"
+      type="text/css" />
+<script src="libs/highlight/highlight.js"></script>
+<style type="text/css">
+  pre:not([class]) {
+    background-color: white;
+  }
+</style>
+<script type="text/javascript">
+if (window.hljs && document.readyState && document.readyState === "complete") {
+   window.setTimeout(function() {
+      hljs.initHighlighting();
+   }, 0);
+}
+</script>
+
+
+
+<style type="text/css">
+h1 {
+  font-size: 34px;
+}
+h1.title {
+  font-size: 38px;
+}
+h2 {
+  font-size: 30px;
+}
+h3 {
+  font-size: 24px;
+}
+h4 {
+  font-size: 18px;
+}
+h5 {
+  font-size: 16px;
+}
+h6 {
+  font-size: 12px;
+}
+.table th:not([align]) {
+  text-align: left;
+}
+</style>
+
+
+</head>
+
+<body>
+
+<style type = "text/css">
+.main-container {
+  max-width: 940px;
+  margin-left: auto;
+  margin-right: auto;
+}
+code {
+  color: inherit;
+  background-color: rgba(0, 0, 0, 0.04);
+}
+img {
+  max-width:100%;
+  height: auto;
+}
+.tabbed-pane {
+  padding-top: 12px;
+}
+button.code-folding-btn:focus {
+  outline: none;
+}
+</style>
+
+
+<div class="container-fluid main-container">
+
+<!-- tabsets -->
+<script src="libs/navigation-1.1/tabsets.js"></script>
+<script>
+$(document).ready(function () {
+  window.buildTabsets("TOC");
+});
+</script>
+
+<!-- code folding -->
+
+
+
+
+
+
+<div class="navbar navbar-default navbar-fixed-top" role="navigation">
+  <div class="container">
+    <div class="navbar-header">
+      <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar">
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+      </button>
+      <a class="navbar-brand" href="index.html">RegulatoryEvolutionInPrimates</a>
+    </div>
+    <div id="navbar" class="navbar-collapse collapse">
+      <ul class="nav navbar-nav">
+        <li><a href="index.html">Home</a></li>
+        <li><a href="about.html">About</a></li>
+        <li><a href="license.html">License</a></li>
+        <li><a href="https://github.com/Lauren-Blake/Reg_Evo_Primates">GitHub</a></li>
+    </div><!--/.nav-collapse -->
+  </div><!--/.container -->
+</div><!--/.navbar -->
+
+<div class="fluid-row" id="header">
+
+
+
+<h1 class="title toc-ignore">Analysis_of_potential_confounders_gene_expression</h1>
+<h4 class="author"><em>Lauren Blake</em></h4>
+<h4 class="date"><em>July 20, 2016</em></h4>
+
+</div>
+
+<div id="TOC">
+<ul>
+<li><a href="#part-one-see-if-any-of-the-variables-for-rna-seq-correlate-with-the-expression-pcs-for-genes">PART ONE: See if any of the variables for RNA-Seq correlate with the expression PCs for genes</a></li>
+<li><a href="#for-the-variables-that-correlate-see-if-these-segregate-with-either-species-or-tissue">For the variable(s) that correlate, see if these segregate with either species or tissue</a></li>
+<li><a href="#part-3-which-variables-to-put-in-the-model">Part 3: Which variables to put in the model?</a></li>
+</ul>
+</div>
+
+<div id="part-one-see-if-any-of-the-variables-for-rna-seq-correlate-with-the-expression-pcs-for-genes" class="section level3">
+<h3>PART ONE: See if any of the variables for RNA-Seq correlate with the expression PCs for genes</h3>
+<div id="load-libraries-and-data" class="section level4">
+<h4>Load libraries and data</h4>
+<pre class="r"><code># Load libraries
+
+# install.packages(&quot;polycor&quot;)
+library(&quot;polycor&quot;)</code></pre>
+<pre><code>## Loading required package: mvtnorm</code></pre>
+<pre><code>## Loading required package: sfsmisc</code></pre>
+<pre class="r"><code># Load PCs from data that is GC content normalized, cyclic loess normalized with voom and a random variable for individual
+
+gene_pcs &lt;- read.delim(&quot;~/Reg_Evo_Primates/ashlar-trial/data/PC_gc_cyclic_loess_random_var_gene_exp&quot;)
+
+# Load list of technical factors
+RNA_seq_info &lt;- read.csv(&quot;~/Reg_Evo_Primates/ashlar-trial/data/RNA_seq_info.csv&quot;)
+RNA_seq_info &lt;- as.data.frame(RNA_seq_info)
+
+dim(RNA_seq_info)</code></pre>
+<pre><code>## [1] 47 24</code></pre>
+<pre class="r"><code>#Create plots for each of the possible confounders versus PCs 1-5
+
+pdf(&#39;~/Reg_Evo_Primates/ashlar-trial/data/VarVsGenePCs.pdf&#39;)
+
+for (i in 3:length(RNA_seq_info)) { 
+  par(mfrow=c(1,5))
+  plot(RNA_seq_info[,i], gene_pcs[,1],  ylab = &quot;PC1&quot;, xlab = &quot; &quot;)
+  plot(RNA_seq_info[,i], gene_pcs[,2],  ylab = &quot;PC2&quot;, xlab = &quot; &quot;)
+  plot(RNA_seq_info[,i], gene_pcs[,3],  ylab = &quot;PC3&quot;, xlab = &quot; &quot;)
+  plot(RNA_seq_info[,i], gene_pcs[,4],  ylab = &quot;PC4&quot;, xlab = &quot; &quot;)
+  plot(RNA_seq_info[,i], gene_pcs[,5],  ylab = &quot;PC5&quot;, xlab = &quot; &quot;)
+  title(xlab = substitute(paste(k), list(k=colnames(RNA_seq_info)[i])), outer = TRUE, line = -2)
+  mtext(substitute(paste(&#39;PCs vs. &#39;, k), list(k=colnames(RNA_seq_info)[i])), side = 3, line = -2, outer = TRUE)
+  
+}
+dev.off()</code></pre>
+<pre><code>## quartz_off_screen 
+##                 2</code></pre>
+</div>
+<div id="testing-association-between-a-particular-variable-and-pcs-with-a-linear-model" class="section level4">
+<h4>Testing association between a particular variable and PCs with a linear model</h4>
+<pre class="r"><code>#Make an empty matrix to put all of the data in
+
+pvaluesandr2 = matrix(data = NA, nrow = 5, ncol = 22*2, dimnames = list(c(&quot;PC1&quot;, &quot;PC2&quot;, &quot;PC3&quot;, &quot;PC4&quot;, &quot;PC5&quot;), c(&quot;Species&quot;, &quot;Species R^2&quot;, &quot;Tissue&quot;, &quot;Tissue R^2&quot;, &quot;Individual&quot;, &quot;Ind. R^2&quot;, &quot;RNA extraction date&quot;, &quot;Extract. date R^2&quot;, &quot;Multiplexing index sequence&quot;, &quot;Multi. index R^2&quot;, &quot;Multiplexing mix codes&quot;, &quot;Multi. mix R^2&quot;, &quot;Sequencing location: at UCGF&quot;, &quot;Location R^2&quot;, &quot;Total number of reads sequenced&quot;, &quot;Read Seq R^2&quot;, &quot;Percentage of bps trimmed (adapters)&quot;, &quot;Trimmed R^2&quot;, &quot;Number of reads shorter than 20bp removed&quot;, &quot;Removed R^2&quot;, &quot;Maximum read length after trimming&quot;, &quot;Max. length R^2&quot;, &quot;Total number of reads processed in tophat&quot;, &quot;Reads processed R^2&quot;, &quot;Total number of mapped reads&quot;, &quot;Mapped reads R^2&quot;, &quot;Percentage of mapped reads overlapping a junction&quot;, &quot;Perc. junction R^2&quot;, &quot;Number of junctions&quot;, &quot;Num. junctions R^2&quot;, &quot;Number of reads mapped on orthologous exons&quot;, &quot;OrthoExons R^2&quot;, &quot;Number of orthologous exons with at least 1 mapped read&quot;, &quot;Ortho exons read R^2&quot;, &quot;Number of orthologous genes with at least 1 mapped read&quot;, &quot;Ortho genes read R^2&quot;, &quot;RNA concentration (ng/uL)&quot;, &quot;RNA conc. R^2&quot;, &quot;RIN score&quot;, &quot;RIN R^2&quot;, &quot;Library concentration (ng/uL)&quot;, &quot;Lib. conc. R^2&quot;, &quot;Library fragments size (bp)&quot;, &quot;Lib. frag. R^2&quot;)))
+
+#Check lm to see how well the variables containing ordinal data are correlated with a PC
+
+#For PCs 1-5
+j=1
+for (i in 3:9){
+  for (j in 1:5){
+  
+  checkPC1 &lt;- lm(gene_pcs[,j] ~ as.factor(RNA_seq_info[,i]))
+
+#Get the summary statistics from it
+  summary(checkPC1)
+
+#Get the p-value of the F-statistic
+  summary(checkPC1)$fstatistic
+
+  fstat &lt;- as.data.frame(summary(checkPC1)$fstatistic)
+  p_fstat &lt;- 1-pf(fstat[1,], fstat[2,], fstat[3,])
+  
+#Fraction of the variance explained by the model
+  r2_value &lt;- summary(checkPC1)$r.squared
+
+#Put the summary statistics into the matrix w
+
+  pvaluesandr2[j, (2*i-5)] &lt;- p_fstat
+  pvaluesandr2[j, (2*i-4)] &lt;- r2_value
+  
+  }
+}
+
+#Check lm to see how well the variables containing numerical data are correlated with a PC
+
+j=1
+for (j in 1:5){
+  
+  for (i in 10:24){
+      
+  checkPC &lt;- lm(gene_pcs[,j] ~ RNA_seq_info[,i])
+      
+  #Get the summary statistics from it
+  summary(checkPC)
+  
+  #Get the p-value of the F-statistic
+  summary(checkPC)$fstatistic
+  
+  fstat &lt;- as.data.frame(summary(checkPC)$fstatistic)
+  p_fstat &lt;- 1-pf(fstat[1,], fstat[2,], fstat[3,])
+  
+  #Fraction of the variance explained by the model
+  r2_value &lt;- summary(checkPC)$r.squared
+  
+  #Put the summary statistics into the matrix a
+  
+  pvaluesandr2[j, 2*i-5] &lt;- p_fstat
+  pvaluesandr2[j, 2*i-4] &lt;- r2_value
+  
+  i = i+1
+  }
+  j=j+1
+}</code></pre>
+</div>
+<div id="test-for-potential-violations-of-the-assumptions-of-the-linear-model" class="section level4">
+<h4>Test for potential violations of the assumptions of the linear model</h4>
+<pre class="r"><code>#Plot the residuals to look for violations of the assumptions of lm
+
+pdf(&#39;~/Reg_Evo_Primates/ashlar-trial/data/Residuals_vs_var_GenePCs.pdf&#39;)
+
+i = 3
+  for (i in 3:9){
+    par(mfrow=c(1,5))
+   
+    checkPC1 &lt;- lm(gene_pcs[,1] ~ as.factor(RNA_seq_info[,i]))
+    plot(RNA_seq_info[,i], resid(checkPC1), ylab = &quot;Residuals (lm with PC1)&quot;, xlab = &quot; &quot;)
+
+    checkPC2 &lt;- lm(gene_pcs[,2] ~ as.factor(RNA_seq_info[,i]))
+    plot(RNA_seq_info[,i], resid(checkPC2),  ylab = &quot;Residuals (lm with PC2)&quot;, xlab = &quot; &quot;)
+    
+    checkPC3 &lt;- lm(gene_pcs[,3] ~ as.factor(RNA_seq_info[,i]))
+    plot(RNA_seq_info[,i], resid(checkPC3),  ylab = &quot;Residuals (lm with PC3)&quot;, xlab = &quot; &quot;)
+    
+    checkPC4 &lt;- lm(gene_pcs[,4] ~ as.factor(RNA_seq_info[,i]))
+    plot(RNA_seq_info[,i], resid(checkPC4),  ylab = &quot;Residuals (lm with PC4)&quot;, xlab = &quot; &quot;)
+    
+    checkPC5 &lt;- lm(gene_pcs[,5] ~ as.factor(RNA_seq_info[,i]))
+    plot(RNA_seq_info[,i], resid(checkPC5),  ylab = &quot;Residuals (lm with PC5)&quot;, xlab = &quot; &quot;)
+    
+    title(xlab = substitute(paste(k), list(k=colnames(RNA_seq_info)[i])), outer = TRUE, line = -2)
+    mtext(substitute(paste(&#39;Residuals vs. &#39;, k), list(k=colnames(RNA_seq_info)[i])), side = 3, line = -2, outer = TRUE)
+    
+  }
+
+#Need to divide this up because #22 has an NA in it 
+i = 10
+  for (i in 10:21){
+    
+    par(mfrow=c(1,5))
+    
+    checkPC1 &lt;- lm(gene_pcs[,1] ~ RNA_seq_info[,i])
+    plot(RNA_seq_info[,i], resid(checkPC1), ylab = &quot;Residuals (lm with PC1)&quot;, xlab = &quot; &quot;)
+    
+    checkPC2 &lt;- lm(gene_pcs[,2] ~ RNA_seq_info[,i])
+    plot(RNA_seq_info[,i], resid(checkPC2), ylab = &quot;Residuals (lm with PC2)&quot;, xlab = &quot; &quot;)
+    
+    checkPC3 &lt;- lm(gene_pcs[,3] ~ RNA_seq_info[,i])
+    plot(RNA_seq_info[,i], resid(checkPC3), ylab = &quot;Residuals (lm with PC3)&quot;, xlab = &quot; &quot;)
+    
+    checkPC4 &lt;- lm(gene_pcs[,4] ~ RNA_seq_info[,i])
+    plot(RNA_seq_info[,i], resid(checkPC4), ylab = &quot;Residuals (lm with PC4)&quot;, xlab = &quot; &quot;)
+    
+    checkPC5 &lt;- lm(gene_pcs[,5] ~ RNA_seq_info[,i])
+    plot(RNA_seq_info[,i], resid(checkPC5), ylab = &quot;Residuals (lm with PC5)&quot;, xlab = &quot; &quot;)
+    
+    title(xlab = substitute(paste(k), list(k=colnames(RNA_seq_info)[i])), outer = TRUE, line = -2)
+    mtext(substitute(paste(&#39;Residuals vs. &#39;, k), list(k=colnames(RNA_seq_info)[i])), side = 3, line = -2, outer = TRUE)
+    
+  }
+
+#Skip #22 because there is an NA in it
+
+for (i in 23:24){
+  
+  par(mfrow=c(1,5))
+  
+  checkPC1 &lt;- lm(gene_pcs[,1] ~ RNA_seq_info[,i])
+  plot(RNA_seq_info[,i], resid(checkPC1), ylab = &quot;Residuals (lm with PC1)&quot;, xlab = &quot; &quot;)
+  
+  checkPC2 &lt;- lm(gene_pcs[,2] ~ RNA_seq_info[,i])
+  plot(RNA_seq_info[,i], resid(checkPC2), ylab = &quot;Residuals (lm with PC2)&quot;, xlab = &quot; &quot;)
+  
+  checkPC3 &lt;- lm(gene_pcs[,3] ~ RNA_seq_info[,i])
+  plot(RNA_seq_info[,i], resid(checkPC3), ylab = &quot;Residuals (lm with PC3)&quot;, xlab = &quot; &quot;)
+  
+  checkPC4 &lt;- lm(gene_pcs[,4] ~ RNA_seq_info[,i])
+  plot(RNA_seq_info[,i], resid(checkPC4), ylab = &quot;Residuals (lm with PC4)&quot;, xlab = &quot; &quot;)
+  
+  checkPC5 &lt;- lm(gene_pcs[,5] ~ RNA_seq_info[,i])
+  plot(RNA_seq_info[,i], resid(checkPC5), ylab = &quot;Residuals (lm with PC5)&quot;, xlab = &quot; &quot;)
+  
+  title(xlab = substitute(paste(k), list(k=colnames(RNA_seq_info)[i])), outer = TRUE, line = -2)
+  mtext(substitute(paste(&#39;Residuals vs. &#39;, k), list(k=colnames(RNA_seq_info)[i])), side = 3, line = -2, outer = TRUE)
+  
+}</code></pre>
+</div>
+<div id="look-at-significant-p-values" class="section level4">
+<h4>Look at significant p-values</h4>
+<pre class="r"><code>#Get rid of the R^2 values
+all_col &lt;- 1:ncol(pvaluesandr2)
+matrix_pval &lt;- pvaluesandr2[ , all_col%%2==1 ]
+
+#Find which variables/PC combinations are p-value &lt; 0.05
+TorF_matrix &lt;- matrix_pval &lt;=0.05
+sum(matrix_pval &lt;= 0.05/(22*5))</code></pre>
+<pre><code>## [1] 19</code></pre>
+<pre class="r"><code>#Find which variables/PC combinations are p-value &lt; 0.05 not including species or tissue (because those explain PC1 and PC2)
+matrix_pval_no_tissue_or_species = matrix_pval[ , 3:22]
+matrix_pval_no_tissue_or_species</code></pre>
+<pre><code>##       Individual RNA extraction date Multiplexing index sequence
+## PC1 9.995143e-01        9.080624e-01                3.705491e-11
+## PC2 9.169444e-01        2.443136e-01                2.863392e-07
+## PC3 6.886806e-01        5.380571e-02                3.439622e-05
+## PC4 1.102361e-05        1.008114e-09                5.779758e-01
+## PC5 0.000000e+00        0.000000e+00                9.832665e-01
+##     Multiplexing mix codes Sequencing location: at UCGF
+## PC1           7.662215e-01                   0.47865851
+## PC2           1.965309e-01                   0.68935337
+## PC3           6.885192e-02                   0.93901522
+## PC4           1.360086e-08                   0.68692737
+## PC5           4.816803e-01                   0.09555312
+##     Total number of reads sequenced Percentage of bps trimmed (adapters)
+## PC1                       0.7248014                           0.95823474
+## PC2                       0.7152095                           0.13305496
+## PC3                       0.2908622                           0.07425053
+## PC4                       0.6564225                           0.69867632
+## PC5                       0.8008447                           0.01128957
+##     Number of reads shorter than 20bp removed
+## PC1                                0.88445586
+## PC2                                0.11131226
+## PC3                                0.06514819
+## PC4                                0.79610213
+## PC5                                0.01321071
+##     Maximum read length after trimming
+## PC1                         0.32008649
+## PC2                         0.70890709
+## PC3                         0.68789575
+## PC4                         0.93381075
+## PC5                         0.07432856
+##     Total number of reads processed in tophat Total number of mapped reads
+## PC1                                 0.7279256                   0.64067396
+## PC2                                 0.6366416                   0.23381645
+## PC3                                 0.3430403                   0.05837219
+## PC4                                 0.6396700                   0.26868315
+## PC5                                 0.6787779                   0.95958890
+##     Percentage of mapped reads overlapping a junction Number of junctions
+## PC1                                      3.573316e-06        7.897616e-02
+## PC2                                      1.630549e-01        3.211518e-06
+## PC3                                      2.625377e-01        5.543759e-01
+## PC4                                      1.102365e-01        9.237611e-01
+## PC5                                      9.338024e-01        9.728078e-03
+##     Number of reads mapped on orthologous exons
+## PC1                                  0.05953162
+## PC2                                  0.61825924
+## PC3                                  0.12866441
+## PC4                                  0.01008539
+## PC5                                  0.12395614
+##     Number of orthologous exons with at least 1 mapped read
+## PC1                                            4.517512e-02
+## PC2                                            6.541166e-07
+## PC3                                            4.697025e-01
+## PC4                                            1.805820e-01
+## PC5                                            9.997916e-02
+##     Number of orthologous genes with at least 1 mapped read
+## PC1                                            9.416858e-02
+## PC2                                            9.390121e-08
+## PC3                                            8.749402e-01
+## PC4                                            6.102992e-01
+## PC5                                            6.162435e-03
+##     RNA concentration (ng/uL)    RIN score Library concentration (ng/uL)
+## PC1              2.075889e-03 9.122921e-01                    0.30629532
+## PC2              7.537919e-01 7.270702e-02                    0.01890537
+## PC3              5.953632e-01 1.215042e-01                    0.17703327
+## PC4              7.796480e-02 5.555222e-08                    0.69445846
+## PC5              8.591165e-05 3.090886e-01                    0.00759249
+##     Library fragments size (bp)
+## PC1                0.4237811576
+## PC2                0.0665103911
+## PC3                0.9951442423
+## PC4                0.2158549378
+## PC5                0.0007938873</code></pre>
+<pre class="r"><code>sum(matrix_pval_no_tissue_or_species &lt;= 0.05/(20*5))</code></pre>
+<pre><code>## [1] 14</code></pre>
+<pre class="r"><code>#Distribution of p-values adjusted by FDR not including species or tissue
+
+fdr_val = p.adjust(matrix_pval_no_tissue_or_species, method = &quot;fdr&quot;, n = length(matrix_pval_no_tissue_or_species))
+fdr_val_order = fdr_val[order(fdr_val)]
+hist(fdr_val_order, ylab = &quot;BH-adjusted p-values&quot;, main = &quot;Distribution of Benjamini and Hochberg adjusted p-values&quot;, breaks = 10)</code></pre>
+<p><img src="Tech_factor_analysis1_gene_exp_files/figure-html/unnamed-chunk-4-1.png" width="672" /></p>
+<pre class="r"><code>matrix_fdr_val = matrix(data = fdr_val, nrow = 5, ncol = 20, dimnames = list(c(&quot;PC1&quot;, &quot;PC2&quot;, &quot;PC3&quot;, &quot;PC4&quot;, &quot;PC5&quot;), c(&quot;Individual&quot;, &quot;RNA extraction date&quot;, &quot;Multiplexing index sequence&quot;, &quot;Multiplexing mix codes&quot;, &quot;Sequencing location: at UCGF&quot;, &quot;Total number of reads sequenced&quot;, &quot;Percentage of bps trimmed (adapters)&quot;, &quot;Number of reads shorter than 20bp removed&quot;, &quot;Maximum read length after trimming&quot;, &quot;Total number of reads processed in tophat&quot;, &quot;Total number of mapped reads&quot;, &quot;Percentage of mapped reads overlapping a junction&quot;, &quot;Number of junctions&quot;, &quot;Number of reads mapped on orthologous exons&quot;, &quot;Number of orthologous exons with at least 1 mapped read&quot;, &quot;Number of orthologous genes with at least 1 mapped read&quot;, &quot;RNA concentration (ng/uL)&quot;, &quot;RIN score&quot;, &quot;Library concentration (ng/uL)&quot;,  &quot;Library fragments size (bp)&quot;))) 
+
+matrix_fdr_val</code></pre>
+<pre><code>##       Individual RNA extraction date Multiplexing index sequence
+## PC1 9.995143e-01        9.884371e-01                1.235164e-09
+## PC2 9.884371e-01        4.790463e-01                3.579240e-06
+## PC3 8.877142e-01        2.152228e-01                2.645863e-04
+## PC4 9.186344e-05        2.520284e-08                8.877142e-01
+## PC5 0.000000e+00        0.000000e+00                9.995143e-01
+##     Multiplexing mix codes Sequencing location: at UCGF
+## PC1           9.121685e-01                    0.7769037
+## PC2           4.094393e-01                    0.8877142
+## PC3           2.252381e-01                    0.9884371
+## PC4           2.720173e-07                    0.8877142
+## PC5           7.769037e-01                    0.2582517
+##     Total number of reads sequenced Percentage of bps trimmed (adapters)
+## PC1                       0.8877142                           0.98926691
+## PC2                       0.8877142                           0.30239764
+## PC3                       0.5386336                           0.22523806
+## PC4                       0.8877142                           0.88771419
+## PC5                       0.9312148                           0.05375987
+##     Number of reads shorter than 20bp removed
+## PC1                                0.98843708
+## PC2                                0.27828065
+## PC3                                0.22523806
+## PC4                                0.93121477
+## PC5                                0.06004867
+##     Maximum read length after trimming
+## PC1                          0.5615553
+## PC2                          0.8877142
+## PC3                          0.8877142
+## PC4                          0.9884371
+## PC5                          0.2252381
+##     Total number of reads processed in tophat Total number of mapped reads
+## PC1                                 0.8877142                    0.8877142
+## PC2                                 0.8877142                    0.4676329
+## PC3                                 0.5914489                    0.2204875
+## PC4                                 0.8877142                    0.5069493
+## PC5                                 0.8877142                    0.9892669
+##     Percentage of mapped reads overlapping a junction Number of junctions
+## PC1                                      0.0000324847        2.256462e-01
+## PC2                                      0.3623443254        3.211518e-05
+## PC3                                      0.5048802035        8.799618e-01
+## PC4                                      0.2782806534        9.884371e-01
+## PC5                                      0.9884370788        5.042694e-02
+##     Number of reads mapped on orthologous exons
+## PC1                                  0.22048749
+## PC2                                  0.88771419
+## PC3                                  0.29921956
+## PC4                                  0.05042694
+## PC5                                  0.29513367
+##     Number of orthologous exons with at least 1 mapped read
+## PC1                                            1.882296e-01
+## PC2                                            7.267962e-06
+## PC3                                            7.769037e-01
+## PC4                                            3.842170e-01
+## PC5                                            2.631031e-01
+##     Number of orthologous genes with at least 1 mapped read
+## PC1                                            2.582517e-01
+## PC2                                            1.341446e-06
+## PC3                                            9.884371e-01
+## PC4                                            8.877142e-01
+## PC5                                            3.624962e-02
+##     RNA concentration (ng/uL)    RIN score Library concentration (ng/uL)
+## PC1              0.0129743086 9.884371e-01                    0.55194388
+## PC2              0.9081830551 2.252381e-01                    0.08219726
+## PC3              0.8877141858 2.951337e-01                    0.38421703
+## PC4              0.2256461632 9.258703e-07                    0.88771419
+## PC5              0.0006136547 5.519439e-01                    0.04218050
+##     Library fragments size (bp)
+## PC1                 0.718273148
+## PC2                 0.225238057
+## PC3                 0.999514303
+## PC4                 0.440520281
+## PC5                 0.005292582</code></pre>
+<pre class="r"><code># Number of values significant at 10% FDR not including species or tissue
+
+sum(matrix_fdr_val &lt;= 0.1)</code></pre>
+<pre><code>## [1] 23</code></pre>
+<pre class="r"><code>#Get the coordinates of which variables/PC combinations are significant at FDR 10%
+
+TorF_matrix_fdr &lt;- matrix_fdr_val &lt;=0.1
+coor_to_check &lt;- which(matrix_fdr_val &lt;= 0.1, arr.ind=T)
+coor_to_check &lt;- as.data.frame(coor_to_check)
+
+# Number of variables significant at 10% FDR not including species or tissue (note: off by 4 from column number in RNA_seq_info file; see notes in Part Two)
+
+coor_to_check_col &lt;- coor_to_check$col
+unique(coor_to_check_col)</code></pre>
+<pre><code>##  [1]  1  2  3  4  7  8 12 13 14 15 16 17 18 19 20</code></pre>
+<pre class="r"><code>length(unique(coor_to_check_col))</code></pre>
+<pre><code>## [1] 15</code></pre>
+<p>** Conclusions from Part I**</p>
+<p>The following variables are associated with one of the PCs tested and will be investigated further in Part 2.</p>
+<ul>
+<li>Individual</li>
+<li>RNA extraction date</li>
+<li>Multiplexing index sequence</li>
+<li>Multiplexing mix codes</li>
+<li>Percentage of bps trimmed (adapters)</li>
+<li>Number of reads shorter than 20 bp removed</li>
+<li>Percentage of mapped reads overlapping a junction</li>
+<li>Number of junctions</li>
+<li>Number of reads mapped on orthologous exons</li>
+<li>Number of orthologous exons with at least 1 mapped read</li>
+<li>Number of orthologous genes with at least 1 mapped read</li>
+<li>RNA concentration</li>
+<li>RIN score</li>
+<li>Library concentration</li>
+<li>Library fragments size</li>
+</ul>
+</div>
+</div>
+<div id="for-the-variables-that-correlate-see-if-these-segregate-with-either-species-or-tissue" class="section level3">
+<h3>For the variable(s) that correlate, see if these segregate with either species or tissue</h3>
+<p>In coor_to_check_col, row is the PC # and col is the column # -4 that is associated with the PC Want to take the coor_to_check_col column # and add four. That is the variable that we should check to see if it correlates with tissue or species.</p>
+<pre class="r"><code>var_numb = unique(coor_to_check_col) + 4
+#Making the variable versus species and tissue graphs into a file called VarVsSpeciesTissue.pdf
+var.numb &lt;- as.data.frame(var_numb)
+
+pdf(&#39;~/Reg_Evo_Primates/ashlar-trial/data/Var_GenePCsVsSpeciesTissue.pdf.pdf&#39;)
+
+for (i in var.numb[1:nrow(var.numb),]) { 
+par(mfrow=c(1,2))
+plot(RNA_seq_info$Species, RNA_seq_info[,i], xlab = &quot;Species&quot;, ylab = substitute(paste(k), list(k=colnames(RNA_seq_info)[i])))
+
+plot(RNA_seq_info$Tissue, RNA_seq_info[,i], xlab = &quot;Tissue&quot;, ylab = substitute(paste(k), list(k=colnames(RNA_seq_info)[i])))
+
+mtext(substitute(paste(k, &#39; vs. Species and Tissue&#39;), list(k=colnames(RNA_seq_info)[i])), side = 3, line = -2, outer = TRUE)
+
+}
+dev.off()</code></pre>
+<pre><code>## quartz_off_screen 
+##                 2</code></pre>
+<pre class="r"><code>#Testing to see if differences across variable groups are statistically significant for species. If statistically significant, then we should investigate further whether this variable is confounded with species or tissue. 
+
+#Make a matrix to store the p-values
+
+pvalues_species = matrix(data = NA, nrow = 1, ncol = nrow(var.numb), dimnames = list(c(&quot;p-value&quot;), c(&quot;Individual&quot;, &quot;RNA extraction date&quot;, &quot;Multiplexing index sequence&quot;, &quot;Multiplexing mix codes&quot;, &quot;Percentage of bps trimmed (adaptors)&quot;, &quot;Number of reads shorter than 20bp removed&quot;, &quot;Percentage of mapped reads overlapping a junction&quot;, &quot;Number of junctions&quot;, &quot;Number of reads mapped on orthologous exons&quot;, &quot;Number of orthologous exons with at least 1 mapped read&quot;, &quot;Number of orthologous genes with at least 1 mapped read&quot;, &quot;RNA concentration (ng/uL)&quot;, &quot;RIN score&quot;, &quot;Library concentration (ng/uL)&quot;, &quot;Library fragments size (bp)&quot;)))
+
+#Performing this test of significance for variables that are categorical data (Using Pearson&#39;s chi-squared test)
+j=1
+for (i in var.numb[1:4,]) { 
+
+pval_chi &lt;- chisq.test(as.factor(RNA_seq_info[,i]), as.factor(RNA_seq_info$Species))$p.value
+pvalues_species[,j] &lt;- pval_chi  
+j=j+1
+
+}</code></pre>
+<pre><code>## Warning in chisq.test(as.factor(RNA_seq_info[, i]), as.factor(RNA_seq_info
+## $Species)): Chi-squared approximation may be incorrect
+
+## Warning in chisq.test(as.factor(RNA_seq_info[, i]), as.factor(RNA_seq_info
+## $Species)): Chi-squared approximation may be incorrect
+
+## Warning in chisq.test(as.factor(RNA_seq_info[, i]), as.factor(RNA_seq_info
+## $Species)): Chi-squared approximation may be incorrect
+
+## Warning in chisq.test(as.factor(RNA_seq_info[, i]), as.factor(RNA_seq_info
+## $Species)): Chi-squared approximation may be incorrect</code></pre>
+<pre class="r"><code>#Performing this test of significance for variables that are numerical data (Using an ANOVA)
+j=5
+for (i in var.numb[5:nrow(var.numb),]) {  
+summary_anova = summary(aov(RNA_seq_info[,i]~ as.factor(RNA_seq_info$Species)))
+data_summary_anova &lt;- as.data.frame(summary_anova[[1]]$`Pr(&gt;F)`)
+p_val_anova &lt;- data_summary_anova[1,]
+pvalues_species[,j] &lt;- p_val_anova  
+j=j+1
+}
+
+#Testing to see if differences across variable groups are statistically significant for tissues. If statistically significant, then we should investigate further whether this variable is confounded with species or tissue. 
+
+#Make a matrix to store the p-values
+
+pvalues_tissues = matrix(data = NA, nrow = 1, ncol = nrow(var.numb), dimnames = list(c(&quot;p-value&quot;), c(&quot;Individual&quot;, &quot;RNA extraction date&quot;, &quot;Multiplexing index sequence&quot;, &quot;Multiplexing mix codes&quot;, &quot;Percentage of bps trimmed (adaptors)&quot;, &quot;Number of reads shorter than 20bp removed&quot;, &quot;Percentage of mapped reads overlapping a junction&quot;, &quot;Number of junctions&quot;, &quot;Number of reads mapped on orthologous exons&quot;, &quot;Number of orthologous exons with at least 1 mapped read&quot;, &quot;Number of orthologous genes with at least 1 mapped read&quot;, &quot;RNA concentration (ng/uL)&quot;, &quot;RIN score&quot;, &quot;Library concentration (ng/uL)&quot;, &quot;Library fragments size (bp)&quot;)))
+
+#Performing this test of significance for variables that are categorical data (Using Pearson&#39;s chi-squared test)
+j=1
+for (i in var.numb[1:4,]) { 
+  
+  pval_chi &lt;- chisq.test(as.factor(RNA_seq_info[,i]), as.factor(RNA_seq_info$Tissue))$p.value
+  pvalues_tissues[,j] &lt;- pval_chi  
+  j=j+1
+  
+}</code></pre>
+<pre><code>## Warning in chisq.test(as.factor(RNA_seq_info[, i]), as.factor(RNA_seq_info
+## $Tissue)): Chi-squared approximation may be incorrect</code></pre>
+<pre><code>## Warning in chisq.test(as.factor(RNA_seq_info[, i]), as.factor(RNA_seq_info
+## $Tissue)): Chi-squared approximation may be incorrect
+
+## Warning in chisq.test(as.factor(RNA_seq_info[, i]), as.factor(RNA_seq_info
+## $Tissue)): Chi-squared approximation may be incorrect
+
+## Warning in chisq.test(as.factor(RNA_seq_info[, i]), as.factor(RNA_seq_info
+## $Tissue)): Chi-squared approximation may be incorrect</code></pre>
+<pre class="r"><code>#Performing this test of significance for variables that are numerical data (Using an ANOVA)
+j=5
+for (i in var.numb[5:nrow(var.numb),]) {  
+  summary_anova = summary(aov(RNA_seq_info[,i]~ as.factor(RNA_seq_info$Tissue)))
+  data_summary_anova &lt;- as.data.frame(summary_anova[[1]]$`Pr(&gt;F)`)
+  p_val_anova &lt;- data_summary_anova[1,]
+  pvalues_tissues[,j] &lt;- p_val_anova  
+  j=j+1
+}
+
+collapse_table &lt;- rbind(pvalues_species, pvalues_tissues)
+colnames(collapse_table) &lt;- c(&quot;Individual&quot;, &quot;RNA extraction date&quot;, &quot;Multiplexing index sequence&quot;, &quot;Multiplexing mix codes&quot;, &quot;Percentage of bps trimmed (adaptors)&quot;, &quot;Number of reads shorter than 20bp removed&quot;, &quot;Percentage of mapped reads overlapping a junction&quot;, &quot;Number of junctions&quot;, &quot;Number of reads mapped on orthologous exons&quot;, &quot;Number of orthologous exons with at least 1 mapped read&quot;, &quot;Number of orthologous genes with at least 1 mapped read&quot;, &quot;RNA concentration (ng/uL)&quot;, &quot;RIN score&quot;, &quot;Library concentration (ng/uL)&quot;, &quot;Library fragments size (bp)&quot;)
+
+rownames(collapse_table) &lt;- c(&quot;Species&quot;, &quot;Tissue&quot;)
+
+collapse_table</code></pre>
+<pre><code>##           Individual RNA extraction date Multiplexing index sequence
+## Species 7.084425e-11        7.149979e-17                9.951634e-01
+## Tissue  1.000000e+00        9.999624e-01                7.313637e-07
+##         Multiplexing mix codes Percentage of bps trimmed (adaptors)
+## Species           4.166637e-07                          0.007347325
+## Tissue            8.963210e-01                          0.273399046
+##         Number of reads shorter than 20bp removed
+## Species                               0.005859874
+## Tissue                                0.229196235
+##         Percentage of mapped reads overlapping a junction
+## Species                                      0.2729677718
+## Tissue                                       0.0001309289
+##         Number of junctions Number of reads mapped on orthologous exons
+## Species        8.155021e-05                                  0.30290842
+## Tissue         2.566692e-04                                  0.01821964
+##         Number of orthologous exons with at least 1 mapped read
+## Species                                            5.853704e-01
+## Tissue                                             2.551611e-08
+##         Number of orthologous genes with at least 1 mapped read
+## Species                                            4.263982e-02
+## Tissue                                             2.913679e-07
+##         RNA concentration (ng/uL)    RIN score
+## Species              0.0008347635 2.263714e-08
+## Tissue               0.0014034907 6.370173e-01
+##         Library concentration (ng/uL) Library fragments size (bp)
+## Species                   0.002485755                0.0008550811
+## Tissue                    0.283235201                0.2664092315</code></pre>
+<pre class="r"><code>#Calculate q-values (FDR = 10%)
+
+fdr_val = p.adjust(collapse_table, method = &quot;fdr&quot;, n = length(collapse_table)*2)
+fdr_val_order = fdr_val[order(fdr_val)]
+hist(fdr_val_order, ylab = &quot;BH-adjusted p-values&quot;, main = &quot;Distribution of Benjamini and Hochberg adjusted p-values&quot;, breaks = 10)</code></pre>
+<p><img src="Tech_factor_analysis1_gene_exp_files/figure-html/unnamed-chunk-6-1.png" width="672" /></p>
+<pre class="r"><code>collapse_table_fdr_val = matrix(data = fdr_val, nrow = 2, ncol = nrow(var.numb), dimnames = list(c(&quot;Species&quot;, &quot;Tissue&quot;), c(&quot;Individual&quot;, &quot;RNA extraction date&quot;, &quot;Multiplexing index sequence&quot;, &quot;Multiplexing mix codes&quot;, &quot;Percentage of bps trimmed (adaptors)&quot;, &quot;Number of reads shorter than 20bp removed&quot;, &quot;Percentage of mapped reads overlapping a junction&quot;, &quot;Number of junctions&quot;, &quot;Number of reads mapped on orthologous exons&quot;, &quot;Number of orthologous exons with at least 1 mapped read&quot;, &quot;Number of orthologous genes with at least 1 mapped read&quot;, &quot;RNA concentration (ng/uL)&quot;, &quot;RIN score&quot;, &quot;Library concentration (ng/uL)&quot;, &quot;Library fragments size (bp)&quot;)))
+
+collapse_table_fdr_val</code></pre>
+<pre><code>##           Individual RNA extraction date Multiplexing index sequence
+## Species 2.125327e-09        4.289987e-15                1.000000e+00
+## Tissue  1.000000e+00        1.000000e+00                6.268832e-06
+##         Multiplexing mix codes Percentage of bps trimmed (adaptors)
+## Species           4.166637e-06                           0.02755247
+## Tissue            1.000000e+00                           0.73887444
+##         Number of reads shorter than 20bp removed
+## Species                                 0.0234395
+## Tissue                                  0.7237776
+##         Percentage of mapped reads overlapping a junction
+## Species                                      0.7388744374
+## Tissue                                       0.0008728595
+##         Number of junctions Number of reads mapped on orthologous exons
+## Species        0.0006116265                                   0.7572711
+## Tissue         0.0015400154                                   0.0643046
+##         Number of orthologous exons with at least 1 mapped read
+## Species                                            1.000000e+00
+## Tissue                                             3.827416e-07
+##         Number of orthologous genes with at least 1 mapped read
+## Species                                            1.421327e-01
+## Tissue                                             3.496415e-06
+##         RNA concentration (ng/uL)    RIN score
+## Species               0.004275406 3.827416e-07
+## Tissue                0.006477650 1.000000e+00
+##         Library concentration (ng/uL) Library fragments size (bp)
+## Species                    0.01065324                 0.004275406
+## Tissue                     0.73887444                 0.738874437</code></pre>
+<pre class="r"><code>#Find number below it
+sum(collapse_table_fdr_val &lt;= 0.1)</code></pre>
+<pre><code>## [1] 17</code></pre>
+<p><strong>Conclusions from Part 2:</strong></p>
+<p>The following variables are associated with species: * Individual * RNA extraction date * Multiplexing mix codes * Percentage of bps trimmed (adaptors) * Number of reads shorter than 20bp removed * Number of junctions * RNA concentration * RIN score * Library concentration * Library fragments size</p>
+<p>The following variables are associated with tissue: * Multiplexing index sequence * Percentage of mapped reads overlapping a junction * Number of junctions * Number of reads mapped on othologous exons * Number of orthologous exons with at least 1 mapped read * Number of orthologous genes with at least 1 mapped read * RNA concentration</p>
+</div>
+<div id="part-3-which-variables-to-put-in-the-model" class="section level3">
+<h3>Part 3: Which variables to put in the model?</h3>
+<p>Check for degree of similarity between the values of the different variables (not including species or tissue) For ones that show high correlation (multi-colinearity), we will only want to incorporate one of these variables into the model Note: the first 4 variables are ordinal, the others are numerical.</p>
+<pre class="r"><code>number_to_check &lt;- var.numb
+number_to_check &lt;- as.data.frame(number_to_check)
+number_to_check</code></pre>
+<pre><code>##    var_numb
+## 1         5
+## 2         6
+## 3         7
+## 4         8
+## 5        11
+## 6        12
+## 7        16
+## 8        17
+## 9        18
+## 10       19
+## 11       20
+## 12       21
+## 13       22
+## 14       23
+## 15       24</code></pre>
+<pre class="r"><code>#Make the matrix
+
+#Make the matrix
+eval_multicolinearity = matrix(data = NA, nrow = nrow(var.numb), ncol = nrow(var.numb), dimnames = list(c(&quot;Individual&quot;, &quot;RNA extraction date&quot;, &quot;Multiplexing index sequence&quot;, &quot;Multiplexing mix codes&quot;, &quot;Percentage of bps trimmed (adaptors)&quot;, &quot;Number of reads shorter than 20bp removed&quot;, &quot;Percentage of mapped reads overlapping a junction&quot;, &quot;Number of junctions&quot;, &quot;Number of reads mapped on orthologous exons&quot;, &quot;Number of orthologous exons with at least 1 mapped read&quot;, &quot;Number of orthologous genes with at least 1 mapped read&quot;, &quot;RNA concentration (ng/uL)&quot;, &quot;RIN score&quot;, &quot;Library concentration (ng/uL)&quot;, &quot;Library fragments size (bp)&quot;)))
+
+#Comparing two variables that are categorical (using the library polycor)
+
+for (i in number_to_check[1:4,]){ 
+  for (j in number_to_check[1:4,]){ 
+    if (i==j) break
+    corr_ord = polychor(RNA_seq_info[,i], RNA_seq_info[,j], ML=FALSE, std.err=T)
+    corr_ord$rho
+    eval_multicolinearity[i-4,j-4] &lt;- (corr_ord$rho)^2  
+    
+  }
+  
+}</code></pre>
+<pre><code>## Warning in log(P): NaNs produced
+
+## Warning in log(P): NaNs produced</code></pre>
+<pre class="r"><code>for (j in number_to_check[1:4,]){ 
+  for (i in number_to_check[1:4,]){ 
+    if (i==j) eval_multicolinearity[i-4,j-4] = 1 
+    if (i==j) break
+    corr_ord = polychor(RNA_seq_info[,i], RNA_seq_info[,j], ML=FALSE, std.err=T)
+    corr_ord$rho
+    eval_multicolinearity[i-4,j-4] &lt;- (corr_ord$rho)^2  
+    
+  }
+  
+}</code></pre>
+<pre><code>## Warning in log(P): NaNs produced
+
+## Warning in log(P): NaNs produced</code></pre>
+<pre class="r"><code>#Comparing one variable that is categorical with one that is numerical 
+
+#For putting the percentage of bp trimmed into the correct location 
+
+for (j in number_to_check[5:6,]){
+  
+  for (i in number_to_check[1:4,]){
+    eval_multicolinearity[i-4,j-6] &lt;- (polyserial(RNA_seq_info[ ,j], as.factor(RNA_seq_info[ ,i])))^2
+    
+  }
+}
+
+
+
+
+for (i in number_to_check[1:4,]){
+  for (j in number_to_check[5:6,]){
+    eval_multicolinearity[j-6,i-4] &lt;- (polyserial(RNA_seq_info[ ,j], as.factor(RNA_seq_info[ ,i])))^2
+    
+  }
+}
+
+
+# All others
+
+for (j in number_to_check[7:15,]){
+  
+  for (i in number_to_check[1:4,]){
+    eval_multicolinearity[i-4,j-9] &lt;- (polyserial(RNA_seq_info[ ,j], as.factor(RNA_seq_info[ ,i])))^2
+    
+  }
+}
+
+
+
+
+for (i in number_to_check[1:4,]){
+  for (j in number_to_check[7:15,]){
+    eval_multicolinearity[j-9,i-4] &lt;- (polyserial(RNA_seq_info[ ,j], as.factor(RNA_seq_info[ ,i])))^2
+    
+  }
+}
+
+
+#Comparing two numerical variables
+
+#Put the percentage of bps trimmed and number of reads shorter than 20bp in the correct location
+eval_multicolinearity[5,5] = 1
+eval_multicolinearity[6,6] = 1
+for (j in number_to_check[5:6,]){
+  
+  for (i in number_to_check[7:15,]){
+
+    checkPC1 &lt;- lm(RNA_seq_info[,j] ~ RNA_seq_info[,i])
+    eval_multicolinearity[i-9,j-6] &lt;-  summary(checkPC1)$r.squared
+    
+  }
+}
+
+for (j in number_to_check[7:15,]){
+  
+  for (i in number_to_check[5:6,]){
+    
+    checkPC1 &lt;- lm(RNA_seq_info[,j] ~ RNA_seq_info[,i])
+    eval_multicolinearity[i-6,j-9] &lt;-  summary(checkPC1)$r.squared
+    
+  }
+}
+
+# All others
+for (j in number_to_check[7:15,]){
+  
+  for (i in number_to_check[7:15,]){
+    
+    checkPC1 &lt;- lm(RNA_seq_info[,j] ~ RNA_seq_info[,i])
+    eval_multicolinearity[i-9,j-9] &lt;-  summary(checkPC1)$r.squared
+    
+  }
+}</code></pre>
+<pre><code>## Warning in summary.lm(checkPC1): essentially perfect fit: summary may be
+## unreliable</code></pre>
+<pre><code>## Warning in summary.lm(checkPC1): essentially perfect fit: summary may be
+## unreliable
+
+## Warning in summary.lm(checkPC1): essentially perfect fit: summary may be
+## unreliable
+
+## Warning in summary.lm(checkPC1): essentially perfect fit: summary may be
+## unreliable
+
+## Warning in summary.lm(checkPC1): essentially perfect fit: summary may be
+## unreliable
+
+## Warning in summary.lm(checkPC1): essentially perfect fit: summary may be
+## unreliable
+
+## Warning in summary.lm(checkPC1): essentially perfect fit: summary may be
+## unreliable
+
+## Warning in summary.lm(checkPC1): essentially perfect fit: summary may be
+## unreliable
+
+## Warning in summary.lm(checkPC1): essentially perfect fit: summary may be
+## unreliable</code></pre>
+<pre class="r"><code>colnames(eval_multicolinearity) &lt;- rownames(eval_multicolinearity)
+eval_multicolinearity</code></pre>
+<pre><code>##                                                          Individual
+## Individual                                              1.000000000
+## RNA extraction date                                     0.267352428
+## Multiplexing index sequence                             0.102588597
+## Multiplexing mix codes                                  0.142858085
+## Percentage of bps trimmed (adaptors)                    0.004783876
+## Number of reads shorter than 20bp removed               0.003454717
+## Percentage of mapped reads overlapping a junction       0.020518088
+## Number of junctions                                     0.026630340
+## Number of reads mapped on orthologous exons             0.046521435
+## Number of orthologous exons with at least 1 mapped read 0.001369256
+## Number of orthologous genes with at least 1 mapped read 0.001511944
+## RNA concentration (ng/uL)                               0.009799367
+## RIN score                                               0.285375953
+## Library concentration (ng/uL)                           0.053236253
+## Library fragments size (bp)                             0.002049270
+##                                                         RNA extraction date
+## Individual                                                     0.2673524279
+## RNA extraction date                                            1.0000000000
+## Multiplexing index sequence                                    0.0202712581
+## Multiplexing mix codes                                         0.8331814613
+## Percentage of bps trimmed (adaptors)                           0.1047014493
+## Number of reads shorter than 20bp removed                      0.1038001612
+## Percentage of mapped reads overlapping a junction              0.0042038631
+## Number of junctions                                            0.3227020152
+## Number of reads mapped on orthologous exons                    0.0473247741
+## Number of orthologous exons with at least 1 mapped read        0.0007208650
+## Number of orthologous genes with at least 1 mapped read        0.0008020008
+## RNA concentration (ng/uL)                                      0.1278047912
+## RIN score                                                      0.4199413424
+## Library concentration (ng/uL)                                  0.2413714601
+## Library fragments size (bp)                                    0.1777435099
+##                                                         Multiplexing index sequence
+## Individual                                                              0.102588597
+## RNA extraction date                                                     0.020271258
+## Multiplexing index sequence                                             1.000000000
+## Multiplexing mix codes                                                  0.001162681
+## Percentage of bps trimmed (adaptors)                                    0.011869615
+## Number of reads shorter than 20bp removed                               0.022765343
+## Percentage of mapped reads overlapping a junction                       0.027728416
+## Number of junctions                                                     0.087268913
+## Number of reads mapped on orthologous exons                             0.019764270
+## Number of orthologous exons with at least 1 mapped read                 0.074285825
+## Number of orthologous genes with at least 1 mapped read                 0.041432371
+## RNA concentration (ng/uL)                                               0.018576307
+## RIN score                                                               0.010280945
+## Library concentration (ng/uL)                                           0.003091644
+## Library fragments size (bp)                                             0.009005200
+##                                                         Multiplexing mix codes
+## Individual                                                        0.1428580845
+## RNA extraction date                                               0.8331814613
+## Multiplexing index sequence                                       0.0011626810
+## Multiplexing mix codes                                            1.0000000000
+## Percentage of bps trimmed (adaptors)                              0.0913558356
+## Number of reads shorter than 20bp removed                         0.0863753198
+## Percentage of mapped reads overlapping a junction                 0.0338214186
+## Number of junctions                                               0.1215597258
+## Number of reads mapped on orthologous exons                       0.0871626617
+## Number of orthologous exons with at least 1 mapped read           0.0005463795
+## Number of orthologous genes with at least 1 mapped read           0.0202237529
+## RNA concentration (ng/uL)                                         0.0452930855
+## RIN score                                                         0.6416229722
+## Library concentration (ng/uL)                                     0.0695981512
+## Library fragments size (bp)                                       0.2849559738
+##                                                         Percentage of bps trimmed (adaptors)
+## Individual                                                                       0.004783876
+## RNA extraction date                                                              0.104701449
+## Multiplexing index sequence                                                      0.011869615
+## Multiplexing mix codes                                                           0.091355836
+## Percentage of bps trimmed (adaptors)                                             1.000000000
+## Number of reads shorter than 20bp removed                                                 NA
+## Percentage of mapped reads overlapping a junction                                0.021766883
+## Number of junctions                                                              0.224265520
+## Number of reads mapped on orthologous exons                                      0.015190795
+## Number of orthologous exons with at least 1 mapped read                          0.036093820
+## Number of orthologous genes with at least 1 mapped read                          0.020298557
+## RNA concentration (ng/uL)                                                        0.027327992
+## RIN score                                                                        0.006507871
+## Library concentration (ng/uL)                                                    0.052360358
+## Library fragments size (bp)                                                      0.152213741
+##                                                         Number of reads shorter than 20bp removed
+## Individual                                                                            0.003454717
+## RNA extraction date                                                                   0.103800161
+## Multiplexing index sequence                                                           0.022765343
+## Multiplexing mix codes                                                                0.086375320
+## Percentage of bps trimmed (adaptors)                                                           NA
+## Number of reads shorter than 20bp removed                                             1.000000000
+## Percentage of mapped reads overlapping a junction                                     0.022902651
+## Number of junctions                                                                   0.284209579
+## Number of reads mapped on orthologous exons                                           0.042197384
+## Number of orthologous exons with at least 1 mapped read                               0.058867895
+## Number of orthologous genes with at least 1 mapped read                               0.035770173
+## RNA concentration (ng/uL)                                                             0.019462624
+## RIN score                                                                             0.003646664
+## Library concentration (ng/uL)                                                         0.051807120
+## Library fragments size (bp)                                                           0.159896829
+##                                                         Percentage of mapped reads overlapping a junction
+## Individual                                                                                    0.020518088
+## RNA extraction date                                                                           0.004203863
+## Multiplexing index sequence                                                                   0.027728416
+## Multiplexing mix codes                                                                        0.033821419
+## Percentage of bps trimmed (adaptors)                                                          0.021766883
+## Number of reads shorter than 20bp removed                                                     0.022902651
+## Percentage of mapped reads overlapping a junction                                             1.000000000
+## Number of junctions                                                                           0.002112492
+## Number of reads mapped on orthologous exons                                                   0.349730195
+## Number of orthologous exons with at least 1 mapped read                                       0.002093624
+## Number of orthologous genes with at least 1 mapped read                                       0.018588016
+## RNA concentration (ng/uL)                                                                     0.002535865
+## RIN score                                                                                     0.194642139
+## Library concentration (ng/uL)                                                                 0.019272798
+## Library fragments size (bp)                                                                   0.009236824
+##                                                         Number of junctions
+## Individual                                                     0.0266303395
+## RNA extraction date                                            0.3227020152
+## Multiplexing index sequence                                    0.0872689135
+## Multiplexing mix codes                                         0.1215597258
+## Percentage of bps trimmed (adaptors)                           0.2242655202
+## Number of reads shorter than 20bp removed                      0.2842095792
+## Percentage of mapped reads overlapping a junction              0.0021124924
+## Number of junctions                                            1.0000000000
+## Number of reads mapped on orthologous exons                    0.1049525942
+## Number of orthologous exons with at least 1 mapped read        0.5402598732
+## Number of orthologous genes with at least 1 mapped read        0.3770659007
+## RNA concentration (ng/uL)                                      0.0002780906
+## RIN score                                                      0.0009652544
+## Library concentration (ng/uL)                                  0.1203002326
+## Library fragments size (bp)                                    0.1506713221
+##                                                         Number of reads mapped on orthologous exons
+## Individual                                                                               0.04652144
+## RNA extraction date                                                                      0.04732477
+## Multiplexing index sequence                                                              0.01976427
+## Multiplexing mix codes                                                                   0.08716266
+## Percentage of bps trimmed (adaptors)                                                     0.01519079
+## Number of reads shorter than 20bp removed                                                0.04219738
+## Percentage of mapped reads overlapping a junction                                        0.34973020
+## Number of junctions                                                                      0.10495259
+## Number of reads mapped on orthologous exons                                              1.00000000
+## Number of orthologous exons with at least 1 mapped read                                  0.18515713
+## Number of orthologous genes with at least 1 mapped read                                  0.15756143
+## RNA concentration (ng/uL)                                                                0.03373064
+## RIN score                                                                                0.20248048
+## Library concentration (ng/uL)                                                            0.02418547
+## Library fragments size (bp)                                                              0.02180704
+##                                                         Number of orthologous exons with at least 1 mapped read
+## Individual                                                                                         0.0013692563
+## RNA extraction date                                                                                0.0007208650
+## Multiplexing index sequence                                                                        0.0742858246
+## Multiplexing mix codes                                                                             0.0005463795
+## Percentage of bps trimmed (adaptors)                                                               0.0360938200
+## Number of reads shorter than 20bp removed                                                          0.0588678946
+## Percentage of mapped reads overlapping a junction                                                  0.0020936239
+## Number of junctions                                                                                0.5402598732
+## Number of reads mapped on orthologous exons                                                        0.1851571262
+## Number of orthologous exons with at least 1 mapped read                                            1.0000000000
+## Number of orthologous genes with at least 1 mapped read                                            0.9044032910
+## RNA concentration (ng/uL)                                                                          0.1399002490
+## RIN score                                                                                          0.0467297800
+## Library concentration (ng/uL)                                                                      0.0011828522
+## Library fragments size (bp)                                                                        0.0051684680
+##                                                         Number of orthologous genes with at least 1 mapped read
+## Individual                                                                                         1.511944e-03
+## RNA extraction date                                                                                8.020008e-04
+## Multiplexing index sequence                                                                        4.143237e-02
+## Multiplexing mix codes                                                                             2.022375e-02
+## Percentage of bps trimmed (adaptors)                                                               2.029856e-02
+## Number of reads shorter than 20bp removed                                                          3.577017e-02
+## Percentage of mapped reads overlapping a junction                                                  1.858802e-02
+## Number of junctions                                                                                3.770659e-01
+## Number of reads mapped on orthologous exons                                                        1.575614e-01
+## Number of orthologous exons with at least 1 mapped read                                            9.044033e-01
+## Number of orthologous genes with at least 1 mapped read                                            1.000000e+00
+## RNA concentration (ng/uL)                                                                          1.258408e-01
+## RIN score                                                                                          4.194534e-03
+## Library concentration (ng/uL)                                                                      3.096126e-05
+## Library fragments size (bp)                                                                        3.538886e-04
+##                                                         RNA concentration (ng/uL)
+## Individual                                                           0.0097993671
+## RNA extraction date                                                  0.1278047912
+## Multiplexing index sequence                                          0.0185763074
+## Multiplexing mix codes                                               0.0452930855
+## Percentage of bps trimmed (adaptors)                                 0.0273279919
+## Number of reads shorter than 20bp removed                            0.0194626238
+## Percentage of mapped reads overlapping a junction                    0.0025358651
+## Number of junctions                                                  0.0002780906
+## Number of reads mapped on orthologous exons                          0.0337306373
+## Number of orthologous exons with at least 1 mapped read              0.1399002490
+## Number of orthologous genes with at least 1 mapped read              0.1258408276
+## RNA concentration (ng/uL)                                            1.0000000000
+## RIN score                                                            0.2654576080
+## Library concentration (ng/uL)                                        0.0293692747
+## Library fragments size (bp)                                          0.0852433003
+##                                                            RIN score
+## Individual                                              0.2853759533
+## RNA extraction date                                     0.4199413424
+## Multiplexing index sequence                             0.0102809448
+## Multiplexing mix codes                                  0.6416229722
+## Percentage of bps trimmed (adaptors)                    0.0065078711
+## Number of reads shorter than 20bp removed               0.0036466641
+## Percentage of mapped reads overlapping a junction       0.1946421393
+## Number of junctions                                     0.0009652544
+## Number of reads mapped on orthologous exons             0.2024804828
+## Number of orthologous exons with at least 1 mapped read 0.0467297800
+## Number of orthologous genes with at least 1 mapped read 0.0041945342
+## RNA concentration (ng/uL)                               0.2654576080
+## RIN score                                               1.0000000000
+## Library concentration (ng/uL)                           0.0510053458
+## Library fragments size (bp)                             0.0816337750
+##                                                         Library concentration (ng/uL)
+## Individual                                                               5.323625e-02
+## RNA extraction date                                                      2.413715e-01
+## Multiplexing index sequence                                              3.091644e-03
+## Multiplexing mix codes                                                   6.959815e-02
+## Percentage of bps trimmed (adaptors)                                     5.236036e-02
+## Number of reads shorter than 20bp removed                                5.180712e-02
+## Percentage of mapped reads overlapping a junction                        1.927280e-02
+## Number of junctions                                                      1.203002e-01
+## Number of reads mapped on orthologous exons                              2.418547e-02
+## Number of orthologous exons with at least 1 mapped read                  1.182852e-03
+## Number of orthologous genes with at least 1 mapped read                  3.096126e-05
+## RNA concentration (ng/uL)                                                2.936927e-02
+## RIN score                                                                5.100535e-02
+## Library concentration (ng/uL)                                            1.000000e+00
+## Library fragments size (bp)                                              3.589062e-02
+##                                                         Library fragments size (bp)
+## Individual                                                             0.0020492697
+## RNA extraction date                                                    0.1777435099
+## Multiplexing index sequence                                            0.0090052000
+## Multiplexing mix codes                                                 0.2849559738
+## Percentage of bps trimmed (adaptors)                                   0.1522137406
+## Number of reads shorter than 20bp removed                              0.1598968289
+## Percentage of mapped reads overlapping a junction                      0.0092368242
+## Number of junctions                                                    0.1506713221
+## Number of reads mapped on orthologous exons                            0.0218070422
+## Number of orthologous exons with at least 1 mapped read                0.0051684680
+## Number of orthologous genes with at least 1 mapped read                0.0003538886
+## RNA concentration (ng/uL)                                              0.0852433003
+## RIN score                                                              0.0816337750
+## Library concentration (ng/uL)                                          0.0358906236
+## Library fragments size (bp)                                            1.0000000000</code></pre>
+<pre class="r"><code>#Find how many pairs have a correlation greater than 0.9, not including variables paired with themselves 
+
+length(eval_multicolinearity [eval_multicolinearity  &gt;= 0.9])</code></pre>
+<pre><code>## [1] 19</code></pre>
+<pre class="r"><code>#Find these pairs with correlation &gt;=0.9 not including variables compared to themselves
+
+coor_to_check &lt;- which(eval_multicolinearity &gt;= 0.9, arr.ind=T)
+coor_to_check &lt;- as.data.frame(coor_to_check)
+new_coor &lt;- subset(coor_to_check, row != col, sel = c(row, col))
+
+new_coor</code></pre>
+<pre><code>##                                                         row col
+## Number of orthologous genes with at least 1 mapped read  11  10
+## Number of orthologous exons with at least 1 mapped read  10  11</code></pre>
+<p><strong>Conclusions from Part 3:</strong></p>
+<p>There is one pair of correlated variables: the number of orthologous exons with at least 1 mapped read and number of orthologous genes with at least 1 mapped read.</p>
+</div>
+
+
+<!-- some extra javascript for older browsers -->
+<script type="text/javascript" src="libs/polyfill.js"></script>
+
+<script>
+
+// manage active state of menu based on current page
+$(document).ready(function () {
+
+    // active menu
+    href = window.location.pathname
+    href = href.substr(href.lastIndexOf('/') + 1)
+    $('a[href="' + href + '"]').parent().addClass('active');
+
+    // manage active menu header
+    if (href.startsWith('authoring_'))
+      $('a[href="' + 'authoring' + '"]').parent().addClass('active');
+    else if (href.endsWith('_format.html'))
+      $('a[href="' + 'formats' + '"]').parent().addClass('active');
+    else if (href.startsWith('developer_'))
+      $('a[href="' + 'developer' + '"]').parent().addClass('active');
+
+});
+
+</script>
+
+
+
+</div>
+
+<script>
+
+// add bootstrap table styles to pandoc tables
+$(document).ready(function () {
+  $('tr.header').parent('thead').parent('table').addClass('table table-condensed');
+});
+
+</script>
+
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src  = "https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML";
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
+
+</body>
+</html>

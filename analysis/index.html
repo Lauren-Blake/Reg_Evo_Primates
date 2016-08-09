@@ -10,14 +10,15 @@
 
 
 
+
 <title>Home</title>
 
-<script src="libs/jquery-1.11.0/jquery.min.js"></script>
+<script src="libs/jquery-1.11.3/jquery.min.js"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<link href="libs/bootstrap-3.3.1/css/united.min.css" rel="stylesheet" />
-<script src="libs/bootstrap-3.3.1/js/bootstrap.min.js"></script>
-<script src="libs/bootstrap-3.3.1/shim/html5shiv.min.js"></script>
-<script src="libs/bootstrap-3.3.1/shim/respond.min.js"></script>
+<link href="libs/bootstrap-3.3.5/css/united.min.css" rel="stylesheet" />
+<script src="libs/bootstrap-3.3.5/js/bootstrap.min.js"></script>
+<script src="libs/bootstrap-3.3.5/shim/html5shiv.min.js"></script>
+<script src="libs/bootstrap-3.3.5/shim/respond.min.js"></script>
 
 <style type="text/css">
 
@@ -74,6 +75,34 @@ if (window.hljs && document.readyState && document.readyState === "complete") {
 
 
 
+<style type="text/css">
+h1 {
+  font-size: 34px;
+}
+h1.title {
+  font-size: 38px;
+}
+h2 {
+  font-size: 30px;
+}
+h3 {
+  font-size: 24px;
+}
+h4 {
+  font-size: 18px;
+}
+h5 {
+  font-size: 16px;
+}
+h6 {
+  font-size: 12px;
+}
+.table th:not([align]) {
+  text-align: left;
+}
+</style>
+
+
 </head>
 
 <body>
@@ -88,12 +117,34 @@ code {
   color: inherit;
   background-color: rgba(0, 0, 0, 0.04);
 }
-img { 
-  max-width:100%; 
-  height: auto; 
+img {
+  max-width:100%;
+  height: auto;
+}
+.tabbed-pane {
+  padding-top: 12px;
+}
+button.code-folding-btn:focus {
+  outline: none;
 }
 </style>
+
+
 <div class="container-fluid main-container">
+
+<!-- tabsets -->
+<script src="libs/navigation-1.1/tabsets.js"></script>
+<script>
+$(document).ready(function () {
+  window.buildTabsets("TOC");
+});
+</script>
+
+<!-- code folding -->
+
+
+
+
 
 
 <div class="navbar navbar-default navbar-fixed-top" role="navigation">
@@ -116,22 +167,30 @@ img {
   </div><!--/.container -->
 </div><!--/.navbar -->
 
-<div id="header">
-<h1 class="title">Home</h1>
+<div class="fluid-row" id="header">
+
+
+
+<h1 class="title toc-ignore">Home</h1>
+
 </div>
 
 <div id="TOC">
 <ul>
 <li><a href="#project-introduction">Project Introduction</a></li>
 <li><a href="#sample-information-and-record-of-technical-variables">Sample Information and Record of Technical Variables</a></li>
-<li><a href="#rna-seq-data">RNA-seq Data</a></li>
+<li><a href="#rna-seq-data">RNA-seq Data</a><ul>
+<li><a href="#qc-and-normalizations">QC and normalizations</a></li>
+<li><a href="#analysis-with-technical-factors">Analysis with Technical Factors</a></li>
+<li><a href="#univariate-analysis-on-gene-expression">Univariate analysis on gene expression</a></li>
+</ul></li>
 <li><a href="#methylation-data">Methylation Data</a></li>
 <li><a href="#notes">Notes</a></li>
 </ul>
 </div>
 
-<p><strong>Last updated:</strong> 2016-07-20</p>
-<p><strong>Code version:</strong> 827333e304066cc8529f1e7907426d6a6a00c805</p>
+<p><strong>Last updated:</strong> 2016-08-09</p>
+<p><strong>Code version:</strong> b24d59a3652f63e8e4fbf7e3c6eceec220e3e3b9</p>
 <div id="project-introduction" class="section level2">
 <h2>Project Introduction</h2>
 </div>
@@ -143,15 +202,30 @@ img {
 </div>
 <div id="rna-seq-data" class="section level2">
 <h2>RNA-seq Data</h2>
+<div id="qc-and-normalizations" class="section level3">
+<h3>QC and normalizations</h3>
 <ul>
 <li><a href="../analysis/Plots_unmapped_mapped_RNAseq_reads.html">Unmapped and Mapped Reads</a></li>
 <li><a href="../analysis/Normalization_plots.html">Raw counts</a></li>
 <li><a href="../analysis/Filtering_analysis.html">Filtering</a></li>
 <li><a href="../analysis/GC_content_normalization_CHT.html">GC content normalization</a></li>
 <li><a href="../analysis/TMM_voom_on_GC_normalized_data.html">Library size adjustment and decoupling the relationship between expression mean and variance</a></li>
-<li>Testing technical variables (gene expression PCs)</li>
-<li>Further analysis with potential confounders</li>
 </ul>
+</div>
+<div id="analysis-with-technical-factors" class="section level3">
+<h3>Analysis with Technical Factors</h3>
+<ul>
+<li><a href="../Tech_factor_analysis1_gene_exp.Rmd">Testing for confounders</a></li>
+<li><a href="../analysis/Analysis_of_confounders2_gene_exp.Rmd">Further analysis with potential confounders</a></li>
+<li><a href="../analysis/GLMnet_gene_exp.Rmd">Best set of technical factors</a></li>
+</ul>
+</div>
+<div id="univariate-analysis-on-gene-expression" class="section level3">
+<h3>Univariate analysis on gene expression</h3>
+<ul>
+<li><a href="../analysis/Test_DE_genes.Rmd">Test for differentially expressed genes</a></li>
+</ul>
+</div>
 </div>
 <div id="methylation-data" class="section level2">
 <h2>Methylation Data</h2>
@@ -192,6 +266,8 @@ $(document).ready(function () {
 });
 
 </script>
+
+
 
 </div>
 

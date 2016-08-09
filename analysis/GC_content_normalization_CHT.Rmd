@@ -7,7 +7,7 @@ output: html_document
 
 
 ### Part 1: Prior to spline fitting
-```{r}
+```{r setup}
 
 # Load libraries 
 
@@ -127,7 +127,7 @@ dim(counts_genes_filtered_3L)
 
 #### Find GC content for all of the filtered genes
 
-```{r}
+```{r chunk1}
   # Load the GC content and gene length data
 
 gccontent.genes <- read.table("~/Reg_Evo_Primates/ashlar-trial/data/GC_content.genes.txt", sep="\t", h=T, row.names=1)
@@ -145,7 +145,7 @@ summary(row.names(dge_original) ==  row.names(gccontent.genes))
 
 ### About the GC content of different genes across species
 
-```{r}
+```{r chunk2}
 ## include everything in single EDASeq object                                                                                                                                                        
 feature <- data.frame(gcHuman = gccontent.genes$humanGC, lengthHuman = lengths.genes$lengthHuman, gcChimp = gccontent.genes$chimpGC, lengthChimp = lengths.genes$lengthChimp, gcRhesus = gccontent.genes$rhesusGC, lengthRhesus = lengths.genes$lengthRhesus)
 row.names(feature) <- row.names(dge_original)
@@ -184,7 +184,7 @@ The GC content of 1901 genes (6.3%) differ by more than 5% (of the less rich gen
 
 The GC content of 98 genes have an absolute difference in GC-content of more than 5%. 
 
-```{r}
+```{r chunk3}
 # Filter the GC content list for genes we don't have GC content on
 
 GC_content_complete <- as.data.frame(gccontent.genes[!is.na(gccontent.genes["humanGC"]),])
@@ -239,7 +239,7 @@ The problem(s):
 
 * There is a non-linear relationship between GC content and log2(read counts). We can see this illustrated here:
 
-```{r}
+```{r chunk4}
 
 # plot(data[,2],data[,3], xlim = c(0, 20e5), ylim = c(0,8e4), main = "Read counts in individual versus total", ylab = "Read counts in 1 individual", xlab = "Total reads across all individuals") #plot x=GC, y=counts in ind/counts in all inds
 
@@ -304,7 +304,7 @@ van de Geijn B, McVicker G, Gilad Y, Pritchard JK. WASP: allele-specific softwar
 
 #### Format GC content and raw counts so that they can go into the script to make the splines
 
-```{r}
+```{r chunk5}
 # Get GC content for all 3 species for all of the genes that we have data for (not just the human GC content which we had before)
 
 inshared_lists = row.names(GC_content_complete) %in% rownames(counts_in_2_of_4_col) 
@@ -485,7 +485,7 @@ From this, we will get coefficients for the quartic function for each individual
 
 ### Part 3: 
 
-```{r}
+```{r chunk6}
 # Here's a file with GC content 
 
 GC_read_depth_coefficients <- read.csv("~/Reg_Evo_Primates/ashlar-trial/data/GC_read_depth_coefficients.csv", header=FALSE)
@@ -642,11 +642,9 @@ humans <- c(4, 8, 12, 1, 5, 9, 13, 2, 6, 10, 14, 3, 7, 11, 15)
 
 counts_genes_gc <- cbind(gc_counts_chimps[, chimps], gc_counts_humans[ ,humans], gc_counts_rhesus[, chimps])
 
-# write.table(counts_genes_gc,file="/Users/LEB/Reg_Evo_Primates/ashlar-trial/data/gene_counts_with_gc_correction.txt",sep="\t", col.names = T, row.names = T)
+# Write a table with the GC-normalized counts
 
-plot(counts_genes_gc[,1], dge_original$counts[,1])
-cor(counts_genes_gc[,1], dge_original$counts[,1])
-abline(a = 0, b = 1, col = "red", lwd = 3)
+# write.table(counts_genes_gc,file="/Users/LEB/Reg_Evo_Primates/ashlar-trial/data/gene_counts_with_gc_correction.txt",sep="\t", col.names = T, row.names = T)
 
 ```
 

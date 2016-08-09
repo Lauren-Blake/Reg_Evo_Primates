@@ -8,18 +8,19 @@
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
 <meta name="generator" content="pandoc" />
 
+
 <meta name="author" content="Lauren Blake" />
 
 <meta name="date" content="2016-07-13" />
 
 <title>GC_content_normalization_CHT</title>
 
-<script src="libs/jquery-1.11.0/jquery.min.js"></script>
+<script src="libs/jquery-1.11.3/jquery.min.js"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<link href="libs/bootstrap-3.3.1/css/united.min.css" rel="stylesheet" />
-<script src="libs/bootstrap-3.3.1/js/bootstrap.min.js"></script>
-<script src="libs/bootstrap-3.3.1/shim/html5shiv.min.js"></script>
-<script src="libs/bootstrap-3.3.1/shim/respond.min.js"></script>
+<link href="libs/bootstrap-3.3.5/css/united.min.css" rel="stylesheet" />
+<script src="libs/bootstrap-3.3.5/js/bootstrap.min.js"></script>
+<script src="libs/bootstrap-3.3.5/shim/html5shiv.min.js"></script>
+<script src="libs/bootstrap-3.3.5/shim/respond.min.js"></script>
 
 <style type="text/css">
 
@@ -76,6 +77,34 @@ if (window.hljs && document.readyState && document.readyState === "complete") {
 
 
 
+<style type="text/css">
+h1 {
+  font-size: 34px;
+}
+h1.title {
+  font-size: 38px;
+}
+h2 {
+  font-size: 30px;
+}
+h3 {
+  font-size: 24px;
+}
+h4 {
+  font-size: 18px;
+}
+h5 {
+  font-size: 16px;
+}
+h6 {
+  font-size: 12px;
+}
+.table th:not([align]) {
+  text-align: left;
+}
+</style>
+
+
 </head>
 
 <body>
@@ -90,12 +119,34 @@ code {
   color: inherit;
   background-color: rgba(0, 0, 0, 0.04);
 }
-img { 
-  max-width:100%; 
-  height: auto; 
+img {
+  max-width:100%;
+  height: auto;
+}
+.tabbed-pane {
+  padding-top: 12px;
+}
+button.code-folding-btn:focus {
+  outline: none;
 }
 </style>
+
+
 <div class="container-fluid main-container">
+
+<!-- tabsets -->
+<script src="libs/navigation-1.1/tabsets.js"></script>
+<script>
+$(document).ready(function () {
+  window.buildTabsets("TOC");
+});
+</script>
+
+<!-- code folding -->
+
+
+
+
 
 
 <div class="navbar navbar-default navbar-fixed-top" role="navigation">
@@ -118,10 +169,14 @@ img {
   </div><!--/.container -->
 </div><!--/.navbar -->
 
-<div id="header">
-<h1 class="title">GC_content_normalization_CHT</h1>
+<div class="fluid-row" id="header">
+
+
+
+<h1 class="title toc-ignore">GC_content_normalization_CHT</h1>
 <h4 class="author"><em>Lauren Blake</em></h4>
 <h4 class="date"><em>July 13, 2016</em></h4>
+
 </div>
 
 <div id="TOC">
@@ -138,137 +193,112 @@ img {
 <pre class="r"><code># Load libraries 
 
 library(&quot;gplots&quot;)</code></pre>
-<pre><code>## Warning: package &#39;gplots&#39; was built under R version 3.1.3</code></pre>
 <pre><code>## 
-## Attaching package: &#39;gplots&#39;
-## 
-## The following object is masked from &#39;package:stats&#39;:
+## Attaching package: &#39;gplots&#39;</code></pre>
+<pre><code>## The following object is masked from &#39;package:stats&#39;:
 ## 
 ##     lowess</code></pre>
-<pre class="r"><code>library(&quot;ggplot2&quot;)</code></pre>
-<pre><code>## Warning: package &#39;ggplot2&#39; was built under R version 3.1.3</code></pre>
-<pre class="r"><code>library(&quot;RColorBrewer&quot;)
+<pre class="r"><code>library(&quot;ggplot2&quot;)
+library(&quot;RColorBrewer&quot;)
 library(&quot;scales&quot;)
 library(&quot;edgeR&quot;)</code></pre>
 <pre><code>## Loading required package: limma</code></pre>
-<pre><code>## Warning: package &#39;limma&#39; was built under R version 3.1.3</code></pre>
 <pre class="r"><code>library(&quot;R.utils&quot;)</code></pre>
-<pre><code>## Warning: package &#39;R.utils&#39; was built under R version 3.1.3</code></pre>
 <pre><code>## Loading required package: R.oo</code></pre>
-<pre><code>## Warning: package &#39;R.oo&#39; was built under R version 3.1.3</code></pre>
-<pre><code>## Loading required package: R.methodsS3
-## R.methodsS3 v1.7.0 (2015-02-19) successfully loaded. See ?R.methodsS3 for help.
-## R.oo v1.19.0 (2015-02-27) successfully loaded. See ?R.oo for help.
+<pre><code>## Loading required package: R.methodsS3</code></pre>
+<pre><code>## R.methodsS3 v1.7.1 (2016-02-15) successfully loaded. See ?R.methodsS3 for help.</code></pre>
+<pre><code>## R.oo v1.20.0 (2016-02-17) successfully loaded. See ?R.oo for help.</code></pre>
+<pre><code>## 
+## Attaching package: &#39;R.oo&#39;</code></pre>
+<pre><code>## The following objects are masked from &#39;package:methods&#39;:
 ## 
-## Attaching package: &#39;R.oo&#39;
+##     getClasses, getMethods</code></pre>
+<pre><code>## The following objects are masked from &#39;package:base&#39;:
 ## 
-## The following objects are masked from &#39;package:methods&#39;:
+##     attach, detach, gc, load, save</code></pre>
+<pre><code>## R.utils v2.3.0 (2016-04-13) successfully loaded. See ?R.utils for help.</code></pre>
+<pre><code>## 
+## Attaching package: &#39;R.utils&#39;</code></pre>
+<pre><code>## The following object is masked from &#39;package:utils&#39;:
 ## 
-##     getClasses, getMethods
-## 
-## The following objects are masked from &#39;package:base&#39;:
-## 
-##     attach, detach, gc, load, save
-## 
-## R.utils v2.0.2 (2015-04-27) successfully loaded. See ?R.utils for help.
-## 
-## Attaching package: &#39;R.utils&#39;
-## 
-## The following object is masked from &#39;package:utils&#39;:
-## 
-##     timestamp
-## 
-## The following objects are masked from &#39;package:base&#39;:
+##     timestamp</code></pre>
+<pre><code>## The following objects are masked from &#39;package:base&#39;:
 ## 
 ##     cat, commandArgs, getOption, inherits, isOpen, parse, warnings</code></pre>
-<pre class="r"><code>library(&quot;plyr&quot;)</code></pre>
-<pre><code>## Warning: package &#39;plyr&#39; was built under R version 3.1.3</code></pre>
-<pre class="r"><code>library(&quot;limma&quot;)
+<pre class="r"><code>library(&quot;plyr&quot;)
+library(&quot;limma&quot;)
 library(&quot;EDASeq&quot;)</code></pre>
-<pre><code>## Loading required package: Biobase
-## Loading required package: BiocGenerics
-## Loading required package: parallel
-## 
-## Attaching package: &#39;BiocGenerics&#39;
-## 
-## The following objects are masked from &#39;package:parallel&#39;:
+<pre><code>## Loading required package: Biobase</code></pre>
+<pre><code>## Loading required package: BiocGenerics</code></pre>
+<pre><code>## Loading required package: parallel</code></pre>
+<pre><code>## 
+## Attaching package: &#39;BiocGenerics&#39;</code></pre>
+<pre><code>## The following objects are masked from &#39;package:parallel&#39;:
 ## 
 ##     clusterApply, clusterApplyLB, clusterCall, clusterEvalQ,
 ##     clusterExport, clusterMap, parApply, parCapply, parLapply,
-##     parLapplyLB, parRapply, parSapply, parSapplyLB
+##     parLapplyLB, parRapply, parSapply, parSapplyLB</code></pre>
+<pre><code>## The following object is masked from &#39;package:limma&#39;:
 ## 
-## The following object is masked from &#39;package:limma&#39;:
+##     plotMA</code></pre>
+<pre><code>## The following objects are masked from &#39;package:stats&#39;:
 ## 
-##     plotMA
+##     IQR, mad, xtabs</code></pre>
+<pre><code>## The following objects are masked from &#39;package:base&#39;:
 ## 
-## The following object is masked from &#39;package:stats&#39;:
-## 
-##     xtabs
-## 
-## The following objects are masked from &#39;package:base&#39;:
-## 
-##     anyDuplicated, append, as.data.frame, as.vector, cbind,
-##     colnames, do.call, duplicated, eval, evalq, Filter, Find, get,
-##     intersect, is.unsorted, lapply, Map, mapply, match, mget,
-##     order, paste, pmax, pmax.int, pmin, pmin.int, Position, rank,
-##     rbind, Reduce, rep.int, rownames, sapply, setdiff, sort,
-##     table, tapply, union, unique, unlist, unsplit
-## 
-## Welcome to Bioconductor
+##     anyDuplicated, append, as.data.frame, cbind, colnames,
+##     do.call, duplicated, eval, evalq, Filter, Find, get, grep,
+##     grepl, intersect, is.unsorted, lapply, lengths, Map, mapply,
+##     match, mget, order, paste, pmax, pmax.int, pmin, pmin.int,
+##     Position, rank, rbind, Reduce, rownames, sapply, setdiff,
+##     sort, table, tapply, union, unique, unsplit</code></pre>
+<pre><code>## Welcome to Bioconductor
 ## 
 ##     Vignettes contain introductory material; view with
 ##     &#39;browseVignettes()&#39;. To cite Bioconductor, see
-##     &#39;citation(&quot;Biobase&quot;)&#39;, and for packages &#39;citation(&quot;pkgname&quot;)&#39;.
+##     &#39;citation(&quot;Biobase&quot;)&#39;, and for packages &#39;citation(&quot;pkgname&quot;)&#39;.</code></pre>
+<pre><code>## Loading required package: ShortRead</code></pre>
+<pre><code>## Loading required package: BiocParallel</code></pre>
+<pre><code>## Loading required package: Biostrings</code></pre>
+<pre><code>## Loading required package: S4Vectors</code></pre>
+<pre><code>## Loading required package: stats4</code></pre>
+<pre><code>## 
+## Attaching package: &#39;S4Vectors&#39;</code></pre>
+<pre><code>## The following object is masked from &#39;package:plyr&#39;:
 ## 
-## Loading required package: ShortRead
-## Loading required package: BiocParallel
-## Loading required package: Biostrings
-## Loading required package: S4Vectors
-## Loading required package: stats4
+##     rename</code></pre>
+<pre><code>## The following object is masked from &#39;package:gplots&#39;:
 ## 
-## Attaching package: &#39;S4Vectors&#39;
+##     space</code></pre>
+<pre><code>## The following objects are masked from &#39;package:base&#39;:
 ## 
-## The following object is masked from &#39;package:plyr&#39;:
+##     colMeans, colSums, expand.grid, rowMeans, rowSums</code></pre>
+<pre><code>## Loading required package: IRanges</code></pre>
+<pre><code>## 
+## Attaching package: &#39;IRanges&#39;</code></pre>
+<pre><code>## The following object is masked from &#39;package:plyr&#39;:
 ## 
-##     rename
+##     desc</code></pre>
+<pre><code>## The following object is masked from &#39;package:R.oo&#39;:
 ## 
-## Loading required package: IRanges
+##     trim</code></pre>
+<pre><code>## Loading required package: XVector</code></pre>
+<pre><code>## 
+## Attaching package: &#39;XVector&#39;</code></pre>
+<pre><code>## The following object is masked from &#39;package:plyr&#39;:
 ## 
-## Attaching package: &#39;IRanges&#39;
+##     compact</code></pre>
+<pre><code>## Loading required package: Rsamtools</code></pre>
+<pre><code>## Loading required package: GenomeInfoDb</code></pre>
+<pre><code>## Loading required package: GenomicRanges</code></pre>
+<pre><code>## Loading required package: GenomicAlignments</code></pre>
+<pre><code>## Loading required package: SummarizedExperiment</code></pre>
+<pre><code>## 
+## Attaching package: &#39;ShortRead&#39;</code></pre>
+<pre><code>## The following object is masked from &#39;package:plyr&#39;:
 ## 
-## The following object is masked from &#39;package:plyr&#39;:
-## 
-##     desc
-## 
-## The following object is masked from &#39;package:R.oo&#39;:
-## 
-##     trim
-## 
-## The following object is masked from &#39;package:gplots&#39;:
-## 
-##     space
-## 
-## Loading required package: XVector
-## 
-## Attaching package: &#39;XVector&#39;
-## 
-## The following object is masked from &#39;package:plyr&#39;:
-## 
-##     compact
-## 
-## Loading required package: Rsamtools
-## Loading required package: GenomeInfoDb</code></pre>
-<pre><code>## Warning: package &#39;GenomeInfoDb&#39; was built under R version 3.1.3</code></pre>
-<pre><code>## Loading required package: GenomicRanges
-## Loading required package: GenomicAlignments
-## 
-## Attaching package: &#39;ShortRead&#39;
-## 
-## The following object is masked from &#39;package:plyr&#39;:
-## 
-##     id
-## 
-## The following object is masked from &#39;package:R.utils&#39;:
+##     id</code></pre>
+<pre><code>## The following object is masked from &#39;package:R.utils&#39;:
 ## 
 ##     countLines</code></pre>
 <pre class="r"><code>source(&quot;~/Reg_Evo_Primates/ashlar-trial/analysis/functions.R&quot;)
@@ -509,7 +539,7 @@ EDAdata &lt;- EDAdata[!is.na(fData(EDAdata)$gcRhesus),]
 gccontent.filtered &lt;- gccontent.genes[!is.na(gccontent.genes$humanGC) &amp; !is.na(gccontent.genes$chimpGC) &amp; !is.na(gccontent.genes$rhesusGC), ]
 percent &lt;- (apply(gccontent.filtered[,1:3], 1, max) - apply(gccontent.filtered[,1:3], 1, min)) / apply(gccontent.filtered[,1:3], 1, min)
 hist(percent, breaks = 100)</code></pre>
-<p><img src="GC_content_normalization_CHT_files/figure-html/unnamed-chunk-3-1.png" title="" alt="" width="672" /></p>
+<p><img src="GC_content_normalization_CHT_files/figure-html/chunk2-1.png" width="672" /></p>
 <pre class="r"><code>summary(percent)</code></pre>
 <pre><code>##     Min.  1st Qu.   Median     Mean  3rd Qu.     Max. 
 ## 0.000000 0.005505 0.010990 0.017590 0.022050 0.506000</code></pre>
@@ -522,7 +552,7 @@ hist(percent, breaks = 100)</code></pre>
 <pre class="r"><code>## Maybe less confusing measure: what is the difference in GC-content between genes (absolute difference)?                                                                                           
 percent &lt;- apply(gccontent.filtered[,1:3], 1, max) - apply(gccontent.filtered[,1:3], 1, min)
 hist(percent, breaks = 100)</code></pre>
-<p><img src="GC_content_normalization_CHT_files/figure-html/unnamed-chunk-3-2.png" title="" alt="" width="672" /></p>
+<p><img src="GC_content_normalization_CHT_files/figure-html/chunk2-2.png" width="672" /></p>
 <pre class="r"><code>summary(percent) ## max 20% difference                                                                                                                                                               </code></pre>
 <pre><code>##     Min.  1st Qu.   Median     Mean  3rd Qu.     Max. 
 ## 0.000000 0.002635 0.005317 0.007943 0.010260 0.195600</code></pre>
@@ -595,11 +625,11 @@ counts &lt;- counts_in_2_of_4_col[1]
 gc_content &lt;- gc_content_in_2_of_4_col[1]
 
 plot(t(gc_content), t(counts), ylab = &quot;Counts&quot;, xlab = &quot;GC content&quot;, main = &quot;Counts versus GC content for each gene in sample (C1H)&quot;)</code></pre>
-<p><img src="GC_content_normalization_CHT_files/figure-html/unnamed-chunk-5-1.png" title="" alt="" width="672" /></p>
+<p><img src="GC_content_normalization_CHT_files/figure-html/chunk4-1.png" width="672" /></p>
 <pre class="r"><code>counts &lt;- log2(counts_in_2_of_4_col[1])
 gc_content &lt;- gc_content_in_2_of_4_col[1]
 plot(t(gc_content), t(counts), ylab = &quot;Log2(counts)&quot;, xlab = &quot;GC content&quot;, main = &quot;Log2(counts) versus GC content for each gene in sample (C1H)&quot;)</code></pre>
-<p><img src="GC_content_normalization_CHT_files/figure-html/unnamed-chunk-5-2.png" title="" alt="" width="672" /></p>
+<p><img src="GC_content_normalization_CHT_files/figure-html/chunk4-2.png" width="672" /></p>
 <pre class="r"><code>counts &lt;- counts_in_2_of_4_col$C1H
 total_counts &lt;- rowSums(counts_in_2_of_4_col)
 divide_counts &lt;- counts / total_counts
@@ -630,9 +660,9 @@ median(total_counts$total_counts)</code></pre>
 <pre class="r"><code># 14108
 
 plot(t(gc_content), t(divide_counts), xlim = c(0.3, 0.7), ylim = c(0, 0.05), ylab = &quot;Fraction of counts from one individual&quot;, xlab = &quot;GC content&quot;, main = &quot;Fraction of counts versus gene GC content in one individual (C1H)&quot;)</code></pre>
-<p><img src="GC_content_normalization_CHT_files/figure-html/unnamed-chunk-5-3.png" title="" alt="" width="672" /></p>
+<p><img src="GC_content_normalization_CHT_files/figure-html/chunk4-3.png" width="672" /></p>
 <pre class="r"><code>plot(t(gc_content), t(divide_counts), ylab = &quot;Fraction of counts from one individual&quot;, xlab = &quot;GC content&quot;, main = &quot;Fraction of counts versus gene GC content in one individual (C1H)&quot;)</code></pre>
-<p><img src="GC_content_normalization_CHT_files/figure-html/unnamed-chunk-5-4.png" title="" alt="" width="672" /></p>
+<p><img src="GC_content_normalization_CHT_files/figure-html/chunk4-4.png" width="672" /></p>
 <ul>
 <li><p>Because GC content is species-specific, we want a scheme that will allow us to incorporate species-specific information (unlike in the analysis above). At the same time, gene GC content and species are confounded. Therefore, we argue that it makes sense to make different</p></li>
 <li><p>In RNA-seq experiments, a handful of highly expressed genes take up a large fraction of the total number of mapped reads. Different genes are highly expressed in different tissues. Also, there could be variation in the amount of highly expressed genes and the overall relationship between these and the other expressed genes. We need to adjust for total read depth.</p></li>
@@ -944,12 +974,12 @@ gc_counts_chimps = counts_chimps*gc_adj
 # Plots comparing raw and adjusted counts
 
 plot(gc_counts_chimp_hearts[-2,1], gc_counts_chimp_hearts[-2,3], xlab = &quot;GC content&quot;, ylab = &quot;Observed raw counts&quot;)</code></pre>
-<p><img src="GC_content_normalization_CHT_files/figure-html/unnamed-chunk-7-1.png" title="" alt="" width="672" /></p>
+<p><img src="GC_content_normalization_CHT_files/figure-html/chunk6-1.png" width="672" /></p>
 <pre class="r"><code>plot(gc_counts_chimp_hearts[-2,1], gc_counts_chimps[,1], xlab = &quot;GC content&quot;, ylab = &quot;Adjusted raw counts&quot;)</code></pre>
-<p><img src="GC_content_normalization_CHT_files/figure-html/unnamed-chunk-7-2.png" title="" alt="" width="672" /></p>
+<p><img src="GC_content_normalization_CHT_files/figure-html/chunk6-2.png" width="672" /></p>
 <pre class="r"><code>plot(gc_counts_chimp_hearts[-2,3], gc_counts_chimps[,1], ylab = &quot;Expected counts&quot;, xlab = &quot;Observed raw counts&quot;)
 abline(a = 0, b = 1, col = &quot;red&quot;, lwd = 3)</code></pre>
-<p><img src="GC_content_normalization_CHT_files/figure-html/unnamed-chunk-7-3.png" title="" alt="" width="672" /></p>
+<p><img src="GC_content_normalization_CHT_files/figure-html/chunk6-3.png" width="672" /></p>
 <pre class="r"><code># Now repeat with humans
 
 # Average gc content
@@ -994,12 +1024,12 @@ gc_counts_humans = counts_humans*gc_adj
 
 # Plot to see the relationship between the raw counts and the GC adjusted counts
 plot(gc_counts_human_hearts[-2,1], gc_counts_human_hearts[-2,3], xlab = &quot;GC content&quot;, ylab = &quot;Observed raw counts&quot;)</code></pre>
-<p><img src="GC_content_normalization_CHT_files/figure-html/unnamed-chunk-7-4.png" title="" alt="" width="672" /></p>
+<p><img src="GC_content_normalization_CHT_files/figure-html/chunk6-4.png" width="672" /></p>
 <pre class="r"><code>plot(gc_counts_human_hearts[-2,1], gc_counts_humans[,1], xlab = &quot;GC content&quot;, ylab = &quot;Adjusted raw counts&quot;)</code></pre>
-<p><img src="GC_content_normalization_CHT_files/figure-html/unnamed-chunk-7-5.png" title="" alt="" width="672" /></p>
+<p><img src="GC_content_normalization_CHT_files/figure-html/chunk6-5.png" width="672" /></p>
 <pre class="r"><code>plot(gc_counts_human_hearts[-2,3], gc_counts_humans[,1], ylab = &quot;Expected counts&quot;, xlab = &quot;Observed raw counts&quot;)
 abline(a = 0, b = 1, col = &quot;red&quot;, lwd = 3)</code></pre>
-<p><img src="GC_content_normalization_CHT_files/figure-html/unnamed-chunk-7-6.png" title="" alt="" width="672" /></p>
+<p><img src="GC_content_normalization_CHT_files/figure-html/chunk6-6.png" width="672" /></p>
 <pre class="r"><code># Now repeat for rhesus
 
 # Average gc content
@@ -1044,18 +1074,20 @@ gc_counts_rhesus = counts_rhesus*gc_adj
 # Plots comparing raw and adjusted counts
 
 plot(gc_counts_rhesus_hearts[-2,1], gc_counts_rhesus_hearts[-2,3], xlab = &quot;GC content&quot;, ylab = &quot;Observed raw counts&quot;)</code></pre>
-<p><img src="GC_content_normalization_CHT_files/figure-html/unnamed-chunk-7-7.png" title="" alt="" width="672" /></p>
+<p><img src="GC_content_normalization_CHT_files/figure-html/chunk6-7.png" width="672" /></p>
 <pre class="r"><code>plot(gc_counts_rhesus_hearts[-2,1], gc_counts_rhesus[,1], xlab = &quot;GC content&quot;, ylab = &quot;Adjusted raw counts&quot;)</code></pre>
-<p><img src="GC_content_normalization_CHT_files/figure-html/unnamed-chunk-7-8.png" title="" alt="" width="672" /></p>
+<p><img src="GC_content_normalization_CHT_files/figure-html/chunk6-8.png" width="672" /></p>
 <pre class="r"><code>plot(gc_counts_rhesus_hearts[-2,3], gc_counts_rhesus[,1], ylab = &quot;Expected counts&quot;, xlab = &quot;Observed raw counts&quot;)
 abline(a = 0, b = 1, col = &quot;red&quot;, lwd = 3)</code></pre>
-<p><img src="GC_content_normalization_CHT_files/figure-html/unnamed-chunk-7-9.png" title="" alt="" width="672" /></p>
+<p><img src="GC_content_normalization_CHT_files/figure-html/chunk6-9.png" width="672" /></p>
 <pre class="r"><code># Combine the samples in the same order as before (all chimpanzee 1 samples together, etc. )
 
 chimps &lt;- c(1, 5, 9, 13, 2, 6, 10, 14, 3, 7, 11, 15, 4, 8, 12, 16)
 humans &lt;- c(4, 8, 12, 1, 5, 9, 13, 2, 6, 10, 14, 3, 7, 11, 15)
 
 counts_genes_gc &lt;- cbind(gc_counts_chimps[, chimps], gc_counts_humans[ ,humans], gc_counts_rhesus[, chimps])
+
+# Write a table with the GC-normalized counts
 
 # write.table(counts_genes_gc,file=&quot;/Users/LEB/Reg_Evo_Primates/ashlar-trial/data/gene_counts_with_gc_correction.txt&quot;,sep=&quot;\t&quot;, col.names = T, row.names = T)</code></pre>
 <p><strong>To do: Show that orthologous gene length (and exon length) is the same/similar across the different species and therefore we did not correct for it in the analysis. </strong></p>
@@ -1086,6 +1118,8 @@ $(document).ready(function () {
 });
 
 </script>
+
+
 
 </div>
 
