@@ -14,14 +14,23 @@ title: "Home"
 
 ## RNA-seq Data
 
+### QC and normalizations
+
 *  [Unmapped and Mapped Reads](../analysis/Plots_unmapped_mapped_RNAseq_reads.html)
 *  [Raw counts](../analysis/Normalization_plots.html)
 *  [Filtering](../analysis/Filtering_analysis.html)
 *  [GC content normalization](../analysis/GC_content_normalization_CHT.html)
 *  [Library size adjustment and decoupling the relationship between expression mean and variance](../analysis/TMM_voom_on_GC_normalized_data.html)
-*  Testing technical variables (gene expression PCs)
+
+### Analysis with Technical Factors
+
+*  [Testing for confounders](../Tech_factor_analysis1_gene_exp.Rmd)
 *  [Further analysis with potential confounders](../analysis/Analysis_of_confounders2_gene_exp.Rmd)
-* 
+*  [Best set of technical factors](../analysis/GLMnet_gene_exp.Rmd)
+
+### Univariate analysis on gene expression
+
+* [Test for differentially expressed genes](../analysis/Test_DE_genes.Rmd) 
 
 ## Methylation Data
 
