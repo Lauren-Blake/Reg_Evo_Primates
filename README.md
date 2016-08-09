@@ -1,64 +1,12 @@
-# ashlar: A workflow template for statistical computing projects
+# Reg_Evo_Primates
 
-[*ashlar*](http://github.com/jhsiao999/ashlar) is our attempt to streamline workflow and to do reproducible research here at the University of Chicago [Stephens Lab](http://stephenslab.uchicago.edu/). 
+A project analyzing gene expression and methylaion (RNA-Seq and BS-seq) in primates. 
 
-<!-- START doctoc generated TOC please keep comment here to allow auto update -->
-<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
-**Table of Contents**  *generated with [DocToc](https://github.com/thlorenz/doctoc)*
+This site was made from [ashlar](https://github.com/jhsiao999/ashlar) workflow.
 
-- [Making your own ashlar](#making-your-own-ashlar)
-  - [Cloning [*ashlar*](http://github.com/jhsiao999/ashlar)](#cloning-ashlarhttpgithubcomjhsiao999ashlar)
-  - [Reset git remote directory](#reset-git-remote-directory)
-  - [Producing and publishing the website](#producing-and-publishing-the-website)
-    - [Option 1: All contents for my eyes only](#option-1-all-contents-for-my-eyes-only)
-    - [Option 2: Publish it! Keep a two-branch workflow.](#option-2-publish-it-keep-a-two-branch-workflow)
-  - [A typical git workflow](#a-typical-git-workflow)
-- [Resources](#resources)
-- [Some tips on how to collaborate with others using GitHub](#tip-collaborate)
+See the [contributing guidelines](https://github.com/jdblischak/singleCellSeq/blob/master/CONTRIBUTING.md) to add a new analysis. 
 
-<!-- END doctoc generated TOC please keep comment here to allow auto update -->
-
-
-
-
-## Making your own ashlar
-
-### Cloning [*ashlar*](http://github.com/jhsiao999/ashlar) 
-
-[*ashlar*](http://github.com/jhsiao999/ashlar) is inspired by [*singleCellSeq*](https://github.com/jdblischak/singleCellSeq) - a collaborative project between biologists, bioinformaticians and statisticians that aim at exploring and understanding batch effects in single-cell RNA sequencing data. Both projects adopt the popular [*rmarkdown*](http://rmarkdown.rstudio.com/) website layout.
-
-I suggest cloning into a new folder to distinguish your work from the example repository.
-
-```
-git clone https://github.com/jhsiao999/ashlar.git ashlar-trial
-```
-
-
-
-### Reset git remote directory 
-
-At this point, your remote directory of the clone is still [*ashlar*](http://github.com/jhsiao999/ashlar). Make sure you change the name of the remote repository to match your local directory.
-
-```
-git remote rm origin
-git remote add origin https://github.com/jhsiao999/ashlar-trial.git
-```
-
-Create a repository at [*github.com*](http://github.com). Then, push contents of the entire directory to the *master* branch. We use *git add -f* option to force add *html* files to the master branch, such as *index.html* for table of content. The default *.gitignore* in [*ashlar*](http://github.com/jhsiao999/ashlar) ignores *htmls*. 
-
-```
-git add -f --all
-git commit -m "first commit"
-git push origin master
-```
-
-
-
-### Personalize your repository
-
-Now edit these files 
-
-
+## Some notes
 
 ### Producing and publishing the website 
 
