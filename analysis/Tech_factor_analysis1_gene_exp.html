@@ -182,8 +182,8 @@ $(document).ready(function () {
 <div id="TOC">
 <ul>
 <li><a href="#part-one-see-if-any-of-the-variables-for-rna-seq-correlate-with-the-expression-pcs-for-genes">PART ONE: See if any of the variables for RNA-Seq correlate with the expression PCs for genes</a></li>
-<li><a href="#for-the-variables-that-correlate-see-if-these-segregate-with-either-species-or-tissue">For the variable(s) that correlate, see if these segregate with either species or tissue</a></li>
-<li><a href="#part-3-which-variables-to-put-in-the-model">Part 3: Which variables to put in the model?</a></li>
+<li><a href="#part-two-for-the-variables-that-correlate-see-if-these-segregate-with-either-species-or-tissue">PART TWO: For the variable(s) that correlate, see if these segregate with either species or tissue</a></li>
+<li><a href="#part-three-which-variables-to-put-in-the-model">PART THREE: Which variables to put in the model?</a></li>
 </ul>
 </div>
 
@@ -580,8 +580,8 @@ unique(coor_to_check_col)</code></pre>
 </ul>
 </div>
 </div>
-<div id="for-the-variables-that-correlate-see-if-these-segregate-with-either-species-or-tissue" class="section level3">
-<h3>For the variable(s) that correlate, see if these segregate with either species or tissue</h3>
+<div id="part-two-for-the-variables-that-correlate-see-if-these-segregate-with-either-species-or-tissue" class="section level3">
+<h3>PART TWO: For the variable(s) that correlate, see if these segregate with either species or tissue</h3>
 <p>In coor_to_check_col, row is the PC # and col is the column # -4 that is associated with the PC Want to take the coor_to_check_col column # and add four. That is the variable that we should check to see if it correlates with tissue or species.</p>
 <pre class="r"><code>var_numb = unique(coor_to_check_col) + 4
 #Making the variable versus species and tissue graphs into a file called VarVsSpeciesTissue.pdf
@@ -748,8 +748,8 @@ sum(collapse_table_fdr_val &lt;= 0.1)</code></pre>
 <p>The following variables are associated with species: * Individual * RNA extraction date * Multiplexing mix codes * Percentage of bps trimmed (adaptors) * Number of reads shorter than 20bp removed * Number of junctions * RNA concentration * RIN score * Library concentration * Library fragments size</p>
 <p>The following variables are associated with tissue: * Multiplexing index sequence * Percentage of mapped reads overlapping a junction * Number of junctions * Number of reads mapped on othologous exons * Number of orthologous exons with at least 1 mapped read * Number of orthologous genes with at least 1 mapped read * RNA concentration</p>
 </div>
-<div id="part-3-which-variables-to-put-in-the-model" class="section level3">
-<h3>Part 3: Which variables to put in the model?</h3>
+<div id="part-three-which-variables-to-put-in-the-model" class="section level3">
+<h3>PART THREE: Which variables to put in the model?</h3>
 <p>Check for degree of similarity between the values of the different variables (not including species or tissue) For ones that show high correlation (multi-colinearity), we will only want to incorporate one of these variables into the model Note: the first 4 variables are ordinal, the others are numerical.</p>
 <pre class="r"><code>number_to_check &lt;- var.numb
 number_to_check &lt;- as.data.frame(number_to_check)

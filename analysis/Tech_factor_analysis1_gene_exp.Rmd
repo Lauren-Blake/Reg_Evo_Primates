@@ -268,7 +268,7 @@ The following variables are associated with one of the PCs tested and will be in
 *	Library concentration
 *	Library fragments size
 
-### For the variable(s) that correlate, see if these segregate with either species or tissue
+### PART TWO: For the variable(s) that correlate, see if these segregate with either species or tissue
 
 In coor_to_check_col, row is the PC # and col is the column # -4 that is associated with the PC Want to take the coor_to_check_col column # and add four. That is the variable that we should check to see if it correlates with tissue or species.
 
@@ -389,7 +389,7 @@ The following variables are associated with tissue:
 *	Number of orthologous genes with at least 1 mapped read
 *	RNA concentration
 
-### Part 3: Which variables to put in the model?
+### PART THREE: Which variables to put in the model?
 
 Check for degree of similarity between the values of the different variables (not including species or tissue) For ones that show high correlation (multi-colinearity), we will only want to incorporate one of these variables into the model Note: the first 4 variables are ordinal, the others are numerical. 
 

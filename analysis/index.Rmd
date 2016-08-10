@@ -24,7 +24,7 @@ title: "Home"
 
 ### Analysis with Technical Factors
 
-*  [Testing for confounders](../Tech_factor_analysis1_gene_exp.html)
+*  [Testing for confounders](../analysis/Tech_factor_analysis1_gene_exp.html)
 *  [Further analysis with potential confounders](../analysis/Analysis_of_confounders2_gene_exp.html)
 *  [Best set of technical factors](../analysis/GLMnet_gene_exp.html)
 

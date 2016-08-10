@@ -1,0 +1,174 @@
+---
+title: "Follow_up_best_set_tech_factors"
+author: "Lauren Blake"
+date: "August 9, 2016"
+output: html_document
+---
+
+### Introduction
+
+In the previous analysis, we found that the following genes appeared in the best set for more than 2,400 of the 16,616 genes. 
+
+* RNA Extraction date 3-23-12 (2nd technical factor)
+* Mix code 1000 (8th technical factor)
+* Percentage overlapping a junction (13th technical factor)
+* Reads mapped on orthologous exons (15th technical factor)
+
+We want to see the distribution of expression values for the genes in which the best set contains one of the technical variables or not. If the expression values for the genes in which the best set contains one of the technical variables are randomly distributed, then that is good and we probably won't include it in the final model (used to determine DE genes). If the expression values for the genes in which the best set contains one of the technical variables are not randomly distributed, then we will consider including it in the final model when testing for DE genes. 
+
+```{r setup}
+
+# Load libraries 
+
+library("gplots")
+library("ggplot2")
+
+# Load the data (biological and technical factors)
+
+Best_set_bio_tech_var <- read.delim("~/Reg_Evo_Primates/ashlar-trial/data/Best_set_bio_tech_var.txt")
+
+t_Best_set_bio_tech_var <- t(Best_set_bio_tech_var)
+
+dim(t_Best_set_bio_tech_var)
+
+# Load the data (expression counts data)
+
+gene_counts_with_gc_correction <- read.delim("~/Reg_Evo_Primates/ashlar-trial/data/gene_counts_with_gc_correction.txt")
+
+```
+
+### Exploratory Analysis
+
+```{r}
+# Find average expression for each gene
+
+chimp_hearts <- c(1, 5, 9, 13)
+chimp_kidneys <- c(2,6,10,14)
+chimp_livers <- c(3,7,11,15)
+chimp_lungs <- c(4,8,12,16)
+
+human_hearts <- c(20,24,28)
+human_kidneys <- c(17,21,25,29)
+human_livers <- c(18,22,26,30)
+human_lungs <- c(19,23,27,31)
+
+rhesus_hearts <- c(32,36,40,44)
+rhesus_kidneys <- c(33,37,41,45)
+rhesus_livers <- c(34,38,42,46)
+rhesus_lungs <- c(35,39,43,47)
+
+# For chimp hearts
+exp_chimp_hearts <- as.data.frame(rowMeans(gene_counts_with_gc_correction[ , chimp_hearts]))
+
+# For chimp kidneys
+
+exp_chimp_kidneys <- as.data.frame(rowMeans(gene_counts_with_gc_correction[ , chimp_kidneys]))
+
+# For chimp livers
+
+exp_chimp_livers <- as.data.frame(rowMeans(gene_counts_with_gc_correction[ , chimp_livers]))
+
+# For chimp lungs
+
+exp_chimp_lungs <- as.data.frame(rowMeans(gene_counts_with_gc_correction[ , chimp_lungs]))
+
+# For human hearts
+exp_human_hearts <- as.data.frame(rowMeans(gene_counts_with_gc_correction[ , human_hearts]))
+
+# For human kidneys
+
+exp_human_kidneys <- as.data.frame(rowMeans(gene_counts_with_gc_correction[ , human_kidneys]))
+
+# For human livers
+
+exp_human_livers <- as.data.frame(rowMeans(gene_counts_with_gc_correction[ , human_livers]))
+
+# For human lungs
+
+exp_human_lungs <- as.data.frame(rowMeans(gene_counts_with_gc_correction[ , human_lungs]))
+
+# For rhesus hearts
+exp_rhesus_hearts <- as.data.frame(rowMeans(gene_counts_with_gc_correction[ , rhesus_hearts]))
+
+# For rhesus kidneys
+
+exp_rhesus_kidneys <- as.data.frame(rowMeans(gene_counts_with_gc_correction[ , rhesus_kidneys]))
+
+# For rhesus livers
+
+exp_rhesus_livers <- as.data.frame(rowMeans(gene_counts_with_gc_correction[ , rhesus_livers]))
+
+# For rhesus lungs
+
+exp_rhesus_lungs <- as.data.frame(rowMeans(gene_counts_with_gc_correction[ , human_lungs]))
+
+# Make the data frame
+
+avg_exp_values <- cbind(exp_chimp_hearts, exp_chimp_kidneys, exp_chimp_livers, exp_chimp_lungs, exp_human_hearts, exp_human_kidneys, exp_human_livers, exp_human_lungs, exp_rhesus_hearts, exp_rhesus_kidneys, exp_rhesus_livers, exp_rhesus_lungs)
+
+rownames(avg_exp_values) <- row.names(gene_counts_with_gc_correction)
+colnames(avg_exp_values) <- c("CH", "CK", "CLi", "CLu", "HH", "HK", "HLi", "HLu", "RH", "RK", "RLi", "RLu")
+
+head(avg_exp_values)
+
+# Add the 4 relevant technical variables
+
+avg_exp_values_tech <- cbind(avg_exp_values, t_Best_set_bio_tech_var[,10], t_Best_set_bio_tech_var[,16], t_Best_set_bio_tech_var[,21], t_Best_set_bio_tech_var[,23])
+
+colnames(avg_exp_values_tech) <- c("CH", "CK", "CLi", "CLu", "HH", "HK", "HLi", "HLu", "RH", "RK", "RLi", "RLu", "Extraction_3-23-12", "Mix_code_1000", "Perc_overlapping_junction", "Reads_mapped_on_ortho_exons")
+
+# Check # of genes with technical variables
+colSums(avg_exp_values_tech)
+
+avg_exp_values_RNA_extra <- as.data.frame(avg_exp_values_tech[,1:13])
+
+# Put in a format ggplot2 likes
+
+CH <- as.data.frame(rep("CH", times = 16616))
+CK <- as.data.frame(rep("CK", times = 16616))
+CLi <- as.data.frame(rep("CLi", times = 16616))
+CLu <- as.data.frame(rep("CLu", times = 16616))
+
+HH <- as.data.frame(rep("HH", times = 16616))
+HK <- as.data.frame(rep("HK", times = 16616))
+HLi <- as.data.frame(rep("HLi", times = 16616))
+HLu <- as.data.frame(rep("HLu", times = 16616))
+
+RH <- as.data.frame(rep("RH", times = 16616))
+RK <- as.data.frame(rep("RK", times = 16616))
+RLi <- as.data.frame(rep("RLi", times = 16616))
+RLu <- as.data.frame(rep("RLu", times = 16616))
+
+ggplot_avg_value_CH <- cbind(avg_exp_values_RNA_extra[,1], CH, avg_exp_values_RNA_extra[,13])
+colnames(ggplot_avg_value_CH) <- c("Avg. Expression", "Sample", "RNA_Extra")
+
+ggplot_avg_value_CK <- cbind(avg_exp_values_RNA_extra[,2], CK, avg_exp_values_RNA_extra[,13])
+
+ggplot_avg_value_CLi <- cbind(avg_exp_values_RNA_extra[,3], CLi, avg_exp_values_RNA_extra[,13])
+
+ggplot_avg_value_CLu <- cbind(avg_exp_values_RNA_extra[,4], CLu, avg_exp_values_RNA_extra[,13])
+
+ggplot_avg_value_HH <- cbind(avg_exp_values_RNA_extra[,5], HH, avg_exp_values_RNA_extra[,13])
+
+ggplot_avg_value_HK <- cbind(avg_exp_values_RNA_extra[,6], HK, avg_exp_values_RNA_extra[,13])
+
+ggplot_avg_value_HLi <- cbind(avg_exp_values_RNA_extra[,7], HLi, avg_exp_values_RNA_extra[,13])
+
+ggplot_avg_value_HLu <- cbind(avg_exp_values_RNA_extra[,8], HLu, avg_exp_values_RNA_extra[,13])
+
+ggplot_avg_value_RH <- cbind(avg_exp_values_RNA_extra[,9], RH, avg_exp_values_RNA_extra[,13])
+
+ggplot_avg_value_RK <- cbind(avg_exp_values_RNA_extra[,10], RK, avg_exp_values_RNA_extra[,13])
+
+ggplot_avg_value_RLi <- cbind(avg_exp_values_RNA_extra[,11], RLi, avg_exp_values_RNA_extra[,13])
+
+ggplot_avg_value_RLu <- cbind(avg_exp_values_RNA_extra[,12], RLu, avg_exp_values_RNA_extra[,13])
+
+ggplot_avg_value <- rbind(ggplot_avg_value_CH, ggplot_avg_value_CK, ggplot_avg_value_CLi, ggplot_avg_value_CLu, ggplot_avg_value_HH, ggplot_avg_value_HK, ggplot_avg_value_HLi, ggplot_avg_value_HLu, ggplot_avg_value_RH, ggplot_avg_value_RK, ggplot_avg_value_RLi, ggplot_avg_value_RLu)
+
+ggplot(avg_exp_values_RNA_extra, aes(avg_exp_values_RNA_extra[1,])) +   geom_boxplot(aes(fill = factor(avg_exp_values_tech[[13, ]])))
+
+qplot(factor())
+```
+
+

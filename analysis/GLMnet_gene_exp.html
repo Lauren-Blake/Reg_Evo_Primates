@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+<head>
+
+<meta charset="utf-8">
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<meta name="generator" content="pandoc" />
+
+
+<meta name="author" content="Lauren Blake" />
+
+
+<title>Glmnet_gene_expression</title>
+
+<script src="libs/jquery-1.11.3/jquery.min.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link href="libs/bootstrap-3.3.5/css/united.min.css" rel="stylesheet" />
+<script src="libs/bootstrap-3.3.5/js/bootstrap.min.js"></script>
+<script src="libs/bootstrap-3.3.5/shim/html5shiv.min.js"></script>
+<script src="libs/bootstrap-3.3.5/shim/respond.min.js"></script>
+
+<style type="text/css">
+
+/* padding for bootstrap navbar */
+body {
+  padding-top: 50px;
+  padding-bottom: 40px;
+}
+
+
+/* offset scroll position for anchor links (for fixed navbar)  */
+.section h2 {
+  padding-top: 55px;
+  margin-top: -55px;
+}
+.section h3 {
+  padding-top: 55px;
+  margin-top: -55px;
+}
+
+
+
+/* don't use link color in navbar */
+.dropdown-menu>li>a {
+  color: black;
+}
+
+/* some padding for disqus */
+#disqus_thread {
+  margin-top: 45px;
+}
+
+</style>
+
+<link rel="stylesheet" href="libs/font-awesome-4.1.0/css/font-awesome.min.css"/>
+
+<style type="text/css">code{white-space: pre;}</style>
+<link rel="stylesheet"
+      href="libs/highlight/textmate.css"
+      type="text/css" />
+<script src="libs/highlight/highlight.js"></script>
+<style type="text/css">
+  pre:not([class]) {
+    background-color: white;
+  }
+</style>
+<script type="text/javascript">
+if (window.hljs && document.readyState && document.readyState === "complete") {
+   window.setTimeout(function() {
+      hljs.initHighlighting();
+   }, 0);
+}
+</script>
+
+
+
+<style type="text/css">
+h1 {
+  font-size: 34px;
+}
+h1.title {
+  font-size: 38px;
+}
+h2 {
+  font-size: 30px;
+}
+h3 {
+  font-size: 24px;
+}
+h4 {
+  font-size: 18px;
+}
+h5 {
+  font-size: 16px;
+}
+h6 {
+  font-size: 12px;
+}
+.table th:not([align]) {
+  text-align: left;
+}
+</style>
+
+
+</head>
+
+<body>
+
+<style type = "text/css">
+.main-container {
+  max-width: 940px;
+  margin-left: auto;
+  margin-right: auto;
+}
+code {
+  color: inherit;
+  background-color: rgba(0, 0, 0, 0.04);
+}
+img {
+  max-width:100%;
+  height: auto;
+}
+.tabbed-pane {
+  padding-top: 12px;
+}
+button.code-folding-btn:focus {
+  outline: none;
+}
+</style>
+
+
+<div class="container-fluid main-container">
+
+<!-- tabsets -->
+<script src="libs/navigation-1.1/tabsets.js"></script>
+<script>
+$(document).ready(function () {
+  window.buildTabsets("TOC");
+});
+</script>
+
+<!-- code folding -->
+
+
+
+
+
+
+<div class="navbar navbar-default navbar-fixed-top" role="navigation">
+  <div class="container">
+    <div class="navbar-header">
+      <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar">
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+      </button>
+      <a class="navbar-brand" href="index.html">RegulatoryEvolutionInPrimates</a>
+    </div>
+    <div id="navbar" class="navbar-collapse collapse">
+      <ul class="nav navbar-nav">
+        <li><a href="index.html">Home</a></li>
+        <li><a href="about.html">About</a></li>
+        <li><a href="license.html">License</a></li>
+        <li><a href="https://github.com/Lauren-Blake/Reg_Evo_Primates">GitHub</a></li>
+    </div><!--/.nav-collapse -->
+  </div><!--/.container -->
+</div><!--/.navbar -->
+
+<div class="fluid-row" id="header">
+
+
+
+<h1 class="title toc-ignore">Glmnet_gene_expression</h1>
+<h4 class="author"><em>Lauren Blake</em></h4>
+<h4 class="date"><em>June 2, 2016</em></h4>
+
+</div>
+
+
+<pre class="r"><code># Load library 
+
+library(&quot;glmnet&quot;)</code></pre>
+<pre><code>## Loading required package: Matrix</code></pre>
+<pre><code>## Loading required package: foreach</code></pre>
+<pre><code>## Loaded glmnet 2.0-5</code></pre>
+<pre class="r"><code># Load expression data
+
+expression &lt;- read.delim(&quot;~/Reg_Evo_Primates/ashlar-trial/data/gc_cyclic_loess_random_var_gene_exp_counts&quot;)
+
+expression_t &lt;- t(expression)
+
+# Load variables data
+
+samples &lt;- read.csv(&quot;~/Reg_Evo_Primates/ashlar-trial/data/RNA_seq_info.csv&quot;)
+samples &lt;- as.data.frame(samples)</code></pre>
+<pre class="r"><code>#Use the biological variables (tissue and species) and the technical variables that were correlated with tissue and species
+
+tech_var &lt;- c(3:8,11,12,16:24)
+
+#Add technical variables 
+
+RNA_seq_tech_var &lt;- samples[,tech_var]
+
+dim(RNA_seq_tech_var)</code></pre>
+<pre><code>## [1] 47 17</code></pre>
+<pre class="r"><code>RNA_seq_tech_var &lt;- RNA_seq_tech_var[-31,]
+expression_t &lt;- expression_t[-31,]
+
+# RNA_seq_tech_var &lt;- as.data.frame(RNA_seq_tech_var)
+
+#We always want species and tissue in the model, so we will use the residuals from this lm
+
+#Make an array to hold the residuals
+
+# expression_t_no_NA &lt;- expression_t[-31,]
+
+# all_resid &lt;- array(NA, dim=c(46, 17671))
+
+# j = 1
+# for(j in 1:17671){
+#  fit &lt;- lm(expression_t_no_NA[,j] ~ as.factor(RNA_seq_tech_var[,2]) + as.factor(RNA_seq_tech_var[,3])) 
+#  all_resid[,j] &lt;- resid(fit)
+#}</code></pre>
+<pre class="r"><code>#Set up the matrix of all technical variables
+
+RNA_species &lt;- model.matrix(~ -1+Species, RNA_seq_tech_var)
+RNA_tissue &lt;- model.matrix(~ -1+Tissue, RNA_seq_tech_var)
+RNA_extra &lt;- model.matrix(~ -1+RNA.extraction.date, RNA_seq_tech_var)
+Multi_mix &lt;- model.matrix(~ -1+Multiplexing.Mixes.Code, RNA_seq_tech_var)
+
+cat_exp_var &lt;- cbind(RNA_species, RNA_tissue, RNA_extra, Multi_mix)
+num_exp_var &lt;- RNA_seq_tech_var[,7:17]
+num_exp_var &lt;- num_exp_var[,-6]
+
+# Make the matrix with biological and technical variables
+exp_var_no_NA &lt;- cbind(cat_exp_var, num_exp_var)
+exp_var_no_NA &lt;- as.matrix(exp_var_no_NA)
+
+dim(exp_var_no_NA)</code></pre>
+<pre><code>## [1] 46 27</code></pre>
+<pre class="r"><code>#Run glmnet on all the genes, save the coef. Repeat for each gene. 
+#Alpha = 1 to allow for lasso regression because of correlations between the explanatory variables
+
+lambda_min &lt;- array(NA, dim= c(1, 16616))
+
+# Do not penalize tissue and species
+p.fac = rep(1,28)
+p.fac[c(1:7)] = 0
+
+l = 1
+for(l in 1:length(lambda_min)){
+  resp_var &lt;- as.matrix(expression_t[,l])
+  glmmod&lt;-cv.glmnet(x=exp_var_no_NA,y=resp_var, penalty.factor = p.fac)
+  lambda_min[,l]  &lt;- as.matrix(glmmod$lambda.min)
+  # print(l)
+}
+
+rowMeans(lambda_min) #0.08845252</code></pre>
+<pre><code>## [1] 0.08840977</code></pre>
+<pre class="r"><code>#Make an array to hold the dgCMatrix
+
+best_set &lt;- array(NA, dim= c(28, 16616))
+
+l = 1
+for(l in 1:16616){
+  
+#Define the response variable
+resp_var &lt;- as.matrix(expression_t[,l])
+
+
+glmmod&lt;-glmnet(x=exp_var_no_NA,y=resp_var, standardize = TRUE, intercept = FALSE, alpha = 1, penalty.factor = p.fac)
+
+best_set[,l] &lt;- as.matrix(coef(glmmod, s =0.08845252))
+#print(l)
+}</code></pre>
+<pre><code>## Warning: from glmnet Fortran code (error code -52); Convergence for 52th
+## lambda value not reached after maxit=100000 iterations; solutions for
+## larger lambdas returned</code></pre>
+<pre class="r"><code>best_set_copy &lt;- best_set
+best_set_copy[best_set_copy != 0] &lt;- 1
+
+# Save this data frame so we can then look at the expression values for the different genes
+
+best_set_copy_save &lt;- as.data.frame(best_set_copy)
+
+# write.table(best_set_copy_save,file=&quot;/Users/LEB/Reg_Evo_Primates/ashlar-trial/data/Best_set_bio_tech_var.txt&quot;,sep=&quot;\t&quot;, col.names = T, row.names = T)
+
+# Look at how many times each technical variable is included in the model for expression
+
+var_score &lt;- rowSums(best_set_copy)
+
+best_set_intercept_false_copy &lt;- best_set
+best_set_intercept_false_copy[best_set_intercept_false_copy != 0] &lt;- 1
+
+
+var_score_intercept &lt;- as.data.frame(rowSums(best_set_intercept_false_copy))
+
+
+par(mar = c(11, 4, 2, 1))
+plot(var_score_intercept[9:28,], xaxt = &#39;n&#39;, xlab = &quot; &quot;, pch = 19, ylab = &quot;Frequency&quot;, main = &quot;Number of appearances in best set for each gene (16,616 genes)&quot;)
+axis(1, at = 1:20, labels = c(&quot;RNA Extraction 3-12-12&quot;, &quot;RNA Extraction 3-23-12&quot;, &quot;RNA Extraction 3-29-12&quot;, &quot;RNA Extraction 8-3-12&quot;, &quot;RNA Extraction 3-6-12&quot;, &quot;Mix code 0100&quot;, &quot;Mix code 0101&quot;, &quot;Mix code 1000&quot;, &quot;Mix code 1001&quot;, &quot;Mix code 1010&quot;, &quot;% of bp trimmed&quot;, &quot;Reads &gt;20 bp removed&quot;, &quot;% overlapping a junction&quot;, &quot;# of junctions&quot;, &quot;Mapped on orth. exons&quot;, &quot;Orth. genes w/ &gt;= 1 mapped read&quot;, &quot;RNA concentration&quot;, &quot;RIN score&quot;, &quot;Library concentration&quot;, &quot;Library fragments&quot;), las = 2, cex.axis = 0.8)</code></pre>
+<p><img src="GLMnet_gene_exp_files/figure-html/unnamed-chunk-4-1.png" width="672" /></p>
+
+
+<!-- some extra javascript for older browsers -->
+<script type="text/javascript" src="libs/polyfill.js"></script>
+
+<script>
+
+// manage active state of menu based on current page
+$(document).ready(function () {
+
+    // active menu
+    href = window.location.pathname
+    href = href.substr(href.lastIndexOf('/') + 1)
+    $('a[href="' + href + '"]').parent().addClass('active');
+
+    // manage active menu header
+    if (href.startsWith('authoring_'))
+      $('a[href="' + 'authoring' + '"]').parent().addClass('active');
+    else if (href.endsWith('_format.html'))
+      $('a[href="' + 'formats' + '"]').parent().addClass('active');
+    else if (href.startsWith('developer_'))
+      $('a[href="' + 'developer' + '"]').parent().addClass('active');
+
+});
+
+</script>
+
+
+
+</div>
+
+<script>
+
+// add bootstrap table styles to pandoc tables
+$(document).ready(function () {
+  $('tr.header').parent('thead').parent('table').addClass('table table-condensed');
+});
+
+</script>
+
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src  = "https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML";
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
+
+</body>
+</html>
