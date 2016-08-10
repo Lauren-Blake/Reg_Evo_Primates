@@ -17,7 +17,12 @@ In the previous analysis, we found that the following genes appeared in the best
 
 * Reads mapped on orthologous exons (15th technical factor). Note: this was higher in liver and lung samples than heart and kidney samples. It does not appear to be confounded with species. 
 
-We want to see the distribution of expression values for the genes in which the best set contains one of the technical variables or not. If the expression values for the genes in which the best set contains one of the technical variables are randomly distributed, then that is good and we probably won't include it in the final model (used to determine DE genes). If the expression values for the genes in which the best set contains one of the technical variables are not randomly distributed, then we will consider including it in the final model when testing for DE genes. 
+We have found confounders in the design (e.g. confounders with tissue and/or species). Now, we are looking to see if these confounders in the design are confounded with expression levels. 
+
+### Exploratory Analysis
+
+We want to see the distribution of expression values for the genes in which the best set contains one of the technical variables or not. Our original thought is that if the expression values for the genes in which the best set contains one of the technical variables are randomly distributed, then that is good and we probably won't include it in the final model (used to determine DE genes). If the expression values for the genes in which the best set contains one of the technical variables are not randomly distributed, then we will consider including it in the final model when testing for DE genes. 
+
 
 ```{r setup}
 
@@ -40,7 +45,6 @@ gene_counts_with_gc_correction <- read.delim("~/Reg_Evo_Primates/ashlar-trial/da
 
 ```
 
-### Exploratory Analysis
 
 ```{r}
 # Find average expression for each gene
@@ -221,14 +225,14 @@ ggplot_avg_value_labels <- cbind(ggplot_avg_value, labels_RNA_Extra, labels_Mix_
 
 # Make the plots
 
-ggplot(ggplot_avg_value_labels, aes(factor(RNA_Extra_labels), Avg_Expression)) +  geom_boxplot() + ylab("Normalized expression values (averaged over inds.)") + labs(title = "Expression values including genes with and without RNA Extraction Date 3-23-12") + xlab("Tissue-species + whether or not tech. factor included")
+ggplot(ggplot_avg_value_labels, aes(factor(RNA_Extra_labels), Avg_Expression)) +  geom_boxplot() + ylab("Normalized expression values (averaged over inds.)") + labs(title = "Expression values including genes with and without RNA Extraction Date 3-23-12") + xlab("Tissue-species + whether or not tech. factor included")  + theme(axis.text.x = element_text(angle = 90, hjust = 1))
 
-ggplot(ggplot_avg_value_labels, aes(factor(Mix_labels), Avg_Expression)) +  geom_boxplot() + ylab("Normalized expression values (averaged over inds.)") + labs(title = "Expression values including genes with and without Master Mix Code 1000")  + xlab("Tissue-species + whether or not tech. factor included")
+ggplot(ggplot_avg_value_labels, aes(factor(Mix_labels), Avg_Expression)) +  geom_boxplot() + ylab("Normalized expression values (averaged over inds.)") + labs(title = "Expression values including genes with and without Master Mix Code 1000")  + xlab("Tissue-species + whether or not tech. factor included")  + theme(axis.text.x = element_text(angle = 90, hjust = 1))
 
-ggplot(ggplot_avg_value_labels, aes(factor(Perc_overlap_junct_labels), Avg_Expression)) +  geom_boxplot() + ylab("Normalized expression values (averaged over inds.)") + labs(title = "Expression values including genes with and without Perc. overlapping junctions") + xlab("Tissue-species + whether or not tech. factor included")
+ggplot(ggplot_avg_value_labels, aes(factor(Perc_overlap_junct_labels), Avg_Expression)) +  geom_boxplot() + ylab("Normalized expression values (averaged over inds.)") + labs(title = "Expression values including genes with and without Perc. overlapping junctions") + xlab("Tissue-species + whether or not tech. factor included")  + theme(axis.text.x = element_text(angle = 90, hjust = 1))
 
-ggplot(ggplot_avg_value_labels, aes(factor(Reads_mapped_orth_exon_labels), Avg_Expression)) +  geom_boxplot() + ylab("Normalized expression values (averaged over inds.)") + labs(title = "Expression values including genes with and without Num. of reads mapped on orth. exons") + xlab("Tissue-species + whether or not tech. factor included")
+ggplot(ggplot_avg_value_labels, aes(factor(Reads_mapped_orth_exon_labels), Avg_Expression)) +  geom_boxplot() + ylab("Normalized expression values (averaged over inds.)") + labs(title = "Expression values including genes with and without Num. of reads mapped on orth. exons") + xlab("Tissue-species + whether or not tech. factor included")  + theme(axis.text.x = element_text(angle = 90, hjust = 1))
 
-ggplot(ggplot_avg_value_labels, aes(factor(RIN_Score_labels), Avg_Expression)) +  geom_boxplot() + ylab("Normalized expression values (averaged over inds.)") + labs(title = "Expression values including genes with and without RIN Score") + xlab("Tissue-species + whether or not tech. factor included")
+ggplot(ggplot_avg_value_labels, aes(factor(RIN_Score_labels), Avg_Expression)) +  geom_boxplot() + ylab("Normalized expression values (averaged over inds.)") + labs(title = "Expression values including genes with and without RIN Score") + xlab("Tissue-species + whether or not tech. factor included") + theme(axis.text.x = element_text(angle = 90, hjust = 1))
 
 ```

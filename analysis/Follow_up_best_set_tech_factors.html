@@ -194,7 +194,11 @@ $(document).ready(function () {
 <li><p>Percentage overlapping a junction (13th technical factor). Note: this was highest in reads mapped in livers than all of the other tissues. It does not appear to be confounded with species.</p></li>
 <li><p>Reads mapped on orthologous exons (15th technical factor). Note: this was higher in liver and lung samples than heart and kidney samples. It does not appear to be confounded with species.</p></li>
 </ul>
-<p>We want to see the distribution of expression values for the genes in which the best set contains one of the technical variables or not. If the expression values for the genes in which the best set contains one of the technical variables are randomly distributed, then that is good and we probably won’t include it in the final model (used to determine DE genes). If the expression values for the genes in which the best set contains one of the technical variables are not randomly distributed, then we will consider including it in the final model when testing for DE genes.</p>
+<p>We have found confounders in the design (e.g. confounders with tissue and/or species). Now, we are looking to see if these confounders in the design are confounded with expression levels.</p>
+</div>
+<div id="exploratory-analysis" class="section level3">
+<h3>Exploratory Analysis</h3>
+<p>We want to see the distribution of expression values for the genes in which the best set contains one of the technical variables or not. Our original thought is that if the expression values for the genes in which the best set contains one of the technical variables are randomly distributed, then that is good and we probably won’t include it in the final model (used to determine DE genes). If the expression values for the genes in which the best set contains one of the technical variables are not randomly distributed, then we will consider including it in the final model when testing for DE genes.</p>
 <pre class="r"><code># Load libraries 
 
 library(&quot;gplots&quot;)</code></pre>
@@ -216,9 +220,6 @@ dim(t_Best_set_bio_tech_var)</code></pre>
 <pre class="r"><code># Load the data (expression counts data)
 
 gene_counts_with_gc_correction &lt;- read.delim(&quot;~/Reg_Evo_Primates/ashlar-trial/data/gc_cyclic_loess_random_var_gene_exp_counts&quot;)</code></pre>
-</div>
-<div id="exploratory-analysis" class="section level3">
-<h3>Exploratory Analysis</h3>
 <pre class="r"><code># Find average expression for each gene
 
 chimp_hearts &lt;- c(1, 5, 9, 13)
@@ -427,15 +428,15 @@ ggplot_avg_value_labels &lt;- cbind(ggplot_avg_value, labels_RNA_Extra, labels_M
 
 # Make the plots
 
-ggplot(ggplot_avg_value_labels, aes(factor(RNA_Extra_labels), Avg_Expression)) +  geom_boxplot() + ylab(&quot;Normalized expression values (averaged over inds.)&quot;) + labs(title = &quot;Expression values including genes with and without RNA Extraction Date 3-23-12&quot;) + xlab(&quot;Tissue-species + whether or not tech. factor included&quot;)</code></pre>
+ggplot(ggplot_avg_value_labels, aes(factor(RNA_Extra_labels), Avg_Expression)) +  geom_boxplot() + ylab(&quot;Normalized expression values (averaged over inds.)&quot;) + labs(title = &quot;Expression values including genes with and without RNA Extraction Date 3-23-12&quot;) + xlab(&quot;Tissue-species + whether or not tech. factor included&quot;)  + theme(axis.text.x = element_text(angle = 90, hjust = 1))</code></pre>
 <p><img src="Follow_up_best_set_tech_factors_files/figure-html/unnamed-chunk-1-1.png" width="672" /></p>
-<pre class="r"><code>ggplot(ggplot_avg_value_labels, aes(factor(Mix_labels), Avg_Expression)) +  geom_boxplot() + ylab(&quot;Normalized expression values (averaged over inds.)&quot;) + labs(title = &quot;Expression values including genes with and without Master Mix Code 1000&quot;)  + xlab(&quot;Tissue-species + whether or not tech. factor included&quot;)</code></pre>
+<pre class="r"><code>ggplot(ggplot_avg_value_labels, aes(factor(Mix_labels), Avg_Expression)) +  geom_boxplot() + ylab(&quot;Normalized expression values (averaged over inds.)&quot;) + labs(title = &quot;Expression values including genes with and without Master Mix Code 1000&quot;)  + xlab(&quot;Tissue-species + whether or not tech. factor included&quot;)  + theme(axis.text.x = element_text(angle = 90, hjust = 1))</code></pre>
 <p><img src="Follow_up_best_set_tech_factors_files/figure-html/unnamed-chunk-1-2.png" width="672" /></p>
-<pre class="r"><code>ggplot(ggplot_avg_value_labels, aes(factor(Perc_overlap_junct_labels), Avg_Expression)) +  geom_boxplot() + ylab(&quot;Normalized expression values (averaged over inds.)&quot;) + labs(title = &quot;Expression values including genes with and without Perc. overlapping junctions&quot;) + xlab(&quot;Tissue-species + whether or not tech. factor included&quot;)</code></pre>
+<pre class="r"><code>ggplot(ggplot_avg_value_labels, aes(factor(Perc_overlap_junct_labels), Avg_Expression)) +  geom_boxplot() + ylab(&quot;Normalized expression values (averaged over inds.)&quot;) + labs(title = &quot;Expression values including genes with and without Perc. overlapping junctions&quot;) + xlab(&quot;Tissue-species + whether or not tech. factor included&quot;)  + theme(axis.text.x = element_text(angle = 90, hjust = 1))</code></pre>
 <p><img src="Follow_up_best_set_tech_factors_files/figure-html/unnamed-chunk-1-3.png" width="672" /></p>
-<pre class="r"><code>ggplot(ggplot_avg_value_labels, aes(factor(Reads_mapped_orth_exon_labels), Avg_Expression)) +  geom_boxplot() + ylab(&quot;Normalized expression values (averaged over inds.)&quot;) + labs(title = &quot;Expression values including genes with and without Num. of reads mapped on orth. exons&quot;) + xlab(&quot;Tissue-species + whether or not tech. factor included&quot;)</code></pre>
+<pre class="r"><code>ggplot(ggplot_avg_value_labels, aes(factor(Reads_mapped_orth_exon_labels), Avg_Expression)) +  geom_boxplot() + ylab(&quot;Normalized expression values (averaged over inds.)&quot;) + labs(title = &quot;Expression values including genes with and without Num. of reads mapped on orth. exons&quot;) + xlab(&quot;Tissue-species + whether or not tech. factor included&quot;)  + theme(axis.text.x = element_text(angle = 90, hjust = 1))</code></pre>
 <p><img src="Follow_up_best_set_tech_factors_files/figure-html/unnamed-chunk-1-4.png" width="672" /></p>
-<pre class="r"><code>ggplot(ggplot_avg_value_labels, aes(factor(RIN_Score_labels), Avg_Expression)) +  geom_boxplot() + ylab(&quot;Normalized expression values (averaged over inds.)&quot;) + labs(title = &quot;Expression values including genes with and without RIN Score&quot;) + xlab(&quot;Tissue-species + whether or not tech. factor included&quot;)</code></pre>
+<pre class="r"><code>ggplot(ggplot_avg_value_labels, aes(factor(RIN_Score_labels), Avg_Expression)) +  geom_boxplot() + ylab(&quot;Normalized expression values (averaged over inds.)&quot;) + labs(title = &quot;Expression values including genes with and without RIN Score&quot;) + xlab(&quot;Tissue-species + whether or not tech. factor included&quot;) + theme(axis.text.x = element_text(angle = 90, hjust = 1))</code></pre>
 <p><img src="Follow_up_best_set_tech_factors_files/figure-html/unnamed-chunk-1-5.png" width="672" /></p>
 </div>
 
