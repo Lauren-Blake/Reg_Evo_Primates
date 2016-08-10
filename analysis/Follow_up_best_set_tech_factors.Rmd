@@ -9,10 +9,13 @@ output: html_document
 
 In the previous analysis, we found that the following genes appeared in the best set for more than 2,400 of the 16,616 genes. 
 
-* RNA Extraction date 3-23-12 (2nd technical factor)
-* Mix code 1000 (8th technical factor)
-* Percentage overlapping a junction (13th technical factor)
-* Reads mapped on orthologous exons (15th technical factor)
+* RNA Extraction date 3-23-12 (2nd technical factor on the design matrix fed into GLMnet). Note: the samples that have the RNA Extraction date of 3-23-12 are all Human Individual 3 samples (H3H, H3K, H3Li, H3Lu)
+
+* Mix code 1000 (8th technical factor). The chimp 1 liver (chimp 4x0519) is the only sample that has this multiplexing mix code because it was the only sample that was only in multiplex mix 1. 
+
+* Percentage overlapping a junction (13th technical factor). Note: this was highest in reads mapped in livers than all of the other tissues. It does not appear to be confounded with species.
+
+* Reads mapped on orthologous exons (15th technical factor). Note: this was higher in liver and lung samples than heart and kidney samples. It does not appear to be confounded with species. 
 
 We want to see the distribution of expression values for the genes in which the best set contains one of the technical variables or not. If the expression values for the genes in which the best set contains one of the technical variables are randomly distributed, then that is good and we probably won't include it in the final model (used to determine DE genes). If the expression values for the genes in which the best set contains one of the technical variables are not randomly distributed, then we will consider including it in the final model when testing for DE genes. 
 
@@ -33,7 +36,7 @@ dim(t_Best_set_bio_tech_var)
 
 # Load the data (expression counts data)
 
-gene_counts_with_gc_correction <- read.delim("~/Reg_Evo_Primates/ashlar-trial/data/gene_counts_with_gc_correction.txt")
+gene_counts_with_gc_correction <- read.delim("~/Reg_Evo_Primates/ashlar-trial/data/gc_cyclic_loess_random_var_gene_exp_counts")
 
 ```
 
@@ -113,16 +116,16 @@ head(avg_exp_values)
 
 # Add the 4 relevant technical variables
 
-avg_exp_values_tech <- cbind(avg_exp_values, t_Best_set_bio_tech_var[,10], t_Best_set_bio_tech_var[,16], t_Best_set_bio_tech_var[,21], t_Best_set_bio_tech_var[,23])
+avg_exp_values_tech <- cbind(avg_exp_values, t_Best_set_bio_tech_var[,10], t_Best_set_bio_tech_var[,16], t_Best_set_bio_tech_var[,21], t_Best_set_bio_tech_var[,23], t_Best_set_bio_tech_var[,26])
 
-colnames(avg_exp_values_tech) <- c("CH", "CK", "CLi", "CLu", "HH", "HK", "HLi", "HLu", "RH", "RK", "RLi", "RLu", "Extraction_3-23-12", "Mix_code_1000", "Perc_overlapping_junction", "Reads_mapped_on_ortho_exons")
+colnames(avg_exp_values_tech) <- c("CH", "CK", "CLi", "CLu", "HH", "HK", "HLi", "HLu", "RH", "RK", "RLi", "RLu", "Extraction_3-23-12", "Mix_code_1000", "Perc_overlapping_junction", "Reads_mapped_on_ortho_exons", "RIN score")
 
 # Check # of genes with technical variables
 colSums(avg_exp_values_tech)
 
-avg_exp_values_RNA_extra <- as.data.frame(avg_exp_values_tech[,1:13])
-
 # Put in a format ggplot2 likes
+
+# All the tissue-species combinations
 
 CH <- as.data.frame(rep("CH", times = 16616))
 CK <- as.data.frame(rep("CK", times = 16616))
@@ -139,36 +142,93 @@ RK <- as.data.frame(rep("RK", times = 16616))
 RLi <- as.data.frame(rep("RLi", times = 16616))
 RLu <- as.data.frame(rep("RLu", times = 16616))
 
-ggplot_avg_value_CH <- cbind(avg_exp_values_RNA_extra[,1], CH, avg_exp_values_RNA_extra[,13])
-colnames(ggplot_avg_value_CH) <- c("Avg. Expression", "Sample", "RNA_Extra")
+# Add expression and technical variables for each tissue-species combination
 
-ggplot_avg_value_CK <- cbind(avg_exp_values_RNA_extra[,2], CK, avg_exp_values_RNA_extra[,13])
+ggplot_avg_value_CH <- cbind(avg_exp_values_tech[,1], CH, avg_exp_values_tech[,13], avg_exp_values_tech[,14], avg_exp_values_tech[,15], avg_exp_values_tech[,16], avg_exp_values_tech[,17])
+colnames(ggplot_avg_value_CH) <- c("Avg_Expression", "Sample", "RNA_Extra", "Mix_1000", "Perc_overlap_junct", "Reads_mapped_orth_exon", "RIN_Score")
 
-ggplot_avg_value_CLi <- cbind(avg_exp_values_RNA_extra[,3], CLi, avg_exp_values_RNA_extra[,13])
+ggplot_avg_value_CK <- cbind(avg_exp_values[,2], CK, avg_exp_values_tech[,13], avg_exp_values_tech[,14], avg_exp_values_tech[,15], avg_exp_values_tech[,16], avg_exp_values_tech[,17])
 
-ggplot_avg_value_CLu <- cbind(avg_exp_values_RNA_extra[,4], CLu, avg_exp_values_RNA_extra[,13])
+colnames(ggplot_avg_value_CK) <- colnames(ggplot_avg_value_CH)
 
-ggplot_avg_value_HH <- cbind(avg_exp_values_RNA_extra[,5], HH, avg_exp_values_RNA_extra[,13])
+ggplot_avg_value_CLi <- cbind(avg_exp_values[,3], CLi, avg_exp_values_tech[,13], avg_exp_values_tech[,14], avg_exp_values_tech[,15], avg_exp_values_tech[,16], avg_exp_values_tech[,17])
 
-ggplot_avg_value_HK <- cbind(avg_exp_values_RNA_extra[,6], HK, avg_exp_values_RNA_extra[,13])
+colnames(ggplot_avg_value_CLi) <- colnames(ggplot_avg_value_CH)
 
-ggplot_avg_value_HLi <- cbind(avg_exp_values_RNA_extra[,7], HLi, avg_exp_values_RNA_extra[,13])
+ggplot_avg_value_CLu <- cbind(avg_exp_values[,4], CLu, avg_exp_values_tech[,13], avg_exp_values_tech[,14], avg_exp_values_tech[,15], avg_exp_values_tech[,16], avg_exp_values_tech[,17])
 
-ggplot_avg_value_HLu <- cbind(avg_exp_values_RNA_extra[,8], HLu, avg_exp_values_RNA_extra[,13])
+colnames(ggplot_avg_value_CLu) <- colnames(ggplot_avg_value_CH)
 
-ggplot_avg_value_RH <- cbind(avg_exp_values_RNA_extra[,9], RH, avg_exp_values_RNA_extra[,13])
+ggplot_avg_value_HH <- cbind(avg_exp_values[,5], HH, avg_exp_values_tech[,13], avg_exp_values_tech[,14], avg_exp_values_tech[,15], avg_exp_values_tech[,16], avg_exp_values_tech[,17])
 
-ggplot_avg_value_RK <- cbind(avg_exp_values_RNA_extra[,10], RK, avg_exp_values_RNA_extra[,13])
+colnames(ggplot_avg_value_HH) <- colnames(ggplot_avg_value_CH)
 
-ggplot_avg_value_RLi <- cbind(avg_exp_values_RNA_extra[,11], RLi, avg_exp_values_RNA_extra[,13])
+ggplot_avg_value_HK <- cbind(avg_exp_values[,6], HK, avg_exp_values_tech[,13], avg_exp_values_tech[,14], avg_exp_values_tech[,15], avg_exp_values_tech[,16], avg_exp_values_tech[,17])
 
-ggplot_avg_value_RLu <- cbind(avg_exp_values_RNA_extra[,12], RLu, avg_exp_values_RNA_extra[,13])
+colnames(ggplot_avg_value_HK) <- colnames(ggplot_avg_value_CH)
+
+ggplot_avg_value_HLi <- cbind(avg_exp_values[,7], HLi, avg_exp_values_tech[,13], avg_exp_values_tech[,14], avg_exp_values_tech[,15], avg_exp_values_tech[,16], avg_exp_values_tech[,17])
+
+colnames(ggplot_avg_value_HLi) <- colnames(ggplot_avg_value_CH)
+
+ggplot_avg_value_HLu <- cbind(avg_exp_values[,8], HLu, avg_exp_values_tech[,13], avg_exp_values_tech[,14], avg_exp_values_tech[,15], avg_exp_values_tech[,16], avg_exp_values_tech[,17])
+
+colnames(ggplot_avg_value_HLu) <- colnames(ggplot_avg_value_CH)
+
+ggplot_avg_value_RH <- cbind(avg_exp_values[,9], RH, avg_exp_values_tech[,13], avg_exp_values_tech[,14], avg_exp_values_tech[,15], avg_exp_values_tech[,16], avg_exp_values_tech[,17])
+
+colnames(ggplot_avg_value_RH) <- colnames(ggplot_avg_value_CH)
+
+ggplot_avg_value_RK <- cbind(avg_exp_values[,10], RK, avg_exp_values_tech[,13], avg_exp_values_tech[,14], avg_exp_values_tech[,15], avg_exp_values_tech[,16], avg_exp_values_tech[,17])
+
+colnames(ggplot_avg_value_RK) <- colnames(ggplot_avg_value_CH)
+
+ggplot_avg_value_RLi <- cbind(avg_exp_values[,11], RLi, avg_exp_values_tech[,13], avg_exp_values_tech[,14], avg_exp_values_tech[,15], avg_exp_values_tech[,16], avg_exp_values_tech[,17])
+
+colnames(ggplot_avg_value_RLi) <- colnames(ggplot_avg_value_CH)
+
+ggplot_avg_value_RLu <- cbind(avg_exp_values[,12], RLu, avg_exp_values_tech[,13], avg_exp_values_tech[,14], avg_exp_values_tech[,15], avg_exp_values_tech[,16], avg_exp_values_tech[,17])
+
+colnames(ggplot_avg_value_RLu) <- colnames(ggplot_avg_value_CH)
+
+# Combine all of the data frames
 
 ggplot_avg_value <- rbind(ggplot_avg_value_CH, ggplot_avg_value_CK, ggplot_avg_value_CLi, ggplot_avg_value_CLu, ggplot_avg_value_HH, ggplot_avg_value_HK, ggplot_avg_value_HLi, ggplot_avg_value_HLu, ggplot_avg_value_RH, ggplot_avg_value_RK, ggplot_avg_value_RLi, ggplot_avg_value_RLu)
 
-ggplot(avg_exp_values_RNA_extra, aes(avg_exp_values_RNA_extra[1,])) +   geom_boxplot(aes(fill = factor(avg_exp_values_tech[[13, ]])))
+# Make labels
 
-qplot(factor())
+labels_RNA_Extra <- as.data.frame(paste(ggplot_avg_value$Sample, ggplot_avg_value$RNA_Extra, sep="_"))
+
+colnames(labels_RNA_Extra) <- c("RNA_Extra_labels")
+
+labels_Mix_1000 <- as.data.frame(paste(ggplot_avg_value$Sample, ggplot_avg_value$Mix_1000, sep="_"))
+
+colnames(labels_Mix_1000) <- c("Mix_labels")
+
+labels_Perc_overlap_junct <- as.data.frame(paste(ggplot_avg_value$Sample, ggplot_avg_value$Perc_overlap_junct, sep="_"))
+
+colnames(labels_Perc_overlap_junct) <- c("Perc_overlap_junct_labels")
+
+labels_Reads_mapped_orth_exon <- as.data.frame(paste(ggplot_avg_value$Sample, ggplot_avg_value$Reads_mapped_orth_exon, sep="_"))
+
+colnames(labels_Reads_mapped_orth_exon) <- c("Reads_mapped_orth_exon_labels")
+
+labels_RIN_Score <- as.data.frame(paste(ggplot_avg_value$Sample, ggplot_avg_value$RIN_Score, sep="_"))
+
+colnames(labels_RIN_Score) <- c("RIN_Score_labels")
+
+ggplot_avg_value_labels <- cbind(ggplot_avg_value, labels_RNA_Extra, labels_Mix_1000, labels_Perc_overlap_junct, labels_Reads_mapped_orth_exon, labels_RIN_Score)
+
+# Make the plots
+
+ggplot(ggplot_avg_value_labels, aes(factor(RNA_Extra_labels), Avg_Expression)) +  geom_boxplot() + ylab("Normalized expression values (averaged over inds.)") + labs(title = "Expression values including genes with and without RNA Extraction Date 3-23-12") + xlab("Tissue-species + whether or not tech. factor included")
+
+ggplot(ggplot_avg_value_labels, aes(factor(Mix_labels), Avg_Expression)) +  geom_boxplot() + ylab("Normalized expression values (averaged over inds.)") + labs(title = "Expression values including genes with and without Master Mix Code 1000")  + xlab("Tissue-species + whether or not tech. factor included")
+
+ggplot(ggplot_avg_value_labels, aes(factor(Perc_overlap_junct_labels), Avg_Expression)) +  geom_boxplot() + ylab("Normalized expression values (averaged over inds.)") + labs(title = "Expression values including genes with and without Perc. overlapping junctions") + xlab("Tissue-species + whether or not tech. factor included")
+
+ggplot(ggplot_avg_value_labels, aes(factor(Reads_mapped_orth_exon_labels), Avg_Expression)) +  geom_boxplot() + ylab("Normalized expression values (averaged over inds.)") + labs(title = "Expression values including genes with and without Num. of reads mapped on orth. exons") + xlab("Tissue-species + whether or not tech. factor included")
+
+ggplot(ggplot_avg_value_labels, aes(factor(RIN_Score_labels), Avg_Expression)) +  geom_boxplot() + ylab("Normalized expression values (averaged over inds.)") + labs(title = "Expression values including genes with and without RIN Score") + xlab("Tissue-species + whether or not tech. factor included")
+
 ```
-
-

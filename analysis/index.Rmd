@@ -27,6 +27,7 @@ title: "Home"
 *  [Testing for confounders](../analysis/Tech_factor_analysis1_gene_exp.html)
 *  [Further analysis with potential confounders](../analysis/Analysis_of_confounders2_gene_exp.html)
 *  [Best set of technical factors](../analysis/GLMnet_gene_exp.html)
+*  [Correlation between technical factors in the best sets and expression](../analysis/Follow_up_best_set_tech_factors.html)
 
 ### Univariate analysis on gene expression
 

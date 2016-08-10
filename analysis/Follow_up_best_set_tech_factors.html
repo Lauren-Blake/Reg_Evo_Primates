@@ -180,11 +180,21 @@ $(document).ready(function () {
 
 <div id="TOC">
 <ul>
-<li><a href="#identify-the-genes-with">Identify the genes with</a></li>
-<li><a href="#including-plots">Including Plots</a></li>
+<li><a href="#introduction">Introduction</a></li>
+<li><a href="#exploratory-analysis">Exploratory Analysis</a></li>
 </ul>
 </div>
 
+<div id="introduction" class="section level3">
+<h3>Introduction</h3>
+<p>In the previous analysis, we found that the following genes appeared in the best set for more than 2,400 of the 16,616 genes.</p>
+<ul>
+<li><p>RNA Extraction date 3-23-12 (2nd technical factor on the design matrix fed into GLMnet). Note: the samples that have the RNA Extraction date of 3-23-12 are all Human Individual 3 samples (H3H, H3K, H3Li, H3Lu)</p></li>
+<li><p>Mix code 1000 (8th technical factor). The chimp 1 liver (chimp 4x0519) is the only sample that has this multiplexing mix code because it was the only sample that was only in multiplex mix 1.</p></li>
+<li><p>Percentage overlapping a junction (13th technical factor). Note: this was highest in reads mapped in livers than all of the other tissues. It does not appear to be confounded with species.</p></li>
+<li><p>Reads mapped on orthologous exons (15th technical factor). Note: this was higher in liver and lung samples than heart and kidney samples. It does not appear to be confounded with species.</p></li>
+</ul>
+<p>We want to see the distribution of expression values for the genes in which the best set contains one of the technical variables or not. If the expression values for the genes in which the best set contains one of the technical variables are randomly distributed, then that is good and we probably won’t include it in the final model (used to determine DE genes). If the expression values for the genes in which the best set contains one of the technical variables are not randomly distributed, then we will consider including it in the final model when testing for DE genes.</p>
 <pre class="r"><code># Load libraries 
 
 library(&quot;gplots&quot;)</code></pre>
@@ -194,34 +204,239 @@ library(&quot;gplots&quot;)</code></pre>
 ## 
 ##     lowess</code></pre>
 <pre class="r"><code>library(&quot;ggplot2&quot;)
-library(&quot;RColorBrewer&quot;)
-library(&quot;scales&quot;)
-
 
 # Load the data (biological and technical factors)
 
 Best_set_bio_tech_var &lt;- read.delim(&quot;~/Reg_Evo_Primates/ashlar-trial/data/Best_set_bio_tech_var.txt&quot;)
 
-# Load the data (expression counts data)
+t_Best_set_bio_tech_var &lt;- t(Best_set_bio_tech_var)
 
-gene_counts_with_gc_correction &lt;- read.delim(&quot;~/Reg_Evo_Primates/ashlar-trial/data/gene_counts_with_gc_correction.txt&quot;)</code></pre>
-<div id="identify-the-genes-with" class="section level3">
-<h3>Identify the genes with</h3>
-<p>In the previous analysis, we found that</p>
-<pre class="r"><code>summary(cars)</code></pre>
-<pre><code>##      speed           dist       
-##  Min.   : 4.0   Min.   :  2.00  
-##  1st Qu.:12.0   1st Qu.: 26.00  
-##  Median :15.0   Median : 36.00  
-##  Mean   :15.4   Mean   : 42.98  
-##  3rd Qu.:19.0   3rd Qu.: 56.00  
-##  Max.   :25.0   Max.   :120.00</code></pre>
+dim(t_Best_set_bio_tech_var)</code></pre>
+<pre><code>## [1] 16616    28</code></pre>
+<pre class="r"><code># Load the data (expression counts data)
+
+gene_counts_with_gc_correction &lt;- read.delim(&quot;~/Reg_Evo_Primates/ashlar-trial/data/gc_cyclic_loess_random_var_gene_exp_counts&quot;)</code></pre>
 </div>
-<div id="including-plots" class="section level2">
-<h2>Including Plots</h2>
-<p>You can also embed plots, for example:</p>
-<p><img src="Follow_up_best_set_tech_factors_files/figure-html/pressure-1.png" width="672" /></p>
-<p>Note that the <code>echo = FALSE</code> parameter was added to the code chunk to prevent printing of the R code that generated the plot.</p>
+<div id="exploratory-analysis" class="section level3">
+<h3>Exploratory Analysis</h3>
+<pre class="r"><code># Find average expression for each gene
+
+chimp_hearts &lt;- c(1, 5, 9, 13)
+chimp_kidneys &lt;- c(2,6,10,14)
+chimp_livers &lt;- c(3,7,11,15)
+chimp_lungs &lt;- c(4,8,12,16)
+
+human_hearts &lt;- c(20,24,28)
+human_kidneys &lt;- c(17,21,25,29)
+human_livers &lt;- c(18,22,26,30)
+human_lungs &lt;- c(19,23,27,31)
+
+rhesus_hearts &lt;- c(32,36,40,44)
+rhesus_kidneys &lt;- c(33,37,41,45)
+rhesus_livers &lt;- c(34,38,42,46)
+rhesus_lungs &lt;- c(35,39,43,47)
+
+# For chimp hearts
+exp_chimp_hearts &lt;- as.data.frame(rowMeans(gene_counts_with_gc_correction[ , chimp_hearts]))
+
+# For chimp kidneys
+
+exp_chimp_kidneys &lt;- as.data.frame(rowMeans(gene_counts_with_gc_correction[ , chimp_kidneys]))
+
+# For chimp livers
+
+exp_chimp_livers &lt;- as.data.frame(rowMeans(gene_counts_with_gc_correction[ , chimp_livers]))
+
+# For chimp lungs
+
+exp_chimp_lungs &lt;- as.data.frame(rowMeans(gene_counts_with_gc_correction[ , chimp_lungs]))
+
+# For human hearts
+exp_human_hearts &lt;- as.data.frame(rowMeans(gene_counts_with_gc_correction[ , human_hearts]))
+
+# For human kidneys
+
+exp_human_kidneys &lt;- as.data.frame(rowMeans(gene_counts_with_gc_correction[ , human_kidneys]))
+
+# For human livers
+
+exp_human_livers &lt;- as.data.frame(rowMeans(gene_counts_with_gc_correction[ , human_livers]))
+
+# For human lungs
+
+exp_human_lungs &lt;- as.data.frame(rowMeans(gene_counts_with_gc_correction[ , human_lungs]))
+
+# For rhesus hearts
+exp_rhesus_hearts &lt;- as.data.frame(rowMeans(gene_counts_with_gc_correction[ , rhesus_hearts]))
+
+# For rhesus kidneys
+
+exp_rhesus_kidneys &lt;- as.data.frame(rowMeans(gene_counts_with_gc_correction[ , rhesus_kidneys]))
+
+# For rhesus livers
+
+exp_rhesus_livers &lt;- as.data.frame(rowMeans(gene_counts_with_gc_correction[ , rhesus_livers]))
+
+# For rhesus lungs
+
+exp_rhesus_lungs &lt;- as.data.frame(rowMeans(gene_counts_with_gc_correction[ , human_lungs]))
+
+# Make the data frame
+
+avg_exp_values &lt;- cbind(exp_chimp_hearts, exp_chimp_kidneys, exp_chimp_livers, exp_chimp_lungs, exp_human_hearts, exp_human_kidneys, exp_human_livers, exp_human_lungs, exp_rhesus_hearts, exp_rhesus_kidneys, exp_rhesus_livers, exp_rhesus_lungs)
+
+rownames(avg_exp_values) &lt;- row.names(gene_counts_with_gc_correction)
+colnames(avg_exp_values) &lt;- c(&quot;CH&quot;, &quot;CK&quot;, &quot;CLi&quot;, &quot;CLu&quot;, &quot;HH&quot;, &quot;HK&quot;, &quot;HLi&quot;, &quot;HLu&quot;, &quot;RH&quot;, &quot;RK&quot;, &quot;RLi&quot;, &quot;RLu&quot;)
+
+head(avg_exp_values)</code></pre>
+<pre><code>##                       CH       CK       CLi      CLu       HH       HK
+## ENSG00000000003 4.610868 6.396002  8.095469 5.391101 3.857809 6.931617
+## ENSG00000000419 5.776325 5.204482  5.996511 5.432862 5.922276 5.660062
+## ENSG00000000457 4.716621 5.185978  6.408613 5.111782 3.766371 4.320687
+## ENSG00000000460 1.657578 1.692573  2.465693 2.189239 1.265669 2.309113
+## ENSG00000000938 4.243727 3.971252  5.087452 7.650402 4.877109 3.562921
+## ENSG00000000971 6.332304 5.125277 11.306291 6.282460 6.564142 5.757620
+##                       HLi      HLu       RH       RK       RLi      RLu
+## ENSG00000000003  6.880175 4.857195 4.563435 7.071678  8.146930 4.857195
+## ENSG00000000419  5.990137 5.463117 5.407861 5.223920  5.697787 5.463117
+## ENSG00000000457  4.911001 4.272097 4.385651 5.077154  5.341901 4.272097
+## ENSG00000000460  3.631794 2.487244 1.584310 1.547638  1.358645 2.487244
+## ENSG00000000938  5.807408 7.568003 2.465641 2.432226  3.957756 7.568003
+## ENSG00000000971 10.279503 7.651720 5.203002 6.511264 11.790392 7.651720</code></pre>
+<pre class="r"><code># Add the 4 relevant technical variables
+
+avg_exp_values_tech &lt;- cbind(avg_exp_values, t_Best_set_bio_tech_var[,10], t_Best_set_bio_tech_var[,16], t_Best_set_bio_tech_var[,21], t_Best_set_bio_tech_var[,23], t_Best_set_bio_tech_var[,26])
+
+colnames(avg_exp_values_tech) &lt;- c(&quot;CH&quot;, &quot;CK&quot;, &quot;CLi&quot;, &quot;CLu&quot;, &quot;HH&quot;, &quot;HK&quot;, &quot;HLi&quot;, &quot;HLu&quot;, &quot;RH&quot;, &quot;RK&quot;, &quot;RLi&quot;, &quot;RLu&quot;, &quot;Extraction_3-23-12&quot;, &quot;Mix_code_1000&quot;, &quot;Perc_overlapping_junction&quot;, &quot;Reads_mapped_on_ortho_exons&quot;, &quot;RIN score&quot;)
+
+# Check # of genes with technical variables
+colSums(avg_exp_values_tech)</code></pre>
+<pre><code>##                          CH                          CK 
+##                    55484.39                    56037.61 
+##                         CLi                         CLu 
+##                    56485.17                    55182.71 
+##                          HH                          HK 
+##                    55231.61                    55509.20 
+##                         HLi                         HLu 
+##                    56193.66                    54984.79 
+##                          RH                          RK 
+##                    55485.42                    55221.47 
+##                         RLi                         RLu 
+##                    56196.48                    54984.79 
+##          Extraction_3-23-12               Mix_code_1000 
+##                     2511.00                     2522.00 
+##   Perc_overlapping_junction Reads_mapped_on_ortho_exons 
+##                     3434.00                     2425.00 
+##                   RIN score 
+##                     1158.00</code></pre>
+<pre class="r"><code># Put in a format ggplot2 likes
+
+# All the tissue-species combinations
+
+CH &lt;- as.data.frame(rep(&quot;CH&quot;, times = 16616))
+CK &lt;- as.data.frame(rep(&quot;CK&quot;, times = 16616))
+CLi &lt;- as.data.frame(rep(&quot;CLi&quot;, times = 16616))
+CLu &lt;- as.data.frame(rep(&quot;CLu&quot;, times = 16616))
+
+HH &lt;- as.data.frame(rep(&quot;HH&quot;, times = 16616))
+HK &lt;- as.data.frame(rep(&quot;HK&quot;, times = 16616))
+HLi &lt;- as.data.frame(rep(&quot;HLi&quot;, times = 16616))
+HLu &lt;- as.data.frame(rep(&quot;HLu&quot;, times = 16616))
+
+RH &lt;- as.data.frame(rep(&quot;RH&quot;, times = 16616))
+RK &lt;- as.data.frame(rep(&quot;RK&quot;, times = 16616))
+RLi &lt;- as.data.frame(rep(&quot;RLi&quot;, times = 16616))
+RLu &lt;- as.data.frame(rep(&quot;RLu&quot;, times = 16616))
+
+# Add expression and technical variables for each tissue-species combination
+
+ggplot_avg_value_CH &lt;- cbind(avg_exp_values_tech[,1], CH, avg_exp_values_tech[,13], avg_exp_values_tech[,14], avg_exp_values_tech[,15], avg_exp_values_tech[,16], avg_exp_values_tech[,17])
+colnames(ggplot_avg_value_CH) &lt;- c(&quot;Avg_Expression&quot;, &quot;Sample&quot;, &quot;RNA_Extra&quot;, &quot;Mix_1000&quot;, &quot;Perc_overlap_junct&quot;, &quot;Reads_mapped_orth_exon&quot;, &quot;RIN_Score&quot;)
+
+ggplot_avg_value_CK &lt;- cbind(avg_exp_values[,2], CK, avg_exp_values_tech[,13], avg_exp_values_tech[,14], avg_exp_values_tech[,15], avg_exp_values_tech[,16], avg_exp_values_tech[,17])
+
+colnames(ggplot_avg_value_CK) &lt;- colnames(ggplot_avg_value_CH)
+
+ggplot_avg_value_CLi &lt;- cbind(avg_exp_values[,3], CLi, avg_exp_values_tech[,13], avg_exp_values_tech[,14], avg_exp_values_tech[,15], avg_exp_values_tech[,16], avg_exp_values_tech[,17])
+
+colnames(ggplot_avg_value_CLi) &lt;- colnames(ggplot_avg_value_CH)
+
+ggplot_avg_value_CLu &lt;- cbind(avg_exp_values[,4], CLu, avg_exp_values_tech[,13], avg_exp_values_tech[,14], avg_exp_values_tech[,15], avg_exp_values_tech[,16], avg_exp_values_tech[,17])
+
+colnames(ggplot_avg_value_CLu) &lt;- colnames(ggplot_avg_value_CH)
+
+ggplot_avg_value_HH &lt;- cbind(avg_exp_values[,5], HH, avg_exp_values_tech[,13], avg_exp_values_tech[,14], avg_exp_values_tech[,15], avg_exp_values_tech[,16], avg_exp_values_tech[,17])
+
+colnames(ggplot_avg_value_HH) &lt;- colnames(ggplot_avg_value_CH)
+
+ggplot_avg_value_HK &lt;- cbind(avg_exp_values[,6], HK, avg_exp_values_tech[,13], avg_exp_values_tech[,14], avg_exp_values_tech[,15], avg_exp_values_tech[,16], avg_exp_values_tech[,17])
+
+colnames(ggplot_avg_value_HK) &lt;- colnames(ggplot_avg_value_CH)
+
+ggplot_avg_value_HLi &lt;- cbind(avg_exp_values[,7], HLi, avg_exp_values_tech[,13], avg_exp_values_tech[,14], avg_exp_values_tech[,15], avg_exp_values_tech[,16], avg_exp_values_tech[,17])
+
+colnames(ggplot_avg_value_HLi) &lt;- colnames(ggplot_avg_value_CH)
+
+ggplot_avg_value_HLu &lt;- cbind(avg_exp_values[,8], HLu, avg_exp_values_tech[,13], avg_exp_values_tech[,14], avg_exp_values_tech[,15], avg_exp_values_tech[,16], avg_exp_values_tech[,17])
+
+colnames(ggplot_avg_value_HLu) &lt;- colnames(ggplot_avg_value_CH)
+
+ggplot_avg_value_RH &lt;- cbind(avg_exp_values[,9], RH, avg_exp_values_tech[,13], avg_exp_values_tech[,14], avg_exp_values_tech[,15], avg_exp_values_tech[,16], avg_exp_values_tech[,17])
+
+colnames(ggplot_avg_value_RH) &lt;- colnames(ggplot_avg_value_CH)
+
+ggplot_avg_value_RK &lt;- cbind(avg_exp_values[,10], RK, avg_exp_values_tech[,13], avg_exp_values_tech[,14], avg_exp_values_tech[,15], avg_exp_values_tech[,16], avg_exp_values_tech[,17])
+
+colnames(ggplot_avg_value_RK) &lt;- colnames(ggplot_avg_value_CH)
+
+ggplot_avg_value_RLi &lt;- cbind(avg_exp_values[,11], RLi, avg_exp_values_tech[,13], avg_exp_values_tech[,14], avg_exp_values_tech[,15], avg_exp_values_tech[,16], avg_exp_values_tech[,17])
+
+colnames(ggplot_avg_value_RLi) &lt;- colnames(ggplot_avg_value_CH)
+
+ggplot_avg_value_RLu &lt;- cbind(avg_exp_values[,12], RLu, avg_exp_values_tech[,13], avg_exp_values_tech[,14], avg_exp_values_tech[,15], avg_exp_values_tech[,16], avg_exp_values_tech[,17])
+
+colnames(ggplot_avg_value_RLu) &lt;- colnames(ggplot_avg_value_CH)
+
+# Combine all of the data frames
+
+ggplot_avg_value &lt;- rbind(ggplot_avg_value_CH, ggplot_avg_value_CK, ggplot_avg_value_CLi, ggplot_avg_value_CLu, ggplot_avg_value_HH, ggplot_avg_value_HK, ggplot_avg_value_HLi, ggplot_avg_value_HLu, ggplot_avg_value_RH, ggplot_avg_value_RK, ggplot_avg_value_RLi, ggplot_avg_value_RLu)
+
+# Make labels
+
+labels_RNA_Extra &lt;- as.data.frame(paste(ggplot_avg_value$Sample, ggplot_avg_value$RNA_Extra, sep=&quot;_&quot;))
+
+colnames(labels_RNA_Extra) &lt;- c(&quot;RNA_Extra_labels&quot;)
+
+labels_Mix_1000 &lt;- as.data.frame(paste(ggplot_avg_value$Sample, ggplot_avg_value$Mix_1000, sep=&quot;_&quot;))
+
+colnames(labels_Mix_1000) &lt;- c(&quot;Mix_labels&quot;)
+
+labels_Perc_overlap_junct &lt;- as.data.frame(paste(ggplot_avg_value$Sample, ggplot_avg_value$Perc_overlap_junct, sep=&quot;_&quot;))
+
+colnames(labels_Perc_overlap_junct) &lt;- c(&quot;Perc_overlap_junct_labels&quot;)
+
+labels_Reads_mapped_orth_exon &lt;- as.data.frame(paste(ggplot_avg_value$Sample, ggplot_avg_value$Reads_mapped_orth_exon, sep=&quot;_&quot;))
+
+colnames(labels_Reads_mapped_orth_exon) &lt;- c(&quot;Reads_mapped_orth_exon_labels&quot;)
+
+labels_RIN_Score &lt;- as.data.frame(paste(ggplot_avg_value$Sample, ggplot_avg_value$RIN_Score, sep=&quot;_&quot;))
+
+colnames(labels_RIN_Score) &lt;- c(&quot;RIN_Score_labels&quot;)
+
+ggplot_avg_value_labels &lt;- cbind(ggplot_avg_value, labels_RNA_Extra, labels_Mix_1000, labels_Perc_overlap_junct, labels_Reads_mapped_orth_exon, labels_RIN_Score)
+
+# Make the plots
+
+ggplot(ggplot_avg_value_labels, aes(factor(RNA_Extra_labels), Avg_Expression)) +  geom_boxplot() + ylab(&quot;Normalized expression values (averaged over inds.)&quot;) + labs(title = &quot;Expression values including genes with and without RNA Extraction Date 3-23-12&quot;) + xlab(&quot;Tissue-species + whether or not tech. factor included&quot;)</code></pre>
+<p><img src="Follow_up_best_set_tech_factors_files/figure-html/unnamed-chunk-1-1.png" width="672" /></p>
+<pre class="r"><code>ggplot(ggplot_avg_value_labels, aes(factor(Mix_labels), Avg_Expression)) +  geom_boxplot() + ylab(&quot;Normalized expression values (averaged over inds.)&quot;) + labs(title = &quot;Expression values including genes with and without Master Mix Code 1000&quot;)  + xlab(&quot;Tissue-species + whether or not tech. factor included&quot;)</code></pre>
+<p><img src="Follow_up_best_set_tech_factors_files/figure-html/unnamed-chunk-1-2.png" width="672" /></p>
+<pre class="r"><code>ggplot(ggplot_avg_value_labels, aes(factor(Perc_overlap_junct_labels), Avg_Expression)) +  geom_boxplot() + ylab(&quot;Normalized expression values (averaged over inds.)&quot;) + labs(title = &quot;Expression values including genes with and without Perc. overlapping junctions&quot;) + xlab(&quot;Tissue-species + whether or not tech. factor included&quot;)</code></pre>
+<p><img src="Follow_up_best_set_tech_factors_files/figure-html/unnamed-chunk-1-3.png" width="672" /></p>
+<pre class="r"><code>ggplot(ggplot_avg_value_labels, aes(factor(Reads_mapped_orth_exon_labels), Avg_Expression)) +  geom_boxplot() + ylab(&quot;Normalized expression values (averaged over inds.)&quot;) + labs(title = &quot;Expression values including genes with and without Num. of reads mapped on orth. exons&quot;) + xlab(&quot;Tissue-species + whether or not tech. factor included&quot;)</code></pre>
+<p><img src="Follow_up_best_set_tech_factors_files/figure-html/unnamed-chunk-1-4.png" width="672" /></p>
+<pre class="r"><code>ggplot(ggplot_avg_value_labels, aes(factor(RIN_Score_labels), Avg_Expression)) +  geom_boxplot() + ylab(&quot;Normalized expression values (averaged over inds.)&quot;) + labs(title = &quot;Expression values including genes with and without RIN Score&quot;) + xlab(&quot;Tissue-species + whether or not tech. factor included&quot;)</code></pre>
+<p><img src="Follow_up_best_set_tech_factors_files/figure-html/unnamed-chunk-1-5.png" width="672" /></p>
 </div>
 
 
