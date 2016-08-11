@@ -504,6 +504,8 @@ colnames(avg_exp_num_tech_var) <- c("Num_tech_var", "Avg_Expression")
 
 ggplot(avg_exp_num_tech_var, aes(factor(Num_tech_var), Avg_Expression)) +  geom_boxplot() + ylab("Normalized expression values (averaged over all inds.)") + labs(title = "Expression values versus technical factors in the best set") + xlab("Number of technical factors included in the best set analysis")
 
+# The following code produces the same graph as above but the jitter function plots the actual points. 
+
 ggplot(avg_exp_num_tech_var, aes(factor(Num_tech_var), Avg_Expression)) +  geom_boxplot() + geom_jitter() + ylab("Normalized expression values (averaged over all inds.)") + labs(title = "Expression values versus technical factors in the best set") + xlab("Number of technical factors included in the best set analysis") 
 
 

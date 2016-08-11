@@ -943,8 +943,13 @@ colnames(avg_exp_num_tech_var) &lt;- c(&quot;Num_tech_var&quot;, &quot;Avg_Expre
 
 # Plot the results
 
-ggplot(avg_exp_num_tech_var, aes(factor(Num_tech_var), Avg_Expression)) +  geom_boxplot() + ylab(&quot;Normalized expression values (averaged over all inds.)&quot;) + labs(title = &quot;Expression values versus technical factors in the best set&quot;) + xlab(&quot;Number of technical factors included in the best set analysis&quot;) </code></pre>
+ggplot(avg_exp_num_tech_var, aes(factor(Num_tech_var), Avg_Expression)) +  geom_boxplot() + ylab(&quot;Normalized expression values (averaged over all inds.)&quot;) + labs(title = &quot;Expression values versus technical factors in the best set&quot;) + xlab(&quot;Number of technical factors included in the best set analysis&quot;)</code></pre>
 <p><img src="Follow_up_best_set_tech_factors_files/figure-html/unnamed-chunk-8-1.png" width="672" /></p>
+<pre class="r"><code># The following code produces the same graph as above but the jitter function plots the actual points. 
+
+ggplot(avg_exp_num_tech_var, aes(factor(Num_tech_var), Avg_Expression)) +  geom_boxplot() + geom_jitter() + ylab(&quot;Normalized expression values (averaged over all inds.)&quot;) + labs(title = &quot;Expression values versus technical factors in the best set&quot;) + xlab(&quot;Number of technical factors included in the best set analysis&quot;) </code></pre>
+<p><img src="Follow_up_best_set_tech_factors_files/figure-html/unnamed-chunk-8-2.png" width="672" /></p>
+<p>Conclusions: The number of technical factors identified in the best set is inversely proportional to the normalized expression values.</p>
 </div>
 
 
