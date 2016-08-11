@@ -185,7 +185,9 @@ library(&quot;glmnet&quot;)</code></pre>
 <pre><code>## Loading required package: Matrix</code></pre>
 <pre><code>## Loading required package: foreach</code></pre>
 <pre><code>## Loaded glmnet 2.0-5</code></pre>
-<pre class="r"><code># Load expression data
+<pre class="r"><code>library(&quot;formattable&quot;)
+
+# Load expression data
 
 expression &lt;- read.delim(&quot;~/Reg_Evo_Primates/ashlar-trial/data/gc_cyclic_loess_random_var_gene_exp_counts&quot;)
 
@@ -302,6 +304,108 @@ par(mar = c(11, 4, 2, 1))
 plot(var_score_intercept[9:28,], xaxt = &#39;n&#39;, xlab = &quot; &quot;, pch = 19, ylab = &quot;Frequency&quot;, main = &quot;Number of appearances in best set for each gene (16,616 genes)&quot;)
 axis(1, at = 1:20, labels = c(&quot;RNA Extraction 3-12-12&quot;, &quot;RNA Extraction 3-23-12&quot;, &quot;RNA Extraction 3-29-12&quot;, &quot;RNA Extraction 8-3-12&quot;, &quot;RNA Extraction 3-6-12&quot;, &quot;Mix code 0100&quot;, &quot;Mix code 0101&quot;, &quot;Mix code 1000&quot;, &quot;Mix code 1001&quot;, &quot;Mix code 1010&quot;, &quot;% of bp trimmed&quot;, &quot;Reads &gt;20 bp removed&quot;, &quot;% overlapping a junction&quot;, &quot;# of junctions&quot;, &quot;Mapped on orth. exons&quot;, &quot;Orth. genes w/ &gt;= 1 mapped read&quot;, &quot;RNA concentration&quot;, &quot;RIN score&quot;, &quot;Library concentration&quot;, &quot;Library fragments&quot;), las = 2, cex.axis = 0.8)</code></pre>
 <p><img src="GLMnet_gene_exp_files/figure-html/unnamed-chunk-4-1.png" width="672" /></p>
+<pre class="r"><code># Find how many genes do not include any technical factors in the best set 
+
+length(which(colSums(best_set_copy) == 7))</code></pre>
+<pre><code>## [1] 5345</code></pre>
+<pre class="r"><code># Find how many genes include 1 technical factor in the best set
+
+length(which(colSums(best_set_copy) == 8))</code></pre>
+<pre><code>## [1] 4058</code></pre>
+<pre class="r"><code># Find how many genes include 2 techincal factors in the best set
+
+length(which(colSums(best_set_copy) == 9))</code></pre>
+<pre><code>## [1] 3147</code></pre>
+<pre class="r"><code># Find how many genes include 3 techincal factors in the best set
+
+length(which(colSums(best_set_copy) == 10))</code></pre>
+<pre><code>## [1] 1787</code></pre>
+<pre class="r"><code># Find how many genes include 4 techincal factors in the best set
+
+length(which(colSums(best_set_copy) == 11))</code></pre>
+<pre><code>## [1] 922</code></pre>
+<pre class="r"><code># Find how many genes include 5 techincal factors in the best set
+
+length(which(colSums(best_set_copy) == 12))</code></pre>
+<pre><code>## [1] 537</code></pre>
+<pre class="r"><code># Find how many genes include 6 or more techincal factors in the best set
+
+length(which(colSums(best_set_copy) &gt; 12))</code></pre>
+<pre><code>## [1] 820</code></pre>
+<pre class="r"><code># Make a table of the results
+
+DF &lt;- data.frame(Number_of_tech_var_in_best_set=c(&quot;0&quot;, &quot;1&quot;, &quot;2&quot;, &quot;3&quot;, &quot;4&quot;, &quot;5&quot;, &quot;6+&quot;), Number_of_genes=c(&quot;5345&quot;,&quot;4058&quot;,&quot;3147&quot;,&quot;1787&quot;,&quot;922&quot;,&quot;537&quot;,&quot;820&quot;))
+formattable(DF)</code></pre>
+<table class="table table-condensed">
+<thead>
+<tr>
+<th style="text-align:right;">
+Number_of_tech_var_in_best_set
+</th>
+<th style="text-align:right;">
+Number_of_genes
+</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:right;">
+0
+</td>
+<td style="text-align:right;">
+5345
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:right;">
+4058
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+2
+</td>
+<td style="text-align:right;">
+3147
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+3
+</td>
+<td style="text-align:right;">
+1787
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+4
+</td>
+<td style="text-align:right;">
+922
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+5
+</td>
+<td style="text-align:right;">
+537
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+6+
+</td>
+<td style="text-align:right;">
+820
+</td>
+</tr>
+</tbody>
+</table>
 
 
 <!-- some extra javascript for older browsers -->

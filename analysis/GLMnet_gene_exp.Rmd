@@ -10,6 +10,7 @@ output: html_document
 # Load library 
 
 library("glmnet")
+library("formattable")
 
 # Load expression data
 
@@ -143,3 +144,35 @@ plot(var_score_intercept[9:28,], xaxt = 'n', xlab = " ", pch = 19, ylab = "Frequ
 axis(1, at = 1:20, labels = c("RNA Extraction 3-12-12", "RNA Extraction 3-23-12", "RNA Extraction 3-29-12", "RNA Extraction 8-3-12", "RNA Extraction 3-6-12", "Mix code 0100", "Mix code 0101", "Mix code 1000", "Mix code 1001", "Mix code 1010", "% of bp trimmed", "Reads >20 bp removed", "% overlapping a junction", "# of junctions", "Mapped on orth. exons", "Orth. genes w/ >= 1 mapped read", "RNA concentration", "RIN score", "Library concentration", "Library fragments"), las = 2, cex.axis = 0.8)
 
 
+# Find how many genes do not include any technical factors in the best set 
+
+length(which(colSums(best_set_copy) == 7))
+
+# Find how many genes include 1 technical factor in the best set
+
+length(which(colSums(best_set_copy) == 8))
+
+# Find how many genes include 2 techincal factors in the best set
+
+length(which(colSums(best_set_copy) == 9))
+
+# Find how many genes include 3 techincal factors in the best set
+
+length(which(colSums(best_set_copy) == 10))
+
+# Find how many genes include 4 techincal factors in the best set
+
+length(which(colSums(best_set_copy) == 11))
+
+# Find how many genes include 5 techincal factors in the best set
+
+length(which(colSums(best_set_copy) == 12))
+
+# Find how many genes include 6 or more techincal factors in the best set
+
+length(which(colSums(best_set_copy) > 12))
+
+# Make a table of the results
+
+DF <- data.frame(Number_of_tech_var_in_best_set=c("0", "1", "2", "3", "4", "5", "6+"), Number_of_genes=c("5345","4058","3147","1787","922","537","820"))
+formattable(DF)

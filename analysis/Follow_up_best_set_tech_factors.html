@@ -182,12 +182,14 @@ $(document).ready(function () {
 <ul>
 <li><a href="#introduction">Introduction</a></li>
 <li><a href="#exploratory-analysis">Exploratory Analysis</a></li>
+<li><a href="#determine-if-the-technical-factors-are-confounded-with-expression-levels">Determine if the technical factors are confounded with expression levels</a></li>
+<li><a href="#is-average-expression-level-correlated-with-number-of-technical-factors-included-in-the-best-set-for-each-gene">Is average expression level correlated with number of technical factors included in the best set for each gene?</a></li>
 </ul>
 </div>
 
 <div id="introduction" class="section level3">
 <h3>Introduction</h3>
-<p>In the previous analysis, we found that the following genes appeared in the best set for more than 2,400 of the 16,616 genes.</p>
+<p>In the previous “Best set” analysis with tissue and species protected, we found that the following technical factors appeared in the best set for more than 2,400 of the 16,616 genes.</p>
 <ul>
 <li><p>RNA Extraction date 3-23-12 (2nd technical factor on the design matrix fed into GLMnet). Note: the samples that have the RNA Extraction date of 3-23-12 are all Human Individual 3 samples (H3H, H3K, H3Li, H3Lu)</p></li>
 <li><p>Mix code 1000 (8th technical factor). The chimp 1 liver (chimp 4x0519) is the only sample that has this multiplexing mix code because it was the only sample that was only in multiplex mix 1.</p></li>
@@ -208,6 +210,7 @@ library(&quot;gplots&quot;)</code></pre>
 ## 
 ##     lowess</code></pre>
 <pre class="r"><code>library(&quot;ggplot2&quot;)
+library(&quot;formattable&quot;)
 
 # Load the data (biological and technical factors)
 
@@ -438,6 +441,510 @@ ggplot(ggplot_avg_value_labels, aes(factor(RNA_Extra_labels), Avg_Expression)) +
 <p><img src="Follow_up_best_set_tech_factors_files/figure-html/unnamed-chunk-1-4.png" width="672" /></p>
 <pre class="r"><code>ggplot(ggplot_avg_value_labels, aes(factor(RIN_Score_labels), Avg_Expression)) +  geom_boxplot() + ylab(&quot;Normalized expression values (averaged over inds.)&quot;) + labs(title = &quot;Expression values including genes with and without RIN Score&quot;) + xlab(&quot;Tissue-species + whether or not tech. factor included&quot;) + theme(axis.text.x = element_text(angle = 90, hjust = 1))</code></pre>
 <p><img src="Follow_up_best_set_tech_factors_files/figure-html/unnamed-chunk-1-5.png" width="672" /></p>
+</div>
+<div id="determine-if-the-technical-factors-are-confounded-with-expression-levels" class="section level3">
+<h3>Determine if the technical factors are confounded with expression levels</h3>
+<p>We are going to determine if the averaged normalized expression values is the same or different for genes that have technical factor X included in the best set.</p>
+<pre class="r"><code># Find the mean for all 47 samples
+sample_means_per_gene &lt;- rowMeans(gene_counts_with_gc_correction)
+
+dim(sample_means_per_gene)</code></pre>
+<pre><code>## NULL</code></pre>
+<pre class="r"><code># Combine this with 
+exp_and_tech_var &lt;- as.data.frame(cbind(sample_means_per_gene, avg_exp_values_tech[,13], avg_exp_values_tech[,14], avg_exp_values_tech[,15], avg_exp_values_tech[,16], avg_exp_values_tech[,17]))
+
+colnames(exp_and_tech_var) &lt;- c(&quot;Mean_all_samples&quot;, &quot;Extraction_3_23_12&quot;, &quot;Mix_code_1000&quot;, &quot;Perc_overlapping_junction&quot;, &quot;Reads_mapped_on_ortho_exons&quot;, &quot;RIN_score&quot;)
+
+dim(exp_and_tech_var)</code></pre>
+<pre><code>## [1] 16616     6</code></pre>
+<pre class="r"><code># Find the quantiles of the means of all the samples
+
+quantile(exp_and_tech_var$Mean_all_samples, probs = seq(0, 1, 0.25), na.rm = FALSE, names = TRUE, type = 7)</code></pre>
+<pre><code>##        0%       25%       50%       75%      100% 
+## -4.158937  1.329491  3.764888  5.471154 11.670442</code></pre>
+<pre class="r"><code>Q0 = -4.158937
+Q1 = 1.329491
+Q2 = 3.764888
+Q3 = 5.471154
+Q4 = 11.670442 </code></pre>
+<div id="quantile-analysis-with-rna-extraction-date-3-21-16" class="section level4">
+<h4>Quantile analysis with RNA Extraction Date 3-21-16</h4>
+<pre class="r"><code># Find how many genes have 0 in the best set for RNA Extraction date 3-23-12 and which have 1 for each quantile
+
+exp_RNA_extra_0_Q01 &lt;- exp_and_tech_var[which(exp_and_tech_var$Extraction_3_23_12 == 0 &amp; exp_and_tech_var$Mean_all_samples &gt;= Q0 &amp; exp_and_tech_var$Mean_all_samples &lt; Q1 ), ]
+
+dim(exp_RNA_extra_0_Q01)</code></pre>
+<pre><code>## [1] 2966    6</code></pre>
+<pre class="r"><code>exp_RNA_extra_0_Q12 &lt;- exp_and_tech_var[which(exp_and_tech_var$Extraction_3_23_12 == 0 &amp; exp_and_tech_var$Mean_all_samples &gt;= Q1 &amp; exp_and_tech_var$Mean_all_samples &lt; Q2 ), ]
+
+dim(exp_RNA_extra_0_Q12)</code></pre>
+<pre><code>## [1] 3514    6</code></pre>
+<pre class="r"><code>exp_RNA_extra_0_Q23 &lt;- exp_and_tech_var[which(exp_and_tech_var$Extraction_3_23_12 == 0 &amp; exp_and_tech_var$Mean_all_samples &gt;= Q2 &amp; exp_and_tech_var$Mean_all_samples &lt; Q3 ), ]
+
+dim(exp_RNA_extra_0_Q23)</code></pre>
+<pre><code>## [1] 3759    6</code></pre>
+<pre class="r"><code>exp_RNA_extra_0_Q34 &lt;- exp_and_tech_var[which(exp_and_tech_var$Extraction_3_23_12 == 0 &amp; exp_and_tech_var$Mean_all_samples &gt;= Q3 &amp; exp_and_tech_var$Mean_all_samples &lt; Q4 ), ]
+
+dim(exp_RNA_extra_0_Q34)</code></pre>
+<pre><code>## [1] 3866    6</code></pre>
+<pre class="r"><code>exp_RNA_extra_1_Q01 &lt;- exp_and_tech_var[which(exp_and_tech_var$Extraction_3_23_12 == 1 &amp; exp_and_tech_var$Mean_all_samples &gt;= Q0 &amp; exp_and_tech_var$Mean_all_samples &lt; Q1 ), ]
+
+dim(exp_RNA_extra_1_Q01)</code></pre>
+<pre><code>## [1] 1188    6</code></pre>
+<pre class="r"><code>exp_RNA_extra_1_Q12 &lt;- exp_and_tech_var[which(exp_and_tech_var$Extraction_3_23_12 == 1 &amp; exp_and_tech_var$Mean_all_samples &gt;= Q1 &amp; exp_and_tech_var$Mean_all_samples &lt; Q2 ), ]
+
+dim(exp_RNA_extra_1_Q12)</code></pre>
+<pre><code>## [1] 640   6</code></pre>
+<pre class="r"><code>exp_RNA_extra_1_Q23 &lt;- exp_and_tech_var[which(exp_and_tech_var$Extraction_3_23_12 == 1 &amp; exp_and_tech_var$Mean_all_samples &gt;= Q2 &amp; exp_and_tech_var$Mean_all_samples &lt; Q3 ), ]
+
+dim(exp_RNA_extra_1_Q23)</code></pre>
+<pre><code>## [1] 395   6</code></pre>
+<pre class="r"><code>exp_RNA_extra_1_Q34 &lt;- exp_and_tech_var[which(exp_and_tech_var$Extraction_3_23_12 == 1 &amp; exp_and_tech_var$Mean_all_samples &gt;= Q3 &amp; exp_and_tech_var$Mean_all_samples &lt; Q4 ), ]
+
+dim(exp_RNA_extra_1_Q34)</code></pre>
+<pre><code>## [1] 288   6</code></pre>
+<pre class="r"><code># Make a table of the values
+
+DF &lt;- data.frame(RNA_Extra_date_in_best_set=c(&quot;Yes&quot;, &quot;No&quot;, &quot;Ratio&quot;), Q1=c(&quot;1188&quot;, &quot;2966&quot;, &quot;0.401&quot;), Q2=c(&quot;640&quot;, &quot;3514&quot;, &quot;0.182&quot;), Q3=c(&quot;395&quot;, &quot;3759&quot;, &quot;0.110&quot;), Q4=c(&quot;288&quot;, &quot;3866&quot;, &quot;0.074&quot;))
+formattable(DF)</code></pre>
+<table class="table table-condensed">
+<thead>
+<tr>
+<th style="text-align:right;">
+RNA_Extra_date_in_best_set
+</th>
+<th style="text-align:right;">
+Q1
+</th>
+<th style="text-align:right;">
+Q2
+</th>
+<th style="text-align:right;">
+Q3
+</th>
+<th style="text-align:right;">
+Q4
+</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:right;">
+Yes
+</td>
+<td style="text-align:right;">
+1188
+</td>
+<td style="text-align:right;">
+640
+</td>
+<td style="text-align:right;">
+395
+</td>
+<td style="text-align:right;">
+288
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+No
+</td>
+<td style="text-align:right;">
+2966
+</td>
+<td style="text-align:right;">
+3514
+</td>
+<td style="text-align:right;">
+3759
+</td>
+<td style="text-align:right;">
+3866
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+Ratio
+</td>
+<td style="text-align:right;">
+0.401
+</td>
+<td style="text-align:right;">
+0.182
+</td>
+<td style="text-align:right;">
+0.110
+</td>
+<td style="text-align:right;">
+0.074
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div id="quantile-analysis-with-mix-code-1000" class="section level4">
+<h4>Quantile analysis with Mix Code 1000</h4>
+<pre><code>## [1] 2873    6</code></pre>
+<pre><code>## [1] 3583    6</code></pre>
+<pre><code>## [1] 3771    6</code></pre>
+<pre><code>## [1] 3867    6</code></pre>
+<pre><code>## [1] 1281    6</code></pre>
+<pre><code>## [1] 571   6</code></pre>
+<pre><code>## [1] 383   6</code></pre>
+<pre><code>## [1] 287   6</code></pre>
+<table class="table table-condensed">
+<thead>
+<tr>
+<th style="text-align:right;">
+Mix_code_1000_in_best_set
+</th>
+<th style="text-align:right;">
+Q1
+</th>
+<th style="text-align:right;">
+Q2
+</th>
+<th style="text-align:right;">
+Q3
+</th>
+<th style="text-align:right;">
+Q4
+</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:right;">
+Yes
+</td>
+<td style="text-align:right;">
+1281
+</td>
+<td style="text-align:right;">
+571
+</td>
+<td style="text-align:right;">
+383
+</td>
+<td style="text-align:right;">
+287
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+No
+</td>
+<td style="text-align:right;">
+2873
+</td>
+<td style="text-align:right;">
+3583
+</td>
+<td style="text-align:right;">
+3771
+</td>
+<td style="text-align:right;">
+3867
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+Ratio
+</td>
+<td style="text-align:right;">
+0.446
+</td>
+<td style="text-align:right;">
+0.159
+</td>
+<td style="text-align:right;">
+0.102
+</td>
+<td style="text-align:right;">
+0.074
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div id="quantile-analysis-with-percentage-of-reads-overlapping-a-junction" class="section level4">
+<h4>Quantile analysis with Percentage of reads overlapping a junction</h4>
+<pre><code>## [1] 2912    6</code></pre>
+<pre><code>## [1] 3160    6</code></pre>
+<pre><code>## [1] 3445    6</code></pre>
+<pre><code>## [1] 3665    6</code></pre>
+<pre><code>## [1] 1242    6</code></pre>
+<pre><code>## [1] 994   6</code></pre>
+<pre><code>## [1] 709   6</code></pre>
+<pre><code>## [1] 489   6</code></pre>
+<table class="table table-condensed">
+<thead>
+<tr>
+<th style="text-align:right;">
+Perc_overlapping_junction_in_best_set
+</th>
+<th style="text-align:right;">
+Q1
+</th>
+<th style="text-align:right;">
+Q2
+</th>
+<th style="text-align:right;">
+Q3
+</th>
+<th style="text-align:right;">
+Q4
+</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:right;">
+Yes
+</td>
+<td style="text-align:right;">
+1242
+</td>
+<td style="text-align:right;">
+994
+</td>
+<td style="text-align:right;">
+709
+</td>
+<td style="text-align:right;">
+489
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+No
+</td>
+<td style="text-align:right;">
+2912
+</td>
+<td style="text-align:right;">
+3160
+</td>
+<td style="text-align:right;">
+3445
+</td>
+<td style="text-align:right;">
+3665
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+Ratio
+</td>
+<td style="text-align:right;">
+0.427
+</td>
+<td style="text-align:right;">
+0.315
+</td>
+<td style="text-align:right;">
+0.206
+</td>
+<td style="text-align:right;">
+0.133
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div id="quantile-analysis-with-number-of-reads-mapped-on-orthologous-exons" class="section level4">
+<h4>Quantile analysis with Number of reads mapped on orthologous exons</h4>
+<pre><code>## [1] 3062    6</code></pre>
+<pre><code>## [1] 3499    6</code></pre>
+<pre><code>## [1] 3731    6</code></pre>
+<pre><code>## [1] 3899    6</code></pre>
+<pre><code>## [1] 1092    6</code></pre>
+<pre><code>## [1] 655   6</code></pre>
+<pre><code>## [1] 423   6</code></pre>
+<pre><code>## [1] 255   6</code></pre>
+<table class="table table-condensed">
+<thead>
+<tr>
+<th style="text-align:right;">
+Perc_overlapping_junction_in_best_set
+</th>
+<th style="text-align:right;">
+Q1
+</th>
+<th style="text-align:right;">
+Q2
+</th>
+<th style="text-align:right;">
+Q3
+</th>
+<th style="text-align:right;">
+Q4
+</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:right;">
+Yes
+</td>
+<td style="text-align:right;">
+1092
+</td>
+<td style="text-align:right;">
+655
+</td>
+<td style="text-align:right;">
+423
+</td>
+<td style="text-align:right;">
+255
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+No
+</td>
+<td style="text-align:right;">
+3062
+</td>
+<td style="text-align:right;">
+3499
+</td>
+<td style="text-align:right;">
+3731
+</td>
+<td style="text-align:right;">
+3899
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+Ratio
+</td>
+<td style="text-align:right;">
+0.357
+</td>
+<td style="text-align:right;">
+0.187
+</td>
+<td style="text-align:right;">
+0.113
+</td>
+<td style="text-align:right;">
+0.065
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div id="quantile-analysis-with-rin-score" class="section level4">
+<h4>Quantile analysis with RIN Score</h4>
+<pre><code>## [1] 3573    6</code></pre>
+<pre><code>## [1] 3845    6</code></pre>
+<pre><code>## [1] 3958    6</code></pre>
+<pre><code>## [1] 4082    6</code></pre>
+<pre><code>## [1] 581   6</code></pre>
+<pre><code>## [1] 309   6</code></pre>
+<pre><code>## [1] 196   6</code></pre>
+<pre><code>## [1] 72  6</code></pre>
+<table class="table table-condensed">
+<thead>
+<tr>
+<th style="text-align:right;">
+RNA_RIN_Score_in_best_set
+</th>
+<th style="text-align:right;">
+Q1
+</th>
+<th style="text-align:right;">
+Q2
+</th>
+<th style="text-align:right;">
+Q3
+</th>
+<th style="text-align:right;">
+Q4
+</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:right;">
+Yes
+</td>
+<td style="text-align:right;">
+581
+</td>
+<td style="text-align:right;">
+309
+</td>
+<td style="text-align:right;">
+196
+</td>
+<td style="text-align:right;">
+72
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+No
+</td>
+<td style="text-align:right;">
+3573
+</td>
+<td style="text-align:right;">
+3845
+</td>
+<td style="text-align:right;">
+3958
+</td>
+<td style="text-align:right;">
+4082
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+Ratio
+</td>
+<td style="text-align:right;">
+0.163
+</td>
+<td style="text-align:right;">
+0.080
+</td>
+<td style="text-align:right;">
+0.050
+</td>
+<td style="text-align:right;">
+0.018
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div id="is-average-expression-level-correlated-with-number-of-technical-factors-included-in-the-best-set-for-each-gene" class="section level3">
+<h3>Is average expression level correlated with number of technical factors included in the best set for each gene?</h3>
+<pre class="r"><code># Find the number of technical variables in the best set for each gene
+
+num_tech_var &lt;- as.data.frame(rowSums(t_Best_set_bio_tech_var)-7)
+summary(num_tech_var)</code></pre>
+<pre><code>##  rowSums(t_Best_set_bio_tech_var) - 7
+##  Min.   : 0.00                       
+##  1st Qu.: 0.00                       
+##  Median : 1.00                       
+##  Mean   : 1.68                       
+##  3rd Qu.: 2.00                       
+##  Max.   :12.00</code></pre>
+<pre class="r"><code># Combine the number of technical variables in the best set for each gene with the mean expression level for each gene (over all 47 samples)
+
+avg_exp_num_tech_var &lt;- cbind(num_tech_var, exp_and_tech_var$Mean_all_samples)
+colnames(avg_exp_num_tech_var) &lt;- c(&quot;Num_tech_var&quot;, &quot;Avg_Expression&quot;)
+
+# Plot the results
+
+ggplot(avg_exp_num_tech_var, aes(factor(Num_tech_var), Avg_Expression)) +  geom_boxplot() + ylab(&quot;Normalized expression values (averaged over all inds.)&quot;) + labs(title = &quot;Expression values versus technical factors in the best set&quot;) + xlab(&quot;Number of technical factors included in the best set analysis&quot;) </code></pre>
+<p><img src="Follow_up_best_set_tech_factors_files/figure-html/unnamed-chunk-8-1.png" width="672" /></p>
 </div>
 
 
