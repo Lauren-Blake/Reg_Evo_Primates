@@ -29,6 +29,10 @@ title: "Home"
 *  [Best set of technical factors](../analysis/GLMnet_gene_exp.html)
 *  [Correlation between technical factors in the best sets and expression](../analysis/Follow_up_best_set_tech_factors.html)
 
+### Final filtering, normalizations, and analysis with technical factors
+
+*  [Processing using filtering with lowly expressed genes](../analysis/Correlation_bet_tech_factors_in_best_set_and_expression_stringent_filtering.html)
+
 ### Univariate analysis on gene expression
 
 * [Test for differentially expressed genes](../analysis/Test_DE_genes.html) 

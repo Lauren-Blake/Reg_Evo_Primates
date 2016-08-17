@@ -249,7 +249,7 @@ sample_means_per_gene <- rowMeans(gene_counts_with_gc_correction)
 
 dim(sample_means_per_gene)
 
-# Combine this with 
+# Combine this with technical variables
 exp_and_tech_var <- as.data.frame(cbind(sample_means_per_gene, avg_exp_values_tech[,13], avg_exp_values_tech[,14], avg_exp_values_tech[,15], avg_exp_values_tech[,16], avg_exp_values_tech[,17]))
 
 colnames(exp_and_tech_var) <- c("Mean_all_samples", "Extraction_3_23_12", "Mix_code_1000", "Perc_overlapping_junction", "Reads_mapped_on_ortho_exons", "RIN_score")
@@ -511,4 +511,4 @@ ggplot(avg_exp_num_tech_var, aes(factor(Num_tech_var), Avg_Expression)) +  geom_
 
 ```
 
-Conclusions: The number of technical factors identified in the best set is inversely proportional to the normalized expression values. 
+Conclusions: The number of technical factors identified in the best set is inversely proportional to the normalized expression values. I believe that the additional technical factors in the model may help to capture some of the noise around the lowly expressed genes. I think it is possible that this problem may be exacerbated by a relatively lax filtering strategy. Therefore, in the next set of analysis, I adopt a more stringent filtering strategy to see how this impacts the relationship between number of technical factors in the best set and expression values. 

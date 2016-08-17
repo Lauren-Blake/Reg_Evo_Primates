@@ -39,8 +39,6 @@ dim(samples)
 # Make labels
 
 labels <- paste(samples$Species, samples$Tissue, sep=" ")
-
-
 ```
 
 ### Make the design matrix

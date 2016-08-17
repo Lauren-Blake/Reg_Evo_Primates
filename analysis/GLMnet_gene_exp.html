@@ -334,7 +334,7 @@ length(which(colSums(best_set_copy) &gt; 12))</code></pre>
 <pre><code>## [1] 820</code></pre>
 <pre class="r"><code># Make a table of the results
 
-DF &lt;- data.frame(Number_of_tech_var_in_best_set=c(&quot;0&quot;, &quot;1&quot;, &quot;2&quot;, &quot;3&quot;, &quot;4&quot;, &quot;5&quot;, &quot;6+&quot;), Number_of_genes=c(&quot;5345&quot;,&quot;4058&quot;,&quot;3147&quot;,&quot;1787&quot;,&quot;922&quot;,&quot;537&quot;,&quot;820&quot;))
+DF &lt;- data.frame(Number_of_tech_var_in_best_set=c(&quot;0&quot;, &quot;1&quot;, &quot;2&quot;, &quot;3&quot;, &quot;4&quot;, &quot;5&quot;, &quot;6+&quot;), Number_of_genes=c(&quot;5345&quot;,&quot;4058&quot;,&quot;3147&quot;,&quot;1787&quot;,&quot;922&quot;,&quot;537&quot;,&quot;820&quot;), Percentage_of_genes=c(&quot;32.2%&quot;, &quot;24.4%&quot;, &quot;18.9%&quot;, &quot;10.8%&quot;, &quot;5.5%&quot;, &quot;3.2%&quot;, &quot;4.9%&quot;))
 formattable(DF)</code></pre>
 <table class="table table-condensed">
 <thead>
@@ -344,6 +344,9 @@ Number_of_tech_var_in_best_set
 </th>
 <th style="text-align:right;">
 Number_of_genes
+</th>
+<th style="text-align:right;">
+Percentage_of_genes
 </th>
 </tr>
 </thead>
@@ -355,6 +358,9 @@ Number_of_genes
 <td style="text-align:right;">
 5345
 </td>
+<td style="text-align:right;">
+32.2%
+</td>
 </tr>
 <tr>
 <td style="text-align:right;">
@@ -362,6 +368,9 @@ Number_of_genes
 </td>
 <td style="text-align:right;">
 4058
+</td>
+<td style="text-align:right;">
+24.4%
 </td>
 </tr>
 <tr>
@@ -371,6 +380,9 @@ Number_of_genes
 <td style="text-align:right;">
 3147
 </td>
+<td style="text-align:right;">
+18.9%
+</td>
 </tr>
 <tr>
 <td style="text-align:right;">
@@ -378,6 +390,9 @@ Number_of_genes
 </td>
 <td style="text-align:right;">
 1787
+</td>
+<td style="text-align:right;">
+10.8%
 </td>
 </tr>
 <tr>
@@ -387,6 +402,9 @@ Number_of_genes
 <td style="text-align:right;">
 922
 </td>
+<td style="text-align:right;">
+5.5%
+</td>
 </tr>
 <tr>
 <td style="text-align:right;">
@@ -395,6 +413,9 @@ Number_of_genes
 <td style="text-align:right;">
 537
 </td>
+<td style="text-align:right;">
+3.2%
+</td>
 </tr>
 <tr>
 <td style="text-align:right;">
@@ -402,6 +423,9 @@ Number_of_genes
 </td>
 <td style="text-align:right;">
 820
+</td>
+<td style="text-align:right;">
+4.9%
 </td>
 </tr>
 </tbody>

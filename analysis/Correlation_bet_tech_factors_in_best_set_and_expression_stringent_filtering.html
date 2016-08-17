@@ -1,0 +1,1607 @@
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+<head>
+
+<meta charset="utf-8">
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<meta name="generator" content="pandoc" />
+
+
+<meta name="author" content="Lauren Blake" />
+
+<meta name="date" content="2016-08-10" />
+
+<title>Correlation_between_technical_factors_in_best_set_stringent_filtering</title>
+
+<script src="libs/jquery-1.11.3/jquery.min.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link href="libs/bootstrap-3.3.5/css/united.min.css" rel="stylesheet" />
+<script src="libs/bootstrap-3.3.5/js/bootstrap.min.js"></script>
+<script src="libs/bootstrap-3.3.5/shim/html5shiv.min.js"></script>
+<script src="libs/bootstrap-3.3.5/shim/respond.min.js"></script>
+
+<style type="text/css">
+
+/* padding for bootstrap navbar */
+body {
+  padding-top: 50px;
+  padding-bottom: 40px;
+}
+
+
+/* offset scroll position for anchor links (for fixed navbar)  */
+.section h2 {
+  padding-top: 55px;
+  margin-top: -55px;
+}
+.section h3 {
+  padding-top: 55px;
+  margin-top: -55px;
+}
+
+
+
+/* don't use link color in navbar */
+.dropdown-menu>li>a {
+  color: black;
+}
+
+/* some padding for disqus */
+#disqus_thread {
+  margin-top: 45px;
+}
+
+</style>
+
+<link rel="stylesheet" href="libs/font-awesome-4.1.0/css/font-awesome.min.css"/>
+
+<style type="text/css">code{white-space: pre;}</style>
+<link rel="stylesheet"
+      href="libs/highlight/textmate.css"
+      type="text/css" />
+<script src="libs/highlight/highlight.js"></script>
+<style type="text/css">
+  pre:not([class]) {
+    background-color: white;
+  }
+</style>
+<script type="text/javascript">
+if (window.hljs && document.readyState && document.readyState === "complete") {
+   window.setTimeout(function() {
+      hljs.initHighlighting();
+   }, 0);
+}
+</script>
+
+
+
+<style type="text/css">
+h1 {
+  font-size: 34px;
+}
+h1.title {
+  font-size: 38px;
+}
+h2 {
+  font-size: 30px;
+}
+h3 {
+  font-size: 24px;
+}
+h4 {
+  font-size: 18px;
+}
+h5 {
+  font-size: 16px;
+}
+h6 {
+  font-size: 12px;
+}
+.table th:not([align]) {
+  text-align: left;
+}
+</style>
+
+
+</head>
+
+<body>
+
+<style type = "text/css">
+.main-container {
+  max-width: 940px;
+  margin-left: auto;
+  margin-right: auto;
+}
+code {
+  color: inherit;
+  background-color: rgba(0, 0, 0, 0.04);
+}
+img {
+  max-width:100%;
+  height: auto;
+}
+.tabbed-pane {
+  padding-top: 12px;
+}
+button.code-folding-btn:focus {
+  outline: none;
+}
+</style>
+
+
+<div class="container-fluid main-container">
+
+<!-- tabsets -->
+<script src="libs/navigation-1.1/tabsets.js"></script>
+<script>
+$(document).ready(function () {
+  window.buildTabsets("TOC");
+});
+</script>
+
+<!-- code folding -->
+
+
+
+
+
+
+<div class="navbar navbar-default navbar-fixed-top" role="navigation">
+  <div class="container">
+    <div class="navbar-header">
+      <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar">
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+      </button>
+      <a class="navbar-brand" href="index.html">RegulatoryEvolutionInPrimates</a>
+    </div>
+    <div id="navbar" class="navbar-collapse collapse">
+      <ul class="nav navbar-nav">
+        <li><a href="index.html">Home</a></li>
+        <li><a href="about.html">About</a></li>
+        <li><a href="license.html">License</a></li>
+        <li><a href="https://github.com/Lauren-Blake/Reg_Evo_Primates">GitHub</a></li>
+    </div><!--/.nav-collapse -->
+  </div><!--/.container -->
+</div><!--/.navbar -->
+
+<div class="fluid-row" id="header">
+
+
+
+<h1 class="title toc-ignore">Correlation_between_technical_factors_in_best_set_stringent_filtering</h1>
+<h4 class="author"><em>Lauren Blake</em></h4>
+<h4 class="date"><em>August 10, 2016</em></h4>
+
+</div>
+
+<div id="TOC">
+<ul>
+<li><a href="#filtering-for-lowly-expressed-genes">Filtering for lowly expressed genes</a></li>
+<li><a href="#gc-content-normalization">GC content normalization</a></li>
+<li><a href="#correction-for-library-size">Correction for library size</a></li>
+<li><a href="#voom-and-corfit">Voom and corfit</a></li>
+<li><a href="#visualization">Visualization</a></li>
+<li><a href="#testing-for-confounders">Testing for confounders</a></li>
+<li><a href="#best-set-analysis-glmnet">Best set analysis (GLMnet)</a></li>
+<li><a href="#distribution-of-genes-with-and-without-a-particular-techinical-factor-in-the-best-set">Distribution of genes with and without a particular techinical factor in the best set</a></li>
+<li><a href="#description-of-the-best-set-of-technical-factors">Description of the best set of technical factors</a></li>
+<li><a href="#quantile-analysis">Quantile Analysis</a></li>
+</ul>
+</div>
+
+<p>In this analysis, we will adopt an EXTREMELY stringent filtering criteria for eliminating lowly expressed genes. We will then see if this change affects the relationship between normalized expression values and the number of technical factors.</p>
+<pre class="r"><code># Load libraries 
+
+library(&quot;gplots&quot;)</code></pre>
+<pre><code>## 
+## Attaching package: &#39;gplots&#39;</code></pre>
+<pre><code>## The following object is masked from &#39;package:stats&#39;:
+## 
+##     lowess</code></pre>
+<pre class="r"><code>library(&quot;ggplot2&quot;)
+library(&quot;formattable&quot;)
+library(&quot;RColorBrewer&quot;)
+library(&quot;scales&quot;)</code></pre>
+<pre><code>## 
+## Attaching package: &#39;scales&#39;</code></pre>
+<pre><code>## The following objects are masked from &#39;package:formattable&#39;:
+## 
+##     comma, percent, scientific</code></pre>
+<pre class="r"><code>library(&quot;edgeR&quot;)</code></pre>
+<pre><code>## Loading required package: limma</code></pre>
+<pre class="r"><code>source(&quot;~/Reg_Evo_Primates/ashlar-trial/analysis/functions.R&quot;)
+library(&quot;glmnet&quot;)</code></pre>
+<pre><code>## Loading required package: Matrix</code></pre>
+<pre><code>## Loading required package: foreach</code></pre>
+<pre><code>## Loaded glmnet 2.0-5</code></pre>
+<pre class="r"><code>library(&quot;formattable&quot;)
+
+# Load colors 
+
+colors &lt;- colorRampPalette(c(brewer.pal(9, &quot;Blues&quot;)[1],brewer.pal(9, &quot;Blues&quot;)[9]))(100)
+pal &lt;- c(brewer.pal(9, &quot;Set1&quot;), brewer.pal(8, &quot;Set2&quot;), brewer.pal(12, &quot;Set3&quot;))
+
+#Load the data
+
+  #Raw counts
+
+counts_genes &lt;- read.delim(&quot;~/Reg_Evo_Primates/ashlar-trial/data/counts_genes.txt&quot;)
+
+dim(counts_genes)</code></pre>
+<pre><code>## [1] 30030    48</code></pre>
+<pre class="r"><code>  #Sample information
+
+samples &lt;- read.csv(&quot;~/Reg_Evo_Primates/ashlar-trial/data/Sample_info_RNAseq.csv&quot;)
+
+labels &lt;- paste(samples$Species, samples$Tissue, sep=&quot; &quot;)</code></pre>
+<div id="filtering-for-lowly-expressed-genes" class="section level3">
+<h3>Filtering for lowly expressed genes</h3>
+<p>Here, we will use a stringent cutoff of log2(CPM) &gt; 1.5 in at least half (24) of the samples.</p>
+<pre class="r"><code># Set expression cutoff and sample number
+expr_cutoff &lt;- 1.5
+sample_number &lt;- 24
+
+# log2(CPM) adjusted for library sizes
+
+dge_original &lt;- DGEList(counts=as.matrix(counts_genes), genes=rownames(counts_genes), group = as.character(t(labels)))
+dge_original &lt;- calcNormFactors(dge_original)
+
+cpm &lt;- cpm(dge_original, normalized.lib.sizes=TRUE, log=TRUE, prior.count = 0.25)
+head(tmm_cpm)</code></pre>
+<pre><code>##                      C1H       C1K      C1Li      C1Lu       C2H       C2K
+## ENSG00000000003 4.567373  6.447533  8.256017  5.424906 4.6294354  6.011805
+## ENSG00000000005 2.416000 -1.580095 -1.416352 -3.341347 0.6076502 -1.343658
+## ENSG00000000419 5.840304  5.181024  5.932747  5.421890 5.6238128  5.035649
+## ENSG00000000457 4.558401  5.177784  5.897776  4.915903 4.7768304  5.224658
+## ENSG00000000460 1.505008  1.832930  2.075455  2.252356 1.6034149  1.903546
+## ENSG00000000938 5.610063  3.782664  5.086430  7.494062 2.4759548  4.113386
+##                      C2Li      C2Lu       C3H         C3K      C3Li
+## ENSG00000000003  7.997439  4.518180  4.896187  6.34935971  7.711220
+## ENSG00000000005 -2.074003 -2.073564 -1.336243 -0.08391333 -3.805819
+## ENSG00000000419  5.781412  5.153538  5.656791  5.12246958  6.340540
+## ENSG00000000457  6.513238  4.939606  4.599465  5.14729901  6.424910
+## ENSG00000000460  2.292856  1.977228  1.561216  1.40473716  2.271103
+## ENSG00000000938  5.356426  8.037124  4.945957  4.16655579  5.131295
+##                      C3Lu      C4H       C4K      C4Li      C4Lu       H1H
+## ENSG00000000003  5.825590 4.200148  6.445727  8.368230  5.362211  6.761084
+## ENSG00000000005 -3.821423 3.812407 -1.533431 -3.682999 -2.532144 -6.806579
+## ENSG00000000419  5.546317 5.749810  5.199950  5.796045  5.253771  6.134200
+## ENSG00000000457  5.118596 4.609688  4.965236  6.512006  5.195795  5.269211
+## ENSG00000000460  2.074325 1.421009  1.768841  2.121422  2.408692  5.108993
+## ENSG00000000938  7.109951 3.603345  3.563260  4.494896  7.649746  4.442136
+##                      H1K      H1Li      H1Lu       H2H       H2K      H2Li
+## ENSG00000000003 6.804563  6.546031  5.007223  3.704707 7.1262303  6.618244
+## ENSG00000000005 4.852944 -6.806579 -2.246586 -3.903089 0.3878291 -6.806579
+## ENSG00000000419 5.528057  6.052945  5.719069  5.629978 5.3823470  5.817742
+## ENSG00000000457 4.224917  4.923772  4.410342  3.430292 4.0791476  4.430133
+## ENSG00000000460 2.706694  4.959282  3.226274  1.915724 1.8992527  2.637193
+## ENSG00000000938 3.999256  4.449888  7.786373  5.583692 3.6609998  5.969598
+##                      H2Lu        H3H         H3K      H3Li      H3Lu
+## ENSG00000000003  4.123641  3.4819522 7.018616442  7.646317  5.182205
+## ENSG00000000005 -6.806579 -6.8065788 0.009014279 -6.806579 -6.806579
+## ENSG00000000419  5.255982  5.6892431 5.781990575  6.127195  4.901956
+## ENSG00000000457  4.144389  4.3789705 4.649846700  4.904103  3.891301
+## ENSG00000000460  2.495636 -0.1372257 2.917685496  3.148170  2.349467
+## ENSG00000000938  6.911422  4.0351829 2.570227284  5.651445  6.804843
+##                       H4H        H4K      H4Li      H4Lu       R1H
+## ENSG00000000003  4.298917  6.3173589  6.492465  4.430781  4.277450
+## ENSG00000000005 -2.885525 -0.4099302 -6.806579 -4.381165 -6.806579
+## ENSG00000000419  6.259288  5.5536660  5.736507  5.317749  5.385154
+## ENSG00000000457  3.327086  4.0330630  5.078478  4.140972  4.206293
+## ENSG00000000460  1.644565  1.9287495  3.040136  2.571756  1.205569
+## ENSG00000000938  4.933243  3.7664364  6.801466  8.216330  1.758374
+##                       R1K       R1Li      R1Lu       R2H       R2K
+## ENSG00000000003  6.865893  8.2379489  5.862719  4.587429  7.080213
+## ENSG00000000005 -6.806579 -3.5812300 -2.947388 -2.950144 -2.392446
+## ENSG00000000419  5.324798  5.7295743  4.834230  5.257598  4.989863
+## ENSG00000000457  4.957819  5.0471784  4.784547  4.273744  5.100864
+## ENSG00000000460  1.488300 -0.2693252  2.427739  1.377881  1.266081
+## ENSG00000000938  2.497210  3.7078234  6.462495  2.289137  2.627796
+##                      R2Li      R2Lu       R3H       R3K      R3Li
+## ENSG00000000003  8.590210  5.596179  4.447299  7.118296  8.159964
+## ENSG00000000005 -1.254679 -4.918947 -4.250247 -4.518792 -3.157713
+## ENSG00000000419  5.673041  4.822969  5.441223  5.319612  5.947843
+## ENSG00000000457  5.461042  5.207134  4.219708  5.092042  5.317075
+## ENSG00000000460  1.446891  2.336439  1.634827  1.826680  1.371274
+## ENSG00000000938  3.622173  6.524890  2.849036  2.219476  3.593860
+##                      R3Lu       R4H       R4K      R4Li      R4Lu
+## ENSG00000000003  5.443878  4.822954  7.048140  7.679671  5.347353
+## ENSG00000000005 -3.806700 -2.535407 -2.099889 -4.589602 -6.806579
+## ENSG00000000419  4.946500  5.357811  5.169441  5.438501  5.027872
+## ENSG00000000457  5.155818  4.440126  5.098001  5.292544  4.814466
+## ENSG00000000460  2.567598  1.018736  1.463169  1.508474  2.833647
+## ENSG00000000938  6.836275  2.405256  2.264315  4.483635  6.820965</code></pre>
+<pre class="r"><code>hist(tmm_cpm, main = &quot;log2(CPM) values in unfiltered data (n = 48 samples)&quot;, breaks = 100, ylim = c(0, 50000), xlab = &quot;log2(CPM) values&quot;)
+abline(v = expr_cutoff, col = &quot;red&quot;, lwd = 3)</code></pre>
+<p><img src="Correlation_bet_tech_factors_in_best_set_and_expression_stringent_filtering_files/figure-html/filter-1.png" width="672" /></p>
+<pre class="r"><code>cpm_filtered &lt;- cpm[rowSums(cpm &gt; expr_cutoff) &gt;= sample_number, ]
+dim(cpm_filtered)</code></pre>
+<pre><code>## [1] 12184    48</code></pre>
+<p>This filtering criteria will leave us with 12184 genes.</p>
+</div>
+<div id="gc-content-normalization" class="section level3">
+<h3>GC content normalization</h3>
+<p>In the previous analysis, we demonstrated that GC content normalization changes the gene counts very minimally. Therefore, we will not perform GC content normalization here.</p>
+</div>
+<div id="correction-for-library-size" class="section level3">
+<h3>Correction for library size</h3>
+<pre class="r"><code># Find the original counts of all of the genes that fit the criteria 
+
+inshared_lists = row.names(counts_genes) %in% rownames(cpm_filtered)
+inshared_lists_data &lt;- as.data.frame(inshared_lists)
+counts_genes_in &lt;- cbind(counts_genes, inshared_lists_data)
+counts_genes_in_cutoff &lt;- subset(counts_genes_in, inshared_lists_data == &quot;TRUE&quot;)
+counts_genes_in_cutoff &lt;- counts_genes_in_cutoff[,1:48]
+
+dim(counts_genes_in_cutoff)</code></pre>
+<pre><code>## [1] 12184    48</code></pre>
+<pre class="r"><code># Remove H1H (sample 17) from the data
+
+counts_genes_in_cutoff &lt;- counts_genes_in_cutoff[,-17]
+dim(counts_genes_in_cutoff)</code></pre>
+<pre><code>## [1] 12184    47</code></pre>
+<pre class="r"><code># Remove H1H (sample 17) from labels
+
+samples &lt;- samples[-17,]
+labels &lt;- paste(samples$Species, samples$Tissue, sep=&quot; &quot;)
+
+# Take the TMM of the genes that meet the criteria
+
+dge_in_cutoff &lt;- DGEList(counts=as.matrix(counts_genes_in_cutoff), genes=rownames(counts_genes_in_cutoff), group = as.character(t(labels)))
+dge_in_cutoff &lt;- calcNormFactors(dge_in_cutoff)
+
+cpm_in_cutoff &lt;- cpm(dge_in_cutoff, normalized.lib.sizes=TRUE, log=TRUE, prior.count = 0.25)
+head(cpm_in_cutoff)</code></pre>
+<pre><code>##                      C1H      C1K      C1Li     C1Lu      C2H      C2K
+## ENSG00000000003 4.569101 6.484481  8.260731 5.481561 4.686636 6.076562
+## ENSG00000000419 5.842023 5.217972  5.937465 5.478545 5.681016 5.100404
+## ENSG00000000457 4.560130 5.214732  5.902494 4.972557 4.834031 5.289413
+## ENSG00000000460 1.506846 1.869887  2.080244 2.308985 1.660573 1.968249
+## ENSG00000000938 5.611783 3.819613  5.091152 7.550720 2.533135 4.178135
+## ENSG00000000971 6.877100 4.451824 11.368082 6.100181 6.135730 4.887383
+##                      C2Li     C2Lu      C3H      C3K      C3Li     C3Lu
+## ENSG00000000003  8.029471 4.564496 4.915377 6.406310  7.784365 5.875983
+## ENSG00000000419  5.813444 5.199855 5.675979 5.179418  6.413682 5.596709
+## ENSG00000000457  6.545270 4.985922 4.618657 5.204247  6.498053 5.168988
+## ENSG00000000460  2.324903 2.023533 1.580465 1.461635  2.344190 2.124699
+## ENSG00000000938  5.388459 8.083442 4.965147 4.223500  5.204433 7.160345
+## ENSG00000000971 11.387090 6.246512 5.606820 4.941061 11.420166 5.990777
+##                      C4H      C4K      C4Li     C4Lu      H1K      H1Li
+## ENSG00000000003 4.235754 6.503717  8.453727 5.430223 6.864660  6.576082
+## ENSG00000000419 5.785414 5.257938  5.881536 5.321782 5.588152  6.082997
+## ENSG00000000457 4.645293 5.023223  6.597499 5.263806 4.285007  4.953825
+## ENSG00000000460 1.456629 1.826787  2.206829 2.476664 2.766766  4.989335
+## ENSG00000000938 3.638952 3.621239  4.580376 7.717763 4.059344  4.479943
+## ENSG00000000971 6.845219 5.957838 11.330910 6.421417 6.585546 11.216641
+##                     H1Lu      H2H      H2K     H2Li     H2Lu         H3H
+## ENSG00000000003 5.099004 3.681088 7.205567 6.638944 4.181104  3.54360583
+## ENSG00000000419 5.810855 5.606326 5.461678 5.838444 5.313450  5.75090978
+## ENSG00000000457 4.502116 3.406682 4.158467 4.450840 4.201852  4.44063190
+## ENSG00000000460 3.318021 1.892216 1.978501 2.657920 2.553081 -0.07576077
+## ENSG00000000938 7.878166 5.560041 3.740312 5.990299 6.968892  4.09684184
+## ENSG00000000971 7.561408 6.363288 4.736443 9.409472 7.310814  6.22507411
+##                      H3K      H3Li     H3Lu      H4H      H4K      H4Li
+## ENSG00000000003 7.091569  7.735945 5.290097 4.284175 6.371782  6.590115
+## ENSG00000000419 5.854940  6.216818 5.009845 6.244527 5.608088  5.834153
+## ENSG00000000457 4.722790  4.993719 3.999170 3.312369 4.087480  5.176119
+## ENSG00000000460 2.990603  3.237751 2.457261 1.629959 1.983141  3.137731
+## ENSG00000000938 2.643134  5.741066 6.912746 4.918491 3.820852  6.899117
+## ENSG00000000971 5.313255 10.346500 7.124250 6.927089 6.032612 10.197598
+##                     H4Lu      R1H      R1K       R1Li     R1Lu      R2H
+## ENSG00000000003 4.463456 4.356369 6.932932  8.3343252 5.915547 4.625348
+## ENSG00000000419 5.350423 5.464082 5.391834  5.8259430 4.887057 5.295517
+## ENSG00000000457 4.173647 4.285211 5.024853  5.1435415 4.837373 4.311664
+## ENSG00000000460 2.604439 1.284359 1.555258 -0.1735364 2.480549 1.415808
+## ENSG00000000938 8.249002 1.837210 2.564210  3.8041639 6.515323 2.327061
+## ENSG00000000971 8.277236 4.027912 6.576019 12.1322643 7.445976 5.571685
+##                      R2K      R2Li     R2Lu      R3H      R3K      R3Li
+## ENSG00000000003 7.134183  8.640291 5.654663 4.469039 7.166047  8.202424
+## ENSG00000000419 5.043831  5.723120 4.881450 5.462958 5.367362  5.990303
+## ENSG00000000457 5.154832  5.511121 5.265617 4.241449 5.139792  5.359535
+## ENSG00000000460 1.320003  1.496941 2.394895 1.656614 1.874414  1.413727
+## ENSG00000000938 2.681748  3.672247 6.583375 2.870792 2.267214  3.636318
+## ENSG00000000971 6.778700 11.778253 7.231996 5.150488 6.054215 12.087241
+##                     R3Lu      R4H      R4K      R4Li     R4Lu
+## ENSG00000000003 5.453490 4.892515 7.094406  7.705335 5.361237
+## ENSG00000000419 4.956114 5.427374 5.215706  5.464168 5.041757
+## ENSG00000000457 5.165431 4.509684 5.144266  5.318210 4.828352
+## ENSG00000000460 2.577251 1.088179 1.509418  1.534185 2.847559
+## ENSG00000000938 6.845883 2.474777 2.310571  4.509304 6.834845
+## ENSG00000000971 7.258258 6.408881 6.469038 11.695479 7.298202</code></pre>
+<pre class="r"><code>head(summary(cpm_in_cutoff))</code></pre>
+<pre><code>##       C1H              C1K              C1Li             C1Lu       
+##  Min.   :-6.766   Min.   :-6.766   Min.   :-6.766   Min.   :-6.766  
+##  1st Qu.: 3.314   1st Qu.: 3.393   1st Qu.: 3.247   1st Qu.: 3.321  
+##  Median : 4.730   Median : 4.803   Median : 4.763   Median : 4.795  
+##  Mean   : 4.660   Mean   : 4.724   Mean   : 4.707   Mean   : 4.668  
+##  3rd Qu.: 6.027   3rd Qu.: 6.063   3rd Qu.: 6.126   3rd Qu.: 6.046  
+##  Max.   :14.883   Max.   :13.234   Max.   :17.511   Max.   :14.327  
+##       C2H              C2K              C2Li             C2Lu       
+##  Min.   :-6.766   Min.   :-6.766   Min.   :-6.766   Min.   :-6.766  
+##  1st Qu.: 3.206   1st Qu.: 3.448   1st Qu.: 3.197   1st Qu.: 3.377  
+##  Median : 4.724   Median : 4.804   Median : 4.793   Median : 4.769  
+##  Mean   : 4.637   Mean   : 4.724   Mean   : 4.699   Mean   : 4.678  
+##  3rd Qu.: 6.081   3rd Qu.: 5.992   3rd Qu.: 6.169   3rd Qu.: 6.016  
+##  Max.   :15.277   Max.   :13.038   Max.   :17.490   Max.   :13.909  
+##       C3H              C3K              C3Li             C3Lu       
+##  Min.   :-6.766   Min.   :-6.766   Min.   :-6.766   Min.   :-6.766  
+##  1st Qu.: 3.150   1st Qu.: 3.423   1st Qu.: 3.031   1st Qu.: 3.279  
+##  Median : 4.673   Median : 4.793   Median : 4.744   Median : 4.742  
+##  Mean   : 4.589   Mean   : 4.708   Mean   : 4.604   Mean   : 4.629  
+##  3rd Qu.: 6.084   3rd Qu.: 6.018   3rd Qu.: 6.186   3rd Qu.: 6.045  
+##  Max.   :16.102   Max.   :12.591   Max.   :16.966   Max.   :13.996  
+##       C4H              C4K              C4Li             C4Lu       
+##  Min.   :-6.766   Min.   :-6.766   Min.   :-6.766   Min.   :-6.766  
+##  1st Qu.: 3.233   1st Qu.: 3.390   1st Qu.: 3.159   1st Qu.: 3.327  
+##  Median : 4.725   Median : 4.780   Median : 4.782   Median : 4.738  
+##  Mean   : 4.615   Mean   : 4.703   Mean   : 4.696   Mean   : 4.641  
+##  3rd Qu.: 6.037   3rd Qu.: 6.015   3rd Qu.: 6.183   3rd Qu.: 5.994  
+##  Max.   :14.757   Max.   :13.480   Max.   :17.778   Max.   :12.618  
+##       H1K              H1Li             H1Lu             H2H        
+##  Min.   :-6.766   Min.   :-6.766   Min.   :-6.766   Min.   :-6.766  
+##  1st Qu.: 3.393   1st Qu.: 3.205   1st Qu.: 3.418   1st Qu.: 3.135  
+##  Median : 4.788   Median : 4.781   Median : 4.747   Median : 4.729  
+##  Mean   : 4.699   Mean   : 4.682   Mean   : 4.684   Mean   : 4.600  
+##  3rd Qu.: 5.993   3rd Qu.: 6.127   3rd Qu.: 5.938   3rd Qu.: 6.101  
+##  Max.   :12.908   Max.   :17.031   Max.   :13.004   Max.   :14.363  
+##       H2K              H2Li             H2Lu             H3H        
+##  Min.   :-6.766   Min.   :-6.766   Min.   :-6.766   Min.   :-6.766  
+##  1st Qu.: 3.303   1st Qu.: 3.235   1st Qu.: 3.395   1st Qu.: 3.244  
+##  Median : 4.770   Median : 4.767   Median : 4.735   Median : 4.744  
+##  Mean   : 4.624   Mean   : 4.656   Mean   : 4.664   Mean   : 4.562  
+##  3rd Qu.: 6.013   3rd Qu.: 6.095   3rd Qu.: 5.985   3rd Qu.: 6.044  
+##  Max.   :14.007   Max.   :15.156   Max.   :12.586   Max.   :15.541  
+##       H3K              H3Li             H3Lu             H4H        
+##  Min.   :-6.766   Min.   :-6.766   Min.   :-4.772   Min.   :-6.766  
+##  1st Qu.: 3.461   1st Qu.: 3.121   1st Qu.: 3.416   1st Qu.: 3.276  
+##  Median : 4.811   Median : 4.769   Median : 4.751   Median : 4.736  
+##  Mean   : 4.715   Mean   : 4.659   Mean   : 4.702   Mean   : 4.663  
+##  3rd Qu.: 6.011   3rd Qu.: 6.184   3rd Qu.: 6.005   3rd Qu.: 6.077  
+##  Max.   :13.703   Max.   :17.347   Max.   :13.596   Max.   :15.337  
+##       H4K              H4Li             H4Lu             R1H        
+##  Min.   :-4.765   Min.   :-6.766   Min.   :-6.766   Min.   :-6.766  
+##  1st Qu.: 3.454   1st Qu.: 3.313   1st Qu.: 3.405   1st Qu.: 3.049  
+##  Median : 4.820   Median : 4.800   Median : 4.707   Median : 4.708  
+##  Mean   : 4.740   Mean   : 4.734   Mean   : 4.686   Mean   : 4.526  
+##  3rd Qu.: 6.028   3rd Qu.: 6.132   3rd Qu.: 5.980   3rd Qu.: 6.139  
+##  Max.   :14.045   Max.   :15.784   Max.   :12.901   Max.   :15.791  
+##       R1K              R1Li             R1Lu             R2H        
+##  Min.   :-6.766   Min.   :-6.766   Min.   :-6.766   Min.   :-6.766  
+##  1st Qu.: 3.292   1st Qu.: 3.012   1st Qu.: 3.348   1st Qu.: 3.031  
+##  Median : 4.778   Median : 4.756   Median : 4.749   Median : 4.684  
+##  Mean   : 4.636   Mean   : 4.595   Mean   : 4.623   Mean   : 4.532  
+##  3rd Qu.: 6.082   3rd Qu.: 6.223   3rd Qu.: 6.006   3rd Qu.: 6.104  
+##  Max.   :13.870   Max.   :18.397   Max.   :14.299   Max.   :15.757  
+##       R2K              R2Li             R2Lu             R3H        
+##  Min.   :-6.766   Min.   :-6.766   Min.   :-6.766   Min.   :-6.766  
+##  1st Qu.: 3.364   1st Qu.: 3.040   1st Qu.: 3.396   1st Qu.: 3.097  
+##  Median : 4.786   Median : 4.755   Median : 4.744   Median : 4.705  
+##  Mean   : 4.676   Mean   : 4.609   Mean   : 4.646   Mean   : 4.589  
+##  3rd Qu.: 6.068   3rd Qu.: 6.216   3rd Qu.: 5.990   3rd Qu.: 6.112  
+##  Max.   :13.723   Max.   :18.310   Max.   :13.311   Max.   :15.759  
+##       R3K              R3Li             R3Lu             R4H        
+##  Min.   :-6.766   Min.   :-6.766   Min.   :-6.766   Min.   :-6.766  
+##  1st Qu.: 3.239   1st Qu.: 3.014   1st Qu.: 3.378   1st Qu.: 3.112  
+##  Median : 4.804   Median : 4.774   Median : 4.747   Median : 4.700  
+##  Mean   : 4.629   Mean   : 4.601   Mean   : 4.633   Mean   : 4.572  
+##  3rd Qu.: 6.121   3rd Qu.: 6.239   3rd Qu.: 6.007   3rd Qu.: 6.132  
+##  Max.   :14.794   Max.   :18.618   Max.   :13.580   Max.   :15.705  
+##       R4K              R4Li             R4Lu       
+##  Min.   :-6.766   Min.   :-6.766   Min.   :-6.766  
+##  1st Qu.: 3.309   1st Qu.: 3.115   1st Qu.: 3.343  
+##  Median : 4.797   Median : 4.802   Median : 4.746  
+##  Mean   : 4.659   Mean   : 4.642   Mean   : 4.621  
+##  3rd Qu.: 6.105   3rd Qu.: 6.220   3rd Qu.: 6.016  
+##  Max.   :14.337   Max.   :17.952   Max.   :13.962</code></pre>
+<pre class="r"><code>hist(cpm_in_cutoff, xlab = &quot;Log2(CPM)&quot;, main = &quot;Log2(CPM) values for genes meeting the filtering criteria&quot;, breaks = 100 )</code></pre>
+<p><img src="Correlation_bet_tech_factors_in_best_set_and_expression_stringent_filtering_files/figure-html/new_genes-1.png" width="672" /> This looks more normally distributed than the genes in our less stringent filtering criteria.</p>
+<p>Making density plots:</p>
+<pre class="r"><code>all_hearts &lt;- c(1,5,9,13, 20,24,28,32,36,40,44)
+all_kidneys &lt;- c(2,6,10,14,17, 21,25,29,33,37,41,45)
+all_livers &lt;- c(3,7,11,15,18, 22,26,30,34,38,42,46)
+all_lungs &lt;- c(4,8,12,16,19, 23,27,31,35,39,43,47)
+
+col = as.data.frame(pal[as.numeric(samples$Species)])
+col_hearts = col[all_hearts,]
+col_kidneys = col[all_kidneys, ]
+col_livers = col[all_livers, ]
+col_lungs = col[all_lungs, ]
+
+group = as.data.frame(samples$Species)
+group_hearts = group[all_hearts, ]
+group_kidneys = group[all_kidneys, ]
+group_livers = group[all_livers, ]
+group_lungs = group[all_lungs, ]
+
+plotDensities(cpm_in_cutoff[,all_hearts], col=col_hearts, legend = FALSE, main = &quot;Density plot for genes passing filtering criteria (all hearts)&quot;)
+legend(&#39;topright&#39;, legend = levels(group_hearts), col = levels(col_hearts), pch = 20)</code></pre>
+<p><img src="Correlation_bet_tech_factors_in_best_set_and_expression_stringent_filtering_files/figure-html/unnamed-chunk-1-1.png" width="672" /></p>
+<pre class="r"><code>plotDensities(cpm_in_cutoff[,1:16], group=samples$Tissue, col=pal[as.numeric(samples$Tissue)], legend = &quot;topright&quot;, main = &quot;Density plot for genes passing filtering criteria (all chimpanzees)&quot;)</code></pre>
+<p><img src="Correlation_bet_tech_factors_in_best_set_and_expression_stringent_filtering_files/figure-html/unnamed-chunk-1-2.png" width="672" /></p>
+<p>For this preliminary analysis, I will skip the GC content normalization, particularly because it had a minimial effect on the raw counts in the original analysis.</p>
+</div>
+<div id="voom-and-corfit" class="section level3">
+<h3>Voom and corfit</h3>
+<pre class="r"><code>## Voom requires a design matrix as input                                                                                                                                                        
+## To make contrasts easier to formulate, we rename factors species and tissue in a single factor 
+
+condition &lt;- factor(paste(samples$Species,samples$Tissue,sep=&quot;.&quot;))
+design &lt;- model.matrix(~ 0 + condition)
+colnames(design) &lt;- gsub(&quot;condition&quot;, &quot;&quot;, dput(colnames(design)))</code></pre>
+<pre><code>## c(&quot;conditionchimpanzee.heart&quot;, &quot;conditionchimpanzee.kidney&quot;, 
+## &quot;conditionchimpanzee.liver&quot;, &quot;conditionchimpanzee.lung&quot;, &quot;conditionhuman.heart&quot;, 
+## &quot;conditionhuman.kidney&quot;, &quot;conditionhuman.liver&quot;, &quot;conditionhuman.lung&quot;, 
+## &quot;conditionrhesus macaque.heart&quot;, &quot;conditionrhesus macaque.kidney&quot;, 
+## &quot;conditionrhesus macaque.liver&quot;, &quot;conditionrhesus macaque.lung&quot;
+## )</code></pre>
+<pre class="r"><code># Voom with individual as a random variable
+
+cpm.voom.cyclic &lt;- voom(dge_in_cutoff, design, normalize.method=&quot;cyclicloess&quot;, plot=T)</code></pre>
+<p><img src="Correlation_bet_tech_factors_in_best_set_and_expression_stringent_filtering_files/figure-html/unnamed-chunk-2-1.png" width="672" /></p>
+<pre class="r"><code>corfit &lt;- duplicateCorrelation(cpm.voom.cyclic, design, block=samples$Individual)
+
+# corfit$consensus = 0.2006188
+
+# Final voom on filtered data
+
+cpm.voom.cyclic &lt;- voom(dge_in_cutoff, design, normalize.method=&quot;cyclicloess&quot;, plot=TRUE, block=samples$Individual, correlation=corfit$consensus)</code></pre>
+<p><img src="Correlation_bet_tech_factors_in_best_set_and_expression_stringent_filtering_files/figure-html/unnamed-chunk-2-2.png" width="672" /></p>
+<pre class="r"><code>boxplot(cpm.voom.cyclic$E, col = pal[as.numeric(samples$Tissue)])</code></pre>
+<p><img src="Correlation_bet_tech_factors_in_best_set_and_expression_stringent_filtering_files/figure-html/unnamed-chunk-2-3.png" width="672" /></p>
+<pre class="r"><code>plotDensities(cpm.voom.cyclic[,all_hearts], col = col_hearts, legend = FALSE, main = &quot;Normalized expression data for genes passing filtering criteria (all hearts)&quot;) 
+legend(&#39;topright&#39;, legend = levels(group_hearts), col = levels(col_hearts), pch = 20)</code></pre>
+<p><img src="Correlation_bet_tech_factors_in_best_set_and_expression_stringent_filtering_files/figure-html/unnamed-chunk-2-4.png" width="672" /></p>
+<pre class="r"><code># Save the data
+
+write.table(cpm.voom.cyclic$E,file=&quot;/Users/LEB/Reg_Evo_Primates/ashlar-trial/data/PC_cpm_cyclic_loess_random_var_gene_exp&quot;,sep=&quot;\t&quot;, col.names = T, row.names = T)</code></pre>
+</div>
+<div id="visualization" class="section level3">
+<h3>Visualization</h3>
+<pre class="r"><code># PCA 
+
+pca_genes &lt;- prcomp(t(cpm.voom.cyclic$E), scale = F)
+scores &lt;- pca_genes$x
+
+for (n in 1:2){
+  col.v &lt;- pal[as.integer(samples$Tissue)]
+  plot_scores(pca_genes, scores, n, n+1, col.v)
+}</code></pre>
+<p><img src="Correlation_bet_tech_factors_in_best_set_and_expression_stringent_filtering_files/figure-html/unnamed-chunk-3-1.png" width="672" /><img src="Correlation_bet_tech_factors_in_best_set_and_expression_stringent_filtering_files/figure-html/unnamed-chunk-3-2.png" width="672" /></p>
+<pre class="r"><code># Clustering (original code from Julien Roux)
+cors &lt;- cor(cpm.voom.cyclic$E, method=&quot;spearman&quot;, use=&quot;pairwise.complete.obs&quot;)
+
+
+heatmap.2( cors, scale=&quot;none&quot;, col = colors, margins = c(12, 12), trace=&#39;none&#39;, denscol=&quot;white&quot;, labCol=labels, ColSideColors=pal[as.integer(as.factor(samples$Species))], RowSideColors=pal[as.integer(as.factor(samples$Tissue))+9], cexCol = 0.2 + 1/log10(15), cexRow = 0.2 + 1/log10(15))</code></pre>
+<p><img src="Correlation_bet_tech_factors_in_best_set_and_expression_stringent_filtering_files/figure-html/unnamed-chunk-3-3.png" width="672" /></p>
+<pre class="r"><code># Note: Pattern is robust to type of correlation method (spearman or pearson).</code></pre>
+</div>
+<div id="testing-for-confounders" class="section level3">
+<h3>Testing for confounders</h3>
+<p>Given the similarities in the clustering patterns between the original analysis and this one, we are going to assume that the same group of technical factors that were (partially) confounded with the tissue or species in the original analysis are the same in this analysis. Therefore, we will skip to the best set analysis.</p>
+</div>
+<div id="best-set-analysis-glmnet" class="section level3">
+<h3>Best set analysis (GLMnet)</h3>
+<p>We will run lasso regression to determine the best set of factors for each gene.</p>
+<pre class="r"><code>expression_t &lt;- t(cpm.voom.cyclic$E)
+
+# Load variables data
+
+samples &lt;- read.csv(&quot;~/Reg_Evo_Primates/ashlar-trial/data/RNA_seq_info.csv&quot;)
+samples &lt;- as.data.frame(samples)
+
+#Use the biological variables (tissue and species) and the technical variables that were correlated with tissue and species
+
+tech_var &lt;- c(3:8,11,12,16:24)
+
+#Add technical variables 
+
+RNA_seq_tech_var &lt;- samples[,tech_var]
+
+dim(RNA_seq_tech_var)</code></pre>
+<pre><code>## [1] 47 17</code></pre>
+<pre class="r"><code># Take out 1 row because contains an &quot;NA&quot;
+RNA_seq_tech_var &lt;- RNA_seq_tech_var[-31,]
+expression_t &lt;- expression_t[-31,]
+
+#Set up the matrix of all technical variables
+
+RNA_species &lt;- model.matrix(~ -1+Species, RNA_seq_tech_var)
+RNA_tissue &lt;- model.matrix(~ -1+Tissue, RNA_seq_tech_var)
+RNA_extra &lt;- model.matrix(~ -1+RNA.extraction.date, RNA_seq_tech_var)
+Multi_mix &lt;- model.matrix(~ -1+Multiplexing.Mixes.Code, RNA_seq_tech_var)
+
+cat_exp_var &lt;- cbind(RNA_species, RNA_tissue, RNA_extra, Multi_mix)
+num_exp_var &lt;- RNA_seq_tech_var[,7:17]
+num_exp_var &lt;- num_exp_var[,-6]
+
+# Make the matrix with biological and technical variables
+exp_var_no_NA &lt;- cbind(cat_exp_var, num_exp_var)
+exp_var_no_NA &lt;- as.matrix(exp_var_no_NA)
+
+dim(exp_var_no_NA)</code></pre>
+<pre><code>## [1] 46 27</code></pre>
+<div id="run-glmnet" class="section level4">
+<h4>Run GLMnet</h4>
+<pre class="r"><code>#Run glmnet on all the genes, save the coef. Repeat for each gene. 
+#Alpha = 1 to allow for lasso regression because of correlations between the explanatory variables
+
+lambda_min &lt;- array(NA, dim= c(1, 12184))
+
+# Do not penalize tissue and species
+p.fac = rep(1,28)
+p.fac[c(1:7)] = 0
+
+l = 1
+for(l in 1:length(lambda_min)){
+  resp_var &lt;- as.matrix(expression_t[,l])
+  glmmod&lt;-cv.glmnet(x=exp_var_no_NA,y=resp_var, penalty.factor = p.fac)
+  lambda_min[,l]  &lt;- as.matrix(glmmod$lambda.min)
+#  print(l)
+}
+
+write.table(lambda_min,file=&quot;/Users/LEB/Reg_Evo_Primates/ashlar-trial/data/Best_set_lambda_min_stringent.txt&quot;,sep=&quot;\t&quot;, col.names = T, row.names = T)
+
+rowMeans(lambda_min) ## 0.06852632</code></pre>
+<pre><code>## [1] 0.06869491</code></pre>
+<pre class="r"><code>#Make an array to hold the dgCMatrix
+
+best_set &lt;- array(NA, dim= c(28, 12184))
+
+l = 1
+for(l in 1:12184){
+  
+#Define the response variable
+resp_var &lt;- as.matrix(expression_t[,l])
+
+
+glmmod&lt;-glmnet(x=exp_var_no_NA,y=resp_var, standardize = TRUE, intercept = FALSE, alpha = 1, penalty.factor = p.fac)
+
+best_set[,l] &lt;- as.matrix(coef(glmmod, s =0.06852632))
+# print(l)
+}
+
+best_set_copy &lt;- best_set
+best_set_copy[best_set_copy != 0] &lt;- 1
+
+write.table(best_set_copy,file=&quot;/Users/LEB/Reg_Evo_Primates/ashlar-trial/data/Best_set_bio_tech_var_stringent.txt&quot;,sep=&quot;\t&quot;, col.names = T, row.names = T)
+
+
+# Look at how many times each technical variable is included in the model for expression
+
+var_score &lt;- rowSums(best_set_copy)
+
+var_score &lt;- as.data.frame(var_score)
+
+par(mar = c(11, 4, 2, 1))
+plot(var_score[9:28,], xaxt = &#39;n&#39;, xlab = &quot; &quot;, pch = 19, ylab = &quot;Frequency&quot;, main = &quot;Number of appearances in best set for each gene (12,184 genes)&quot;)
+axis(1, at = 1:20, labels = c(&quot;RNA Extraction 3-12-12&quot;, &quot;RNA Extraction 3-23-12&quot;, &quot;RNA Extraction 3-29-12&quot;, &quot;RNA Extraction 8-3-12&quot;, &quot;RNA Extraction 3-6-12&quot;, &quot;Mix code 0100&quot;, &quot;Mix code 0101&quot;, &quot;Mix code 1000&quot;, &quot;Mix code 1001&quot;, &quot;Mix code 1010&quot;, &quot;% of bp trimmed&quot;, &quot;Reads &gt;20 bp removed&quot;, &quot;% overlapping a junction&quot;, &quot;# of junctions&quot;, &quot;Mapped on orth. exons&quot;, &quot;Orth. genes w/ &gt;= 1 mapped read&quot;, &quot;RNA concentration&quot;, &quot;RIN score&quot;, &quot;Library concentration&quot;, &quot;Library fragments&quot;), las = 2, cex.axis = 0.8)</code></pre>
+<p><img src="Correlation_bet_tech_factors_in_best_set_and_expression_stringent_filtering_files/figure-html/unnamed-chunk-5-1.png" width="672" /></p>
+<pre class="r"><code># Find how many genes do not include any technical factors in the best set 
+
+length(which(colSums(best_set_copy) == 7))</code></pre>
+<pre><code>## [1] 3128</code></pre>
+<pre class="r"><code># Find how many genes include 1 technical factor in the best set
+
+length(which(colSums(best_set_copy) == 8))</code></pre>
+<pre><code>## [1] 3757</code></pre>
+<pre class="r"><code># Find how many genes include 2 techincal factors in the best set
+
+length(which(colSums(best_set_copy) == 9))</code></pre>
+<pre><code>## [1] 2968</code></pre>
+<pre class="r"><code># Find how many genes include 3 techincal factors in the best set
+
+length(which(colSums(best_set_copy) == 10))</code></pre>
+<pre><code>## [1] 1533</code></pre>
+<pre class="r"><code># Find how many genes include 4 techincal factors in the best set
+
+length(which(colSums(best_set_copy) == 11))</code></pre>
+<pre><code>## [1] 527</code></pre>
+<pre class="r"><code># Find how many genes include 5 techincal factors in the best set
+
+length(which(colSums(best_set_copy) == 12))</code></pre>
+<pre><code>## [1] 167</code></pre>
+<pre class="r"><code># Find how many genes include 6 or more techincal factors in the best set
+
+length(which(colSums(best_set_copy) &gt; 12))</code></pre>
+<pre><code>## [1] 104</code></pre>
+<pre class="r"><code># Make a table of the results
+
+DF &lt;- data.frame(Number_of_tech_var_in_best_set=c(&quot;0&quot;, &quot;1&quot;, &quot;2&quot;, &quot;3&quot;, &quot;4&quot;, &quot;5&quot;, &quot;6+&quot;), Number_of_genes=c(&quot;3128&quot;,&quot;3757&quot;,&quot;2968&quot;,&quot;1533&quot;,&quot;527&quot;,&quot;167&quot;,&quot;104&quot;), Percentage_of_genes=c(&quot;25.7%&quot;, &quot;30.8&quot;, &quot;24.4%&quot;, &quot;12.6%&quot;,&quot;4.3%&quot;, &quot;1.4%&quot;, &quot;0.85%&quot;))
+formattable(DF)</code></pre>
+<table class="table table-condensed">
+<thead>
+<tr>
+<th style="text-align:right;">
+Number_of_tech_var_in_best_set
+</th>
+<th style="text-align:right;">
+Number_of_genes
+</th>
+<th style="text-align:right;">
+Percentage_of_genes
+</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:right;">
+0
+</td>
+<td style="text-align:right;">
+3128
+</td>
+<td style="text-align:right;">
+25.7%
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:right;">
+3757
+</td>
+<td style="text-align:right;">
+30.8
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+2
+</td>
+<td style="text-align:right;">
+2968
+</td>
+<td style="text-align:right;">
+24.4%
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+3
+</td>
+<td style="text-align:right;">
+1533
+</td>
+<td style="text-align:right;">
+12.6%
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+4
+</td>
+<td style="text-align:right;">
+527
+</td>
+<td style="text-align:right;">
+4.3%
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+5
+</td>
+<td style="text-align:right;">
+167
+</td>
+<td style="text-align:right;">
+1.4%
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+6+
+</td>
+<td style="text-align:right;">
+104
+</td>
+<td style="text-align:right;">
+0.85%
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div id="distribution-of-genes-with-and-without-a-particular-techinical-factor-in-the-best-set" class="section level3">
+<h3>Distribution of genes with and without a particular techinical factor in the best set</h3>
+<pre class="r"><code># Rename the counts of filtered genes to be consistent with where I re-used my code
+
+gene_counts_with_gc_correction &lt;- cpm.voom.cyclic$E
+
+# Find average expression for each gene
+
+chimp_hearts &lt;- c(1, 5, 9, 13)
+chimp_kidneys &lt;- c(2,6,10,14)
+chimp_livers &lt;- c(3,7,11,15)
+chimp_lungs &lt;- c(4,8,12,16)
+
+human_hearts &lt;- c(20,24,28)
+human_kidneys &lt;- c(17,21,25,29)
+human_livers &lt;- c(18,22,26,30)
+human_lungs &lt;- c(19,23,27,31)
+
+rhesus_hearts &lt;- c(32,36,40,44)
+rhesus_kidneys &lt;- c(33,37,41,45)
+rhesus_livers &lt;- c(34,38,42,46)
+rhesus_lungs &lt;- c(35,39,43,47)
+
+# For chimp hearts
+exp_chimp_hearts &lt;- as.data.frame(rowMeans(gene_counts_with_gc_correction[ , chimp_hearts]))
+
+# For chimp kidneys
+
+exp_chimp_kidneys &lt;- as.data.frame(rowMeans(gene_counts_with_gc_correction[ , chimp_kidneys]))
+
+# For chimp livers
+
+exp_chimp_livers &lt;- as.data.frame(rowMeans(gene_counts_with_gc_correction[ , chimp_livers]))
+
+# For chimp lungs
+
+exp_chimp_lungs &lt;- as.data.frame(rowMeans(gene_counts_with_gc_correction[ , chimp_lungs]))
+
+# For human hearts
+exp_human_hearts &lt;- as.data.frame(rowMeans(gene_counts_with_gc_correction[ , human_hearts]))
+
+# For human kidneys
+
+exp_human_kidneys &lt;- as.data.frame(rowMeans(gene_counts_with_gc_correction[ , human_kidneys]))
+
+# For human livers
+
+exp_human_livers &lt;- as.data.frame(rowMeans(gene_counts_with_gc_correction[ , human_livers]))
+
+# For human lungs
+
+exp_human_lungs &lt;- as.data.frame(rowMeans(gene_counts_with_gc_correction[ , human_lungs]))
+
+# For rhesus hearts
+exp_rhesus_hearts &lt;- as.data.frame(rowMeans(gene_counts_with_gc_correction[ , rhesus_hearts]))
+
+# For rhesus kidneys
+
+exp_rhesus_kidneys &lt;- as.data.frame(rowMeans(gene_counts_with_gc_correction[ , rhesus_kidneys]))
+
+# For rhesus livers
+
+exp_rhesus_livers &lt;- as.data.frame(rowMeans(gene_counts_with_gc_correction[ , rhesus_livers]))
+
+# For rhesus lungs
+
+exp_rhesus_lungs &lt;- as.data.frame(rowMeans(gene_counts_with_gc_correction[ , human_lungs]))
+
+# Make the data frame
+
+avg_exp_values &lt;- cbind(exp_chimp_hearts, exp_chimp_kidneys, exp_chimp_livers, exp_chimp_lungs, exp_human_hearts, exp_human_kidneys, exp_human_livers, exp_human_lungs, exp_rhesus_hearts, exp_rhesus_kidneys, exp_rhesus_livers, exp_rhesus_lungs)
+
+rownames(avg_exp_values) &lt;- row.names(gene_counts_with_gc_correction)
+colnames(avg_exp_values) &lt;- c(&quot;CH&quot;, &quot;CK&quot;, &quot;CLi&quot;, &quot;CLu&quot;, &quot;HH&quot;, &quot;HK&quot;, &quot;HLi&quot;, &quot;HLu&quot;, &quot;RH&quot;, &quot;RK&quot;, &quot;RLi&quot;, &quot;RLu&quot;)
+
+head(avg_exp_values)</code></pre>
+<pre><code>##                       CH       CK       CLi      CLu       HH       HK
+## ENSG00000000003 4.643544 6.423855  8.120334 5.412857 3.898239 6.962142
+## ENSG00000000419 5.809148 5.233561  6.015234 5.449505 5.922689 5.684207
+## ENSG00000000457 4.740144 5.217904  6.409255 5.136165 3.764577 4.336782
+## ENSG00000000460 1.441697 1.503988  2.275975 1.954153 1.068433 2.112578
+## ENSG00000000938 4.264598 3.994983  5.092376 7.666405 4.902307 3.587095
+## ENSG00000000971 6.358227 5.169758 11.352850 6.334520 6.505375 5.777783
+##                       HLi      HLu       RH       RK       RLi      RLu
+## ENSG00000000003  6.914406 4.908730 4.592179 7.082514  8.170545 4.908730
+## ENSG00000000419  6.013734 5.495043 5.461297 5.250001  5.738304 5.495043
+## ENSG00000000457  4.920943 4.301103 4.424211 5.111108  5.369621 4.301103
+## ENSG00000000460  3.455621 2.267533 1.454699 1.383147  1.232424 2.267533
+## ENSG00000000938  5.806246 7.581146 2.471498 2.451962  3.946812 7.581146
+## ENSG00000000971 10.330427 7.684678 5.249444 6.557522 11.863724 7.684678</code></pre>
+<pre class="r"><code># Make the needed data frame of the technical variables
+
+t_best_set_copy &lt;- t(best_set_copy)
+
+dim(t_best_set_copy)</code></pre>
+<pre><code>## [1] 12184    28</code></pre>
+<pre class="r"><code># Add the 4 relevant technical variables
+
+avg_exp_values_tech &lt;- cbind(avg_exp_values,t_best_set_copy[,10], t_best_set_copy[,16], t_best_set_copy[,21], t_best_set_copy[,23], t_best_set_copy[,26])
+
+colnames(avg_exp_values_tech) &lt;- c(&quot;CH&quot;, &quot;CK&quot;, &quot;CLi&quot;, &quot;CLu&quot;, &quot;HH&quot;, &quot;HK&quot;, &quot;HLi&quot;, &quot;HLu&quot;, &quot;RH&quot;, &quot;RK&quot;, &quot;RLi&quot;, &quot;RLu&quot;, &quot;Extraction_3-23-12&quot;, &quot;Mix_code_1000&quot;, &quot;Perc_overlapping_junction&quot;, &quot;Reads_mapped_on_ortho_exons&quot;, &quot;RIN score&quot;)
+
+# Check # of genes with technical variables
+colSums(avg_exp_values_tech)</code></pre>
+<pre><code>##                          CH                          CK 
+##                    56662.38                    57226.72 
+##                         CLi                         CLu 
+##                    57428.46                    56655.42 
+##                          HH                          HK 
+##                    56472.09                    56834.29 
+##                         HLi                         HLu 
+##                    57440.37                    56743.45 
+##                          RH                          RK 
+##                    56317.35                    56262.45 
+##                         RLi                         RLu 
+##                    56814.67                    56743.45 
+##          Extraction_3-23-12               Mix_code_1000 
+##                     1585.00                     1870.00 
+##   Perc_overlapping_junction Reads_mapped_on_ortho_exons 
+##                     2781.00                     1552.00 
+##                   RIN score 
+##                      872.00</code></pre>
+<pre class="r"><code># Put in a format ggplot2 likes
+
+# All the tissue-species combinations
+
+# Enter # of genes
+times = 12184
+
+CH &lt;- as.data.frame(rep(&quot;CH&quot;, times = times))
+CK &lt;- as.data.frame(rep(&quot;CK&quot;, times = times))
+CLi &lt;- as.data.frame(rep(&quot;CLi&quot;, times = times))
+CLu &lt;- as.data.frame(rep(&quot;CLu&quot;, times = times))
+
+HH &lt;- as.data.frame(rep(&quot;HH&quot;, times = times))
+HK &lt;- as.data.frame(rep(&quot;HK&quot;, times = times))
+HLi &lt;- as.data.frame(rep(&quot;HLi&quot;, times = times))
+HLu &lt;- as.data.frame(rep(&quot;HLu&quot;, times = times))
+
+RH &lt;- as.data.frame(rep(&quot;RH&quot;, times = times))
+RK &lt;- as.data.frame(rep(&quot;RK&quot;, times = times))
+RLi &lt;- as.data.frame(rep(&quot;RLi&quot;, times = times))
+RLu &lt;- as.data.frame(rep(&quot;RLu&quot;, times = times))
+
+# Add expression and technical variables for each tissue-species combination
+
+ggplot_avg_value_CH &lt;- cbind(avg_exp_values_tech[,1], CH, avg_exp_values_tech[,13], avg_exp_values_tech[,14], avg_exp_values_tech[,15], avg_exp_values_tech[,16], avg_exp_values_tech[,17])
+colnames(ggplot_avg_value_CH) &lt;- c(&quot;Avg_Expression&quot;, &quot;Sample&quot;, &quot;RNA_Extra&quot;, &quot;Mix_1000&quot;, &quot;Perc_overlap_junct&quot;, &quot;Reads_mapped_orth_exon&quot;, &quot;RIN_Score&quot;)
+
+ggplot_avg_value_CK &lt;- cbind(avg_exp_values[,2], CK, avg_exp_values_tech[,13], avg_exp_values_tech[,14], avg_exp_values_tech[,15], avg_exp_values_tech[,16], avg_exp_values_tech[,17])
+
+colnames(ggplot_avg_value_CK) &lt;- colnames(ggplot_avg_value_CH)
+
+ggplot_avg_value_CLi &lt;- cbind(avg_exp_values[,3], CLi, avg_exp_values_tech[,13], avg_exp_values_tech[,14], avg_exp_values_tech[,15], avg_exp_values_tech[,16], avg_exp_values_tech[,17])
+
+colnames(ggplot_avg_value_CLi) &lt;- colnames(ggplot_avg_value_CH)
+
+ggplot_avg_value_CLu &lt;- cbind(avg_exp_values[,4], CLu, avg_exp_values_tech[,13], avg_exp_values_tech[,14], avg_exp_values_tech[,15], avg_exp_values_tech[,16], avg_exp_values_tech[,17])
+
+colnames(ggplot_avg_value_CLu) &lt;- colnames(ggplot_avg_value_CH)
+
+ggplot_avg_value_HH &lt;- cbind(avg_exp_values[,5], HH, avg_exp_values_tech[,13], avg_exp_values_tech[,14], avg_exp_values_tech[,15], avg_exp_values_tech[,16], avg_exp_values_tech[,17])
+
+colnames(ggplot_avg_value_HH) &lt;- colnames(ggplot_avg_value_CH)
+
+ggplot_avg_value_HK &lt;- cbind(avg_exp_values[,6], HK, avg_exp_values_tech[,13], avg_exp_values_tech[,14], avg_exp_values_tech[,15], avg_exp_values_tech[,16], avg_exp_values_tech[,17])
+
+colnames(ggplot_avg_value_HK) &lt;- colnames(ggplot_avg_value_CH)
+
+ggplot_avg_value_HLi &lt;- cbind(avg_exp_values[,7], HLi, avg_exp_values_tech[,13], avg_exp_values_tech[,14], avg_exp_values_tech[,15], avg_exp_values_tech[,16], avg_exp_values_tech[,17])
+
+colnames(ggplot_avg_value_HLi) &lt;- colnames(ggplot_avg_value_CH)
+
+ggplot_avg_value_HLu &lt;- cbind(avg_exp_values[,8], HLu, avg_exp_values_tech[,13], avg_exp_values_tech[,14], avg_exp_values_tech[,15], avg_exp_values_tech[,16], avg_exp_values_tech[,17])
+
+colnames(ggplot_avg_value_HLu) &lt;- colnames(ggplot_avg_value_CH)
+
+ggplot_avg_value_RH &lt;- cbind(avg_exp_values[,9], RH, avg_exp_values_tech[,13], avg_exp_values_tech[,14], avg_exp_values_tech[,15], avg_exp_values_tech[,16], avg_exp_values_tech[,17])
+
+colnames(ggplot_avg_value_RH) &lt;- colnames(ggplot_avg_value_CH)
+
+ggplot_avg_value_RK &lt;- cbind(avg_exp_values[,10], RK, avg_exp_values_tech[,13], avg_exp_values_tech[,14], avg_exp_values_tech[,15], avg_exp_values_tech[,16], avg_exp_values_tech[,17])
+
+colnames(ggplot_avg_value_RK) &lt;- colnames(ggplot_avg_value_CH)
+
+ggplot_avg_value_RLi &lt;- cbind(avg_exp_values[,11], RLi, avg_exp_values_tech[,13], avg_exp_values_tech[,14], avg_exp_values_tech[,15], avg_exp_values_tech[,16], avg_exp_values_tech[,17])
+
+colnames(ggplot_avg_value_RLi) &lt;- colnames(ggplot_avg_value_CH)
+
+ggplot_avg_value_RLu &lt;- cbind(avg_exp_values[,12], RLu, avg_exp_values_tech[,13], avg_exp_values_tech[,14], avg_exp_values_tech[,15], avg_exp_values_tech[,16], avg_exp_values_tech[,17])
+
+colnames(ggplot_avg_value_RLu) &lt;- colnames(ggplot_avg_value_CH)
+
+# Combine all of the data frames
+
+ggplot_avg_value &lt;- rbind(ggplot_avg_value_CH, ggplot_avg_value_CK, ggplot_avg_value_CLi, ggplot_avg_value_CLu, ggplot_avg_value_HH, ggplot_avg_value_HK, ggplot_avg_value_HLi, ggplot_avg_value_HLu, ggplot_avg_value_RH, ggplot_avg_value_RK, ggplot_avg_value_RLi, ggplot_avg_value_RLu)
+
+# Make labels
+
+labels_RNA_Extra &lt;- as.data.frame(paste(ggplot_avg_value$Sample, ggplot_avg_value$RNA_Extra, sep=&quot;_&quot;))
+
+colnames(labels_RNA_Extra) &lt;- c(&quot;RNA_Extra_labels&quot;)
+
+labels_Mix_1000 &lt;- as.data.frame(paste(ggplot_avg_value$Sample, ggplot_avg_value$Mix_1000, sep=&quot;_&quot;))
+
+colnames(labels_Mix_1000) &lt;- c(&quot;Mix_labels&quot;)
+
+labels_Perc_overlap_junct &lt;- as.data.frame(paste(ggplot_avg_value$Sample, ggplot_avg_value$Perc_overlap_junct, sep=&quot;_&quot;))
+
+colnames(labels_Perc_overlap_junct) &lt;- c(&quot;Perc_overlap_junct_labels&quot;)
+
+labels_Reads_mapped_orth_exon &lt;- as.data.frame(paste(ggplot_avg_value$Sample, ggplot_avg_value$Reads_mapped_orth_exon, sep=&quot;_&quot;))
+
+colnames(labels_Reads_mapped_orth_exon) &lt;- c(&quot;Reads_mapped_orth_exon_labels&quot;)
+
+labels_RIN_Score &lt;- as.data.frame(paste(ggplot_avg_value$Sample, ggplot_avg_value$RIN_Score, sep=&quot;_&quot;))
+
+colnames(labels_RIN_Score) &lt;- c(&quot;RIN_Score_labels&quot;)
+
+ggplot_avg_value_labels &lt;- cbind(ggplot_avg_value, labels_RNA_Extra, labels_Mix_1000, labels_Perc_overlap_junct, labels_Reads_mapped_orth_exon, labels_RIN_Score)
+
+# Make the plots
+
+ggplot(ggplot_avg_value_labels, aes(factor(RNA_Extra_labels), Avg_Expression)) +  geom_boxplot() + ylab(&quot;Normalized expression values (averaged over inds.)&quot;) + labs(title = &quot;Expression values including genes with and without RNA Extraction Date 3-23-12&quot;) + xlab(&quot;Tissue-species + whether or not tech. factor included&quot;)  + theme(axis.text.x = element_text(angle = 90, hjust = 1))</code></pre>
+<p><img src="Correlation_bet_tech_factors_in_best_set_and_expression_stringent_filtering_files/figure-html/unnamed-chunk-6-1.png" width="672" /></p>
+<pre class="r"><code>ggplot(ggplot_avg_value_labels, aes(factor(Mix_labels), Avg_Expression)) +  geom_boxplot() + ylab(&quot;Normalized expression values (averaged over inds.)&quot;) + labs(title = &quot;Expression values including genes with and without Master Mix Code 1000&quot;)  + xlab(&quot;Tissue-species + whether or not tech. factor included&quot;)  + theme(axis.text.x = element_text(angle = 90, hjust = 1))</code></pre>
+<p><img src="Correlation_bet_tech_factors_in_best_set_and_expression_stringent_filtering_files/figure-html/unnamed-chunk-6-2.png" width="672" /></p>
+<pre class="r"><code>ggplot(ggplot_avg_value_labels, aes(factor(Perc_overlap_junct_labels), Avg_Expression)) +  geom_boxplot() + ylab(&quot;Normalized expression values (averaged over inds.)&quot;) + labs(title = &quot;Expression values including genes with and without Perc. overlapping junctions&quot;) + xlab(&quot;Tissue-species + whether or not tech. factor included&quot;)  + theme(axis.text.x = element_text(angle = 90, hjust = 1))</code></pre>
+<p><img src="Correlation_bet_tech_factors_in_best_set_and_expression_stringent_filtering_files/figure-html/unnamed-chunk-6-3.png" width="672" /></p>
+<pre class="r"><code>ggplot(ggplot_avg_value_labels, aes(factor(Reads_mapped_orth_exon_labels), Avg_Expression)) +  geom_boxplot() + ylab(&quot;Normalized expression values (averaged over inds.)&quot;) + labs(title = &quot;Expression values including genes with and without Num. of reads mapped on orth. exons&quot;) + xlab(&quot;Tissue-species + whether or not tech. factor included&quot;)  + theme(axis.text.x = element_text(angle = 90, hjust = 1))</code></pre>
+<p><img src="Correlation_bet_tech_factors_in_best_set_and_expression_stringent_filtering_files/figure-html/unnamed-chunk-6-4.png" width="672" /></p>
+<pre class="r"><code>ggplot(ggplot_avg_value_labels, aes(factor(RIN_Score_labels), Avg_Expression)) +  geom_boxplot() + ylab(&quot;Normalized expression values (averaged over inds.)&quot;) + labs(title = &quot;Expression values including genes with and without RIN Score&quot;) + xlab(&quot;Tissue-species + whether or not tech. factor included&quot;) + theme(axis.text.x = element_text(angle = 90, hjust = 1))</code></pre>
+<p><img src="Correlation_bet_tech_factors_in_best_set_and_expression_stringent_filtering_files/figure-html/unnamed-chunk-6-5.png" width="672" /></p>
+</div>
+<div id="description-of-the-best-set-of-technical-factors" class="section level3">
+<h3>Description of the best set of technical factors</h3>
+<p>In the previous “Best set” analysis with tissue and species protected, we found that the following technical factors appeared in the best set for more than 1,800 of the 12,184 genes.</p>
+<pre class="r"><code># Find the mean for all 47 samples
+sample_means_per_gene &lt;- colMeans(expression_t)
+
+dim(sample_means_per_gene)</code></pre>
+<pre><code>## NULL</code></pre>
+<pre class="r"><code># Combine this with technical variables
+exp_and_tech_var &lt;- as.data.frame(cbind(sample_means_per_gene, t_best_set_copy[,10], t_best_set_copy[,16], t_best_set_copy[,21], t_best_set_copy[,23], t_best_set_copy[,26]))
+
+colnames(exp_and_tech_var) &lt;- c(&quot;Mean_all_samples&quot;, &quot;Extraction_3_23_12&quot;, &quot;Mix_code_1000&quot;, &quot;Perc_overlapping_junction&quot;, &quot;Reads_mapped_on_ortho_exons&quot;, &quot;RIN_score&quot;)
+
+dim(exp_and_tech_var)</code></pre>
+<pre><code>## [1] 12184     6</code></pre>
+<pre class="r"><code># Is average expression level correlated with number of technical factors included in the best set for each gene?
+
+# Find the number of technical variables in the best set for each gene
+
+num_tech_var &lt;- as.data.frame(rowSums(t_best_set_copy)-7)
+summary(num_tech_var)</code></pre>
+<pre><code>##  rowSums(t_best_set_copy) - 7
+##  Min.   : 0.000              
+##  1st Qu.: 0.000              
+##  Median : 1.000              
+##  Mean   : 1.475              
+##  3rd Qu.: 2.000              
+##  Max.   :11.000</code></pre>
+<pre class="r"><code># Combine the number of technical variables in the best set for each gene with the mean expression level for each gene (over all 47 samples)
+
+avg_exp_num_tech_var &lt;- cbind(num_tech_var, exp_and_tech_var$Mean_all_samples)
+colnames(avg_exp_num_tech_var) &lt;- c(&quot;Num_tech_var&quot;, &quot;Avg_Expression&quot;)
+
+# Plot the results
+
+ggplot(avg_exp_num_tech_var, aes(factor(Num_tech_var), Avg_Expression)) +  geom_boxplot() + ylab(&quot;Normalized expression values (averaged over all inds.)&quot;) + labs(title = &quot;Expression values versus technical factors in the best set (stringent criteria)&quot;) + xlab(&quot;Number of technical factors included in the best set analysis&quot;)</code></pre>
+<p><img src="Correlation_bet_tech_factors_in_best_set_and_expression_stringent_filtering_files/figure-html/unnamed-chunk-7-1.png" width="672" /></p>
+<pre class="r"><code># The following code produces the same graph as above but the jitter function plots the actual points. 
+
+ggplot(avg_exp_num_tech_var, aes(factor(Num_tech_var), Avg_Expression)) +  geom_boxplot() + geom_jitter() + ylab(&quot;Normalized expression values (averaged over all inds.)&quot;) + labs(title = &quot;Expression values versus technical factors in the best set&quot;) + xlab(&quot;Number of technical factors included in the best set analysis&quot;) </code></pre>
+<p><img src="Correlation_bet_tech_factors_in_best_set_and_expression_stringent_filtering_files/figure-html/unnamed-chunk-7-2.png" width="672" /></p>
+</div>
+<div id="quantile-analysis" class="section level3">
+<h3>Quantile Analysis</h3>
+<pre class="r"><code># Find the quantiles of the means of all the samples
+
+quantile(exp_and_tech_var$Mean_all_samples, probs = seq(0, 1, 0.25), na.rm = FALSE, names = TRUE, type = 7)</code></pre>
+<pre><code>##        0%       25%       50%       75%      100% 
+## -1.430800  3.334547  4.751527  5.940743 11.865759</code></pre>
+<pre class="r"><code>Q0 = -1.43080
+Q1 = 3.334547
+Q2 = 4.751527
+Q3 = 5.940743
+Q4 = 11.865759</code></pre>
+<div id="quantile-analysis-with-rna-extraction-date-3-21-16" class="section level4">
+<h4>Quantile analysis with RNA Extraction Date 3-21-16</h4>
+<pre class="r"><code># Find how many genes have 0 in the best set for RNA Extraction date 3-23-12 and which have 1 for each quantile
+
+exp_RNA_extra_0_Q01 &lt;- exp_and_tech_var[which(exp_and_tech_var$Extraction_3_23_12 == 0 &amp; exp_and_tech_var$Mean_all_samples &gt;= Q0 &amp; exp_and_tech_var$Mean_all_samples &lt; Q1 ), ]
+
+dim(exp_RNA_extra_0_Q01)</code></pre>
+<pre><code>## [1] 2513    6</code></pre>
+<pre class="r"><code>exp_RNA_extra_0_Q12 &lt;- exp_and_tech_var[which(exp_and_tech_var$Extraction_3_23_12 == 0 &amp; exp_and_tech_var$Mean_all_samples &gt;= Q1 &amp; exp_and_tech_var$Mean_all_samples &lt; Q2 ), ]
+
+dim(exp_RNA_extra_0_Q12)</code></pre>
+<pre><code>## [1] 2622    6</code></pre>
+<pre class="r"><code>exp_RNA_extra_0_Q23 &lt;- exp_and_tech_var[which(exp_and_tech_var$Extraction_3_23_12 == 0 &amp; exp_and_tech_var$Mean_all_samples &gt;= Q2 &amp; exp_and_tech_var$Mean_all_samples &lt; Q3 ), ]
+
+dim(exp_RNA_extra_0_Q23)</code></pre>
+<pre><code>## [1] 2724    6</code></pre>
+<pre class="r"><code>exp_RNA_extra_0_Q34 &lt;- exp_and_tech_var[which(exp_and_tech_var$Extraction_3_23_12 == 0 &amp; exp_and_tech_var$Mean_all_samples &gt;= Q3 &amp; exp_and_tech_var$Mean_all_samples &lt; Q4 ), ]
+
+dim(exp_RNA_extra_0_Q34)</code></pre>
+<pre><code>## [1] 2739    6</code></pre>
+<pre class="r"><code>exp_RNA_extra_1_Q01 &lt;- exp_and_tech_var[which(exp_and_tech_var$Extraction_3_23_12 == 1 &amp; exp_and_tech_var$Mean_all_samples &gt;= Q0 &amp; exp_and_tech_var$Mean_all_samples &lt; Q1 ), ]
+
+dim(exp_RNA_extra_1_Q01)</code></pre>
+<pre><code>## [1] 533   6</code></pre>
+<pre class="r"><code>exp_RNA_extra_1_Q12 &lt;- exp_and_tech_var[which(exp_and_tech_var$Extraction_3_23_12 == 1 &amp; exp_and_tech_var$Mean_all_samples &gt;= Q1 &amp; exp_and_tech_var$Mean_all_samples &lt; Q2 ), ]
+
+dim(exp_RNA_extra_1_Q12)</code></pre>
+<pre><code>## [1] 424   6</code></pre>
+<pre class="r"><code>exp_RNA_extra_1_Q23 &lt;- exp_and_tech_var[which(exp_and_tech_var$Extraction_3_23_12 == 1 &amp; exp_and_tech_var$Mean_all_samples &gt;= Q2 &amp; exp_and_tech_var$Mean_all_samples &lt; Q3 ), ]
+
+dim(exp_RNA_extra_1_Q23)</code></pre>
+<pre><code>## [1] 322   6</code></pre>
+<pre class="r"><code>exp_RNA_extra_1_Q34 &lt;- exp_and_tech_var[which(exp_and_tech_var$Extraction_3_23_12 == 1 &amp; exp_and_tech_var$Mean_all_samples &gt;= Q3 &amp; exp_and_tech_var$Mean_all_samples &lt; Q4 ), ]
+
+dim(exp_RNA_extra_1_Q34)</code></pre>
+<pre><code>## [1] 306   6</code></pre>
+<pre class="r"><code># Make a table of the values
+
+DF &lt;- data.frame(RNA_Extra_date_in_best_set=c(&quot;Yes&quot;, &quot;No&quot;, &quot;Ratio&quot;), Q1=c(&quot;533&quot;, &quot;2513&quot;, &quot;0.212&quot;), Q2=c(&quot;424&quot;, &quot;2622&quot;, &quot;0.162&quot;), Q3=c(&quot;322&quot;, &quot;2724&quot;, &quot;0.118&quot;), Q4=c(&quot;306&quot;, &quot;2739&quot;, &quot;0.112&quot;))
+formattable(DF)</code></pre>
+<table class="table table-condensed">
+<thead>
+<tr>
+<th style="text-align:right;">
+RNA_Extra_date_in_best_set
+</th>
+<th style="text-align:right;">
+Q1
+</th>
+<th style="text-align:right;">
+Q2
+</th>
+<th style="text-align:right;">
+Q3
+</th>
+<th style="text-align:right;">
+Q4
+</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:right;">
+Yes
+</td>
+<td style="text-align:right;">
+533
+</td>
+<td style="text-align:right;">
+424
+</td>
+<td style="text-align:right;">
+322
+</td>
+<td style="text-align:right;">
+306
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+No
+</td>
+<td style="text-align:right;">
+2513
+</td>
+<td style="text-align:right;">
+2622
+</td>
+<td style="text-align:right;">
+2724
+</td>
+<td style="text-align:right;">
+2739
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+Ratio
+</td>
+<td style="text-align:right;">
+0.212
+</td>
+<td style="text-align:right;">
+0.162
+</td>
+<td style="text-align:right;">
+0.118
+</td>
+<td style="text-align:right;">
+0.112
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div id="quantile-analysis-with-mix-code-1000" class="section level4">
+<h4>Quantile analysis with Mix Code 1000</h4>
+<pre><code>## [1] 2464    6</code></pre>
+<pre><code>## [1] 2536    6</code></pre>
+<pre><code>## [1] 2642    6</code></pre>
+<pre><code>## [1] 2671    6</code></pre>
+<pre><code>## [1] 582   6</code></pre>
+<pre><code>## [1] 510   6</code></pre>
+<pre><code>## [1] 404   6</code></pre>
+<pre><code>## [1] 374   6</code></pre>
+<table class="table table-condensed">
+<thead>
+<tr>
+<th style="text-align:right;">
+Mix_code_1000_in_best_set
+</th>
+<th style="text-align:right;">
+Q1
+</th>
+<th style="text-align:right;">
+Q2
+</th>
+<th style="text-align:right;">
+Q3
+</th>
+<th style="text-align:right;">
+Q4
+</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:right;">
+Yes
+</td>
+<td style="text-align:right;">
+582
+</td>
+<td style="text-align:right;">
+510
+</td>
+<td style="text-align:right;">
+404
+</td>
+<td style="text-align:right;">
+374
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+No
+</td>
+<td style="text-align:right;">
+2464
+</td>
+<td style="text-align:right;">
+2536
+</td>
+<td style="text-align:right;">
+2642
+</td>
+<td style="text-align:right;">
+2671
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+Ratio
+</td>
+<td style="text-align:right;">
+0.236
+</td>
+<td style="text-align:right;">
+0.201
+</td>
+<td style="text-align:right;">
+0.153
+</td>
+<td style="text-align:right;">
+0.140
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div id="quantile-analysis-with-percentage-of-reads-overlapping-a-junction" class="section level4">
+<h4>Quantile analysis with Percentage of reads overlapping a junction</h4>
+<pre><code>## [1] 2202    6</code></pre>
+<pre><code>## [1] 2282    6</code></pre>
+<pre><code>## [1] 2419    6</code></pre>
+<pre><code>## [1] 2499    6</code></pre>
+<pre><code>## [1] 844   6</code></pre>
+<pre><code>## [1] 764   6</code></pre>
+<pre><code>## [1] 627   6</code></pre>
+<pre><code>## [1] 546   6</code></pre>
+<table class="table table-condensed">
+<thead>
+<tr>
+<th style="text-align:right;">
+Perc_overlapping_junction_in_best_set
+</th>
+<th style="text-align:right;">
+Q1
+</th>
+<th style="text-align:right;">
+Q2
+</th>
+<th style="text-align:right;">
+Q3
+</th>
+<th style="text-align:right;">
+Q4
+</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:right;">
+Yes
+</td>
+<td style="text-align:right;">
+844
+</td>
+<td style="text-align:right;">
+764
+</td>
+<td style="text-align:right;">
+627
+</td>
+<td style="text-align:right;">
+546
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+No
+</td>
+<td style="text-align:right;">
+2202
+</td>
+<td style="text-align:right;">
+2282
+</td>
+<td style="text-align:right;">
+2419
+</td>
+<td style="text-align:right;">
+2499
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+Ratio
+</td>
+<td style="text-align:right;">
+0.383
+</td>
+<td style="text-align:right;">
+0.335
+</td>
+<td style="text-align:right;">
+0.259
+</td>
+<td style="text-align:right;">
+0.218
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div id="quantile-analysis-with-number-of-reads-mapped-on-orthologous-exons" class="section level4">
+<h4>Quantile analysis with Number of reads mapped on orthologous exons</h4>
+<pre><code>## [1] 2501    6</code></pre>
+<pre><code>## [1] 2610    6</code></pre>
+<pre><code>## [1] 2713    6</code></pre>
+<pre><code>## [1] 2807    6</code></pre>
+<pre><code>## [1] 545   6</code></pre>
+<pre><code>## [1] 436   6</code></pre>
+<pre><code>## [1] 333   6</code></pre>
+<pre><code>## [1] 238   6</code></pre>
+<table class="table table-condensed">
+<thead>
+<tr>
+<th style="text-align:right;">
+Perc_overlapping_junction_in_best_set
+</th>
+<th style="text-align:right;">
+Q1
+</th>
+<th style="text-align:right;">
+Q2
+</th>
+<th style="text-align:right;">
+Q3
+</th>
+<th style="text-align:right;">
+Q4
+</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:right;">
+Yes
+</td>
+<td style="text-align:right;">
+545
+</td>
+<td style="text-align:right;">
+436
+</td>
+<td style="text-align:right;">
+333
+</td>
+<td style="text-align:right;">
+238
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+No
+</td>
+<td style="text-align:right;">
+2501
+</td>
+<td style="text-align:right;">
+2610
+</td>
+<td style="text-align:right;">
+2713
+</td>
+<td style="text-align:right;">
+2807
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+Ratio
+</td>
+<td style="text-align:right;">
+0.212
+</td>
+<td style="text-align:right;">
+0.167
+</td>
+<td style="text-align:right;">
+0.123
+</td>
+<td style="text-align:right;">
+0.085
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div id="quantile-analysis-with-rin-score" class="section level4">
+<h4>Quantile analysis with RIN Score</h4>
+<pre><code>## [1] 2733    6</code></pre>
+<pre><code>## [1] 2759    6</code></pre>
+<pre><code>## [1] 2868    6</code></pre>
+<pre><code>## [1] 2952    6</code></pre>
+<pre><code>## [1] 313   6</code></pre>
+<pre><code>## [1] 287   6</code></pre>
+<pre><code>## [1] 178   6</code></pre>
+<pre><code>## [1] 93  6</code></pre>
+<table class="table table-condensed">
+<thead>
+<tr>
+<th style="text-align:right;">
+RNA_RIN_Score_in_best_set
+</th>
+<th style="text-align:right;">
+Q1
+</th>
+<th style="text-align:right;">
+Q2
+</th>
+<th style="text-align:right;">
+Q3
+</th>
+<th style="text-align:right;">
+Q4
+</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:right;">
+Yes
+</td>
+<td style="text-align:right;">
+313
+</td>
+<td style="text-align:right;">
+387
+</td>
+<td style="text-align:right;">
+178
+</td>
+<td style="text-align:right;">
+93
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+No
+</td>
+<td style="text-align:right;">
+2733
+</td>
+<td style="text-align:right;">
+2759
+</td>
+<td style="text-align:right;">
+2868
+</td>
+<td style="text-align:right;">
+2952
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+Ratio
+</td>
+<td style="text-align:right;">
+0.115
+</td>
+<td style="text-align:right;">
+0.140
+</td>
+<td style="text-align:right;">
+0.062
+</td>
+<td style="text-align:right;">
+0.032
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+
+
+<!-- some extra javascript for older browsers -->
+<script type="text/javascript" src="libs/polyfill.js"></script>
+
+<script>
+
+// manage active state of menu based on current page
+$(document).ready(function () {
+
+    // active menu
+    href = window.location.pathname
+    href = href.substr(href.lastIndexOf('/') + 1)
+    $('a[href="' + href + '"]').parent().addClass('active');
+
+    // manage active menu header
+    if (href.startsWith('authoring_'))
+      $('a[href="' + 'authoring' + '"]').parent().addClass('active');
+    else if (href.endsWith('_format.html'))
+      $('a[href="' + 'formats' + '"]').parent().addClass('active');
+    else if (href.startsWith('developer_'))
+      $('a[href="' + 'developer' + '"]').parent().addClass('active');
+
+});
+
+</script>
+
+
+
+</div>
+
+<script>
+
+// add bootstrap table styles to pandoc tables
+$(document).ready(function () {
+  $('tr.header').parent('thead').parent('table').addClass('table table-condensed');
+});
+
+</script>
+
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src  = "https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML";
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
+
+</body>
+</html>
