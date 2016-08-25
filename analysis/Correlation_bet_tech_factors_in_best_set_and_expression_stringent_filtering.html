@@ -194,7 +194,8 @@ $(document).ready(function () {
 </ul>
 </div>
 
-<p>In this analysis, we will adopt an EXTREMELY stringent filtering criteria for eliminating lowly expressed genes. We will then see if this change affects the relationship between normalized expression values and the number of technical factors.</p>
+<p>In this analysis, we will adopt a relatively stringent filtering criteria for eliminating lowly expressed genes. I say “relatively” because the new criteria of log2(CPM) &gt; 1.5 in at least 24 samples is much stricter than the original criteria of log2(CPM) &gt; -5.5 in at least 2/4 individuals per tissue-species pair. This threshold; however, is not much more stringent than other papers in the field which use a cutoff of log2(CPM) &gt; 1 in a given number of samples (e.g. Blischak et al. 2015).</p>
+<p>We will then see if this change to a more stringent filtering criteria affects the relationship between normalized expression values and the number of technical factors.</p>
 <pre class="r"><code># Load libraries 
 
 library(&quot;gplots&quot;)</code></pre>

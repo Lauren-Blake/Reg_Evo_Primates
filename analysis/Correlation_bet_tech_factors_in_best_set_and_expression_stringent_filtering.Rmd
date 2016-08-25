@@ -4,7 +4,9 @@ author: "Lauren Blake"
 date: "August 10, 2016"
 output: html_document
 ---
-In this analysis, we will adopt an EXTREMELY stringent filtering criteria for eliminating lowly expressed genes. We will then see if this change affects the relationship between normalized expression values and the number of technical factors.
+In this analysis, we will adopt a relatively stringent filtering criteria for eliminating lowly expressed genes. I say "relatively" because the new criteria of log2(CPM) > 1.5 in at least 24 samples is much stricter than the original criteria of log2(CPM) > -5.5 in at least 2/4 individuals per tissue-species pair. This threshold; however, is not much more stringent than other papers in the field which use a cutoff of log2(CPM) > 1 in a given number of samples (e.g. Blischak et al. 2015). 
+
+We will then see if this change to a more stringent filtering criteria affects the relationship between normalized expression values and the number of technical factors.
 
 ```{r setup}
 # Load libraries 
@@ -107,6 +109,11 @@ head(cpm_in_cutoff)
 head(summary(cpm_in_cutoff))
 
 hist(cpm_in_cutoff, xlab = "Log2(CPM)", main = "Log2(CPM) values for genes meeting the filtering criteria", breaks = 100 )
+
+# Save the samples
+
+# gene_expression_12184 <- write.table(counts_genes_in_cutoff,file="/Users/LEB/Reg_Evo_Primates/ashlar-trial/data/cpm_12184.txt",sep="\t", col.names = T, row.names = T)
+
 ```
 This looks more normally distributed than the genes in our less stringent filtering criteria.
 
@@ -166,8 +173,12 @@ legend('topright', legend = levels(group_hearts), col = levels(col_hearts), pch 
 
 # Save the data
 
+  # Expression data only
 write.table(cpm.voom.cyclic$E,file="/Users/LEB/Reg_Evo_Primates/ashlar-trial/data/PC_cpm_cyclic_loess_random_var_gene_exp",sep="\t", col.names = T, row.names = T)
 
+  # Elist
+
+write.table(cpm.voom.cyclic,file="/Users/LEB/Reg_Evo_Primates/ashlar-trial/data/Elist_cpm_cyclic_loess_random_var_gene_exp",sep="\t", col.names = T, row.names = T)
 
 ```
 

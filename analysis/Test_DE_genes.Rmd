@@ -7,6 +7,12 @@ output: html_document
 
 The goal of this script is to find a list of differentially expressed genes between tissues and between species. The majority of the code for this section was written by Julien Roux. 
 
+Note: the expression data used here is the original filtering scheme of only keeping genes with log2(CPM) > -5.5 in at least 2/4 individuals for each tissue-species pair. 
+
+```{r chunk-options, include=FALSE}
+source("chunk-options.R")
+```
+
 ```{r}
 # Load libraries
 

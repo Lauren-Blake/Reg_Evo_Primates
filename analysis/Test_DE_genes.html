@@ -191,46 +191,47 @@ $(document).ready(function () {
 </div>
 
 <p>The goal of this script is to find a list of differentially expressed genes between tissues and between species. The majority of the code for this section was written by Julien Roux.</p>
+<p>Note: the expression data used here is the original filtering scheme of only keeping genes with log2(CPM) &gt; -5.5 in at least 2/4 individuals for each tissue-species pair.</p>
 <pre class="r"><code># Load libraries
 
 library(&quot;gplots&quot;)</code></pre>
-<pre><code>## 
-## Attaching package: &#39;gplots&#39;</code></pre>
-<pre><code>## The following object is masked from &#39;package:stats&#39;:
-## 
-##     lowess</code></pre>
+<pre><code>
+Attaching package: &#39;gplots&#39;</code></pre>
+<pre><code>The following object is masked from &#39;package:stats&#39;:
+
+    lowess</code></pre>
 <pre class="r"><code>library(&quot;ggplot2&quot;)
 library(&quot;RColorBrewer&quot;)
 library(&quot;scales&quot;)
 library(&quot;edgeR&quot;)</code></pre>
-<pre><code>## Loading required package: limma</code></pre>
+<pre><code>Loading required package: limma</code></pre>
 <pre class="r"><code>library(&quot;R.utils&quot;)</code></pre>
-<pre><code>## Loading required package: R.oo</code></pre>
-<pre><code>## Loading required package: R.methodsS3</code></pre>
-<pre><code>## R.methodsS3 v1.7.1 (2016-02-15) successfully loaded. See ?R.methodsS3 for help.</code></pre>
-<pre><code>## R.oo v1.20.0 (2016-02-17) successfully loaded. See ?R.oo for help.</code></pre>
-<pre><code>## 
-## Attaching package: &#39;R.oo&#39;</code></pre>
-<pre><code>## The following objects are masked from &#39;package:methods&#39;:
-## 
-##     getClasses, getMethods</code></pre>
-<pre><code>## The following objects are masked from &#39;package:base&#39;:
-## 
-##     attach, detach, gc, load, save</code></pre>
-<pre><code>## R.utils v2.3.0 (2016-04-13) successfully loaded. See ?R.utils for help.</code></pre>
-<pre><code>## 
-## Attaching package: &#39;R.utils&#39;</code></pre>
-<pre><code>## The following object is masked from &#39;package:utils&#39;:
-## 
-##     timestamp</code></pre>
-<pre><code>## The following objects are masked from &#39;package:base&#39;:
-## 
-##     cat, commandArgs, getOption, inherits, isOpen, parse, warnings</code></pre>
+<pre><code>Loading required package: R.oo</code></pre>
+<pre><code>Loading required package: R.methodsS3</code></pre>
+<pre><code>R.methodsS3 v1.7.1 (2016-02-15) successfully loaded. See ?R.methodsS3 for help.</code></pre>
+<pre><code>R.oo v1.20.0 (2016-02-17) successfully loaded. See ?R.oo for help.</code></pre>
+<pre><code>
+Attaching package: &#39;R.oo&#39;</code></pre>
+<pre><code>The following objects are masked from &#39;package:methods&#39;:
+
+    getClasses, getMethods</code></pre>
+<pre><code>The following objects are masked from &#39;package:base&#39;:
+
+    attach, detach, gc, load, save</code></pre>
+<pre><code>R.utils v2.3.0 (2016-04-13) successfully loaded. See ?R.utils for help.</code></pre>
+<pre><code>
+Attaching package: &#39;R.utils&#39;</code></pre>
+<pre><code>The following object is masked from &#39;package:utils&#39;:
+
+    timestamp</code></pre>
+<pre><code>The following objects are masked from &#39;package:base&#39;:
+
+    cat, commandArgs, getOption, inherits, isOpen, parse, warnings</code></pre>
 <pre class="r"><code>library(&quot;plyr&quot;)
 library(&quot;limma&quot;)
 library(&quot;VennDiagram&quot;)</code></pre>
-<pre><code>## Loading required package: grid</code></pre>
-<pre><code>## Loading required package: futile.logger</code></pre>
+<pre><code>Loading required package: grid</code></pre>
+<pre><code>Loading required package: futile.logger</code></pre>
 <pre class="r"><code>source(&quot;~/Reg_Evo_Primates/ashlar-trial/analysis/functions.R&quot;)
 
 # Load colors 
@@ -247,7 +248,7 @@ samples &lt;- read.delim(&quot;~/Reg_Evo_Primates/ashlar-trial/data/Sample_info_
 # Eliminate H1H
 samples &lt;- samples[-17,]
 dim(samples)</code></pre>
-<pre><code>## [1] 47  4</code></pre>
+<pre><code>[1] 47  4</code></pre>
 <pre class="r"><code># Make labels
 
 labels &lt;- paste(samples$Species, samples$Tissue, sep=&quot; &quot;)</code></pre>
@@ -258,11 +259,11 @@ labels &lt;- paste(samples$Species, samples$Tissue, sep=&quot; &quot;)</code></p
 condition &lt;- factor(paste(samples$Species,samples$Tissue,sep=&quot;.&quot;))
 design &lt;- model.matrix(~ 0 + condition)
 colnames(design) &lt;- gsub(&quot;condition&quot;, &quot;&quot;, dput(colnames(design)))</code></pre>
-<pre><code>## c(&quot;conditionChimp.heart&quot;, &quot;conditionChimp.kidney&quot;, &quot;conditionChimp.liver&quot;, 
-## &quot;conditionChimp.lung&quot;, &quot;conditionHuman.heart&quot;, &quot;conditionHuman.kidney&quot;, 
-## &quot;conditionHuman.liver&quot;, &quot;conditionHuman.lung&quot;, &quot;conditionRhesus.heart&quot;, 
-## &quot;conditionRhesus.kidney&quot;, &quot;conditionRhesus.liver&quot;, &quot;conditionRhesus.lung&quot;
-## )</code></pre>
+<pre><code>c(&quot;conditionChimp.heart&quot;, &quot;conditionChimp.kidney&quot;, &quot;conditionChimp.liver&quot;, 
+&quot;conditionChimp.lung&quot;, &quot;conditionHuman.heart&quot;, &quot;conditionHuman.kidney&quot;, 
+&quot;conditionHuman.liver&quot;, &quot;conditionHuman.lung&quot;, &quot;conditionRhesus.heart&quot;, 
+&quot;conditionRhesus.kidney&quot;, &quot;conditionRhesus.liver&quot;, &quot;conditionRhesus.lung&quot;
+)</code></pre>
 </div>
 <div id="fit-the-linear-model" class="section level3">
 <h3>Fit the linear model</h3>
@@ -277,31 +278,31 @@ fit.GC.loess.norm &lt;- eBayes(fit.GC.loess.norm)
 ## If &#39;MA&#39; is an &#39;MArrayLM&#39; object, then the plot is a fitted model MA-plot in which the estimated coefficient is on the y-axis and the average A-value is on the x-axis.                
 
 limma::plotMA(fit.GC.loess.norm, array=1, xlab=&quot;average coefficient&quot;, ylab=&quot;estimated coefficient&quot;)</code></pre>
-<pre><code>## Warning in plot.window(...): &quot;array&quot; is not a graphical parameter</code></pre>
-<pre><code>## Warning in plot.xy(xy, type, ...): &quot;array&quot; is not a graphical parameter</code></pre>
-<pre><code>## Warning in axis(side = side, at = at, labels = labels, ...): &quot;array&quot; is not
-## a graphical parameter
+<pre><code>Warning in plot.window(...): &quot;array&quot; is not a graphical parameter</code></pre>
+<pre><code>Warning in plot.xy(xy, type, ...): &quot;array&quot; is not a graphical parameter</code></pre>
+<pre><code>Warning in axis(side = side, at = at, labels = labels, ...): &quot;array&quot; is not
+a graphical parameter
 
-## Warning in axis(side = side, at = at, labels = labels, ...): &quot;array&quot; is not
-## a graphical parameter</code></pre>
-<pre><code>## Warning in box(...): &quot;array&quot; is not a graphical parameter</code></pre>
-<pre><code>## Warning in title(...): &quot;array&quot; is not a graphical parameter</code></pre>
-<p><img src="Test_DE_genes_files/figure-html/unnamed-chunk-3-1.png" width="672" /></p>
+Warning in axis(side = side, at = at, labels = labels, ...): &quot;array&quot; is not
+a graphical parameter</code></pre>
+<pre><code>Warning in box(...): &quot;array&quot; is not a graphical parameter</code></pre>
+<pre><code>Warning in title(...): &quot;array&quot; is not a graphical parameter</code></pre>
+<p><img src="figure/Test_DE_genes.Rmd/unnamed-chunk-3-1.png" width="672" style="display: block; margin: auto;" /></p>
 <pre class="r"><code>## - Potential caveat: variances could be different between human, chimp and rhesus (see Gordon Smyth email, 7 June 2013).                                                               
 ##  We look at the standard error for each condition                                                    
 hist(fit.GC.loess.norm$stdev.unscaled * fit.GC.loess.norm$sigma, breaks=100)</code></pre>
-<p><img src="Test_DE_genes_files/figure-html/unnamed-chunk-3-2.png" width="672" /></p>
+<p><img src="figure/Test_DE_genes.Rmd/unnamed-chunk-3-2.png" width="672" style="display: block; margin: auto;" /></p>
 <pre class="r"><code>hist(log2(fit.GC.loess.norm$stdev.unscaled * fit.GC.loess.norm$sigma), breaks=100)</code></pre>
-<p><img src="Test_DE_genes_files/figure-html/unnamed-chunk-3-3.png" width="672" /></p>
+<p><img src="figure/Test_DE_genes.Rmd/unnamed-chunk-3-3.png" width="672" style="display: block; margin: auto;" /></p>
 <pre class="r"><code>boxplot(log2(fit.GC.loess.norm$stdev.unscaled * fit.GC.loess.norm$sigma))</code></pre>
-<p><img src="Test_DE_genes_files/figure-html/unnamed-chunk-3-4.png" width="672" /></p>
+<p><img src="figure/Test_DE_genes.Rmd/unnamed-chunk-3-4.png" width="672" style="display: block; margin: auto;" /></p>
 <pre class="r"><code>## This seems to be pretty comparable between conditions. The human heart is higher, probably because of H1H missing and H3H with a bit strange behavior                                     
 stderror &lt;- log2(fit.GC.loess.norm$stdev.unscaled * fit.GC.loess.norm$sigma)
 boxplot(list(stderror[,1:4], stderror[,5:8], stderror[,9:12]))</code></pre>
-<p><img src="Test_DE_genes_files/figure-html/unnamed-chunk-3-5.png" width="672" /></p>
+<p><img src="figure/Test_DE_genes.Rmd/unnamed-chunk-3-5.png" width="672" style="display: block; margin: auto;" /></p>
 <pre class="r"><code>## A bit higher for human, and a bit lower for rhesus                                                                                                                                    
 boxplot(list(stderror[,2:4], stderror[,6:8], stderror[,8:12])) ## excluding heart samples  </code></pre>
-<p><img src="Test_DE_genes_files/figure-html/unnamed-chunk-3-6.png" width="672" /></p>
+<p><img src="figure/Test_DE_genes.Rmd/unnamed-chunk-3-6.png" width="672" style="display: block; margin: auto;" /></p>
 </div>
 <div id="find-tissue-specific-genes-that-are-conserved-in-all-species" class="section level3">
 <h3>Find tissue-specific genes that are conserved in all species</h3>
@@ -319,38 +320,38 @@ top1 &lt;- list(Kidney=topTable(fit1, coef=1, adjust=&quot;BH&quot;, number=Inf,
 
 # Sort by p-value
 lapply(top1, function(x) { summary(x$adj.P.Val &lt; 0.01) } ) ## ~ 10,000 significant hits in each list</code></pre>
-<pre><code>## $Kidney
-##    Mode   FALSE    TRUE    NA&#39;s 
-## logical    8118    8498       0 
-## 
-## $Liver
-##    Mode   FALSE    TRUE    NA&#39;s 
-## logical    6128   10488       0 
-## 
-## $Heart
-##    Mode   FALSE    TRUE    NA&#39;s 
-## logical    6661    9955       0 
-## 
-## $Lung
-##    Mode   FALSE    TRUE    NA&#39;s 
-## logical    6372   10244       0</code></pre>
+<pre><code>$Kidney
+   Mode   FALSE    TRUE    NA&#39;s 
+logical    8118    8498       0 
+
+$Liver
+   Mode   FALSE    TRUE    NA&#39;s 
+logical    6128   10488       0 
+
+$Heart
+   Mode   FALSE    TRUE    NA&#39;s 
+logical    6661    9955       0 
+
+$Lung
+   Mode   FALSE    TRUE    NA&#39;s 
+logical    6372   10244       0 </code></pre>
 <pre class="r"><code># Apply a more stringent p-value cutoff                                                      
 lapply(top1, function(x) { summary(x$adj.P.Val &lt; 1e-10) } ) ## ~2,300 significant hits in each list</code></pre>
-<pre><code>## $Kidney
-##    Mode   FALSE    TRUE    NA&#39;s 
-## logical   15061    1555       0 
-## 
-## $Liver
-##    Mode   FALSE    TRUE    NA&#39;s 
-## logical   13401    3215       0 
-## 
-## $Heart
-##    Mode   FALSE    TRUE    NA&#39;s 
-## logical   14076    2540       0 
-## 
-## $Lung
-##    Mode   FALSE    TRUE    NA&#39;s 
-## logical   14229    2387       0</code></pre>
+<pre><code>$Kidney
+   Mode   FALSE    TRUE    NA&#39;s 
+logical   15061    1555       0 
+
+$Liver
+   Mode   FALSE    TRUE    NA&#39;s 
+logical   13401    3215       0 
+
+$Heart
+   Mode   FALSE    TRUE    NA&#39;s 
+logical   14076    2540       0 
+
+$Lung
+   Mode   FALSE    TRUE    NA&#39;s 
+logical   14229    2387       0 </code></pre>
 </div>
 <div id="find-tissue-specific-genes-found-in-each-species-first-and-then-combine-the-results-in-a-venn-diagram-no-rin-score" class="section level3">
 <h3>Find tissue specific genes found in each species first and then combine the results in a Venn Diagram (no RIN score)</h3>
@@ -379,17 +380,17 @@ top2 &lt;- list(ChimpKidney=topTable(fit2, coef=1, adjust=&quot;BH&quot;, number
 # Find number of DE genes at FDR cutoff &lt; 1% for each tissue in all 3 species
 
 summary(top2$ChimpKidney$adj.P.Val &lt; 0.01 &amp; top2$HumanKidney$adj.P.Val &lt; 0.01 &amp; top2$RhesusKidney$adj.P.Val &lt; 0.01) ## 2363                                                              </code></pre>
-<pre><code>##    Mode   FALSE    TRUE    NA&#39;s 
-## logical   14253    2363       0</code></pre>
+<pre><code>   Mode   FALSE    TRUE    NA&#39;s 
+logical   14253    2363       0 </code></pre>
 <pre class="r"><code>summary(top2$ChimpHeart$adj.P.Val &lt; 0.01 &amp; top2$HumanHeart$adj.P.Val &lt; 0.01 &amp; top2$RhesusHeart$adj.P.Val &lt; 0.01) ## 3079                                                                 </code></pre>
-<pre><code>##    Mode   FALSE    TRUE    NA&#39;s 
-## logical   13537    3079       0</code></pre>
+<pre><code>   Mode   FALSE    TRUE    NA&#39;s 
+logical   13537    3079       0 </code></pre>
 <pre class="r"><code>summary(top2$ChimpLiver$adj.P.Val &lt; 0.01 &amp; top2$HumanLiver$adj.P.Val &lt; 0.01 &amp; top2$RhesusLiver$adj.P.Val &lt; 0.01) ## 4031                                                                </code></pre>
-<pre><code>##    Mode   FALSE    TRUE    NA&#39;s 
-## logical   12585    4031       0</code></pre>
+<pre><code>   Mode   FALSE    TRUE    NA&#39;s 
+logical   12585    4031       0 </code></pre>
 <pre class="r"><code>summary(top2$ChimpLung$adj.P.Val &lt; 0.01 &amp; top2$HumanLung$adj.P.Val &lt; 0.01 &amp; top2$RhesusLung$adj.P.Val &lt; 0.01) ## 3468  </code></pre>
-<pre><code>##    Mode   FALSE    TRUE    NA&#39;s 
-## logical   13148    3468       0</code></pre>
+<pre><code>   Mode   FALSE    TRUE    NA&#39;s 
+logical   13148    3468       0 </code></pre>
 <pre class="r"><code>### Make a Venn Diagram of the results
 Tissues &lt;- c(&quot;Heart&quot;, &quot;Kidney&quot;, &quot;Liver&quot;, &quot;Lung&quot;)
 
@@ -407,7 +408,7 @@ for(i in 1:4){
 rl &lt;- lapply(list(&quot;Heart specific DE Genes.png&quot;, &quot;Kidney specific DE Genes.png&quot;, &quot;Liver specific DE Genes.png&quot;, &quot;Lung specific DE Genes.png&quot;), png::readPNG)
 gl &lt;- lapply(rl, grid::rasterGrob)
 do.call(gridExtra::grid.arrange, gl)</code></pre>
-<p><img src="Test_DE_genes_files/figure-html/unnamed-chunk-6-1.png" width="672" /></p>
+<p><img src="figure/Test_DE_genes.Rmd/unnamed-chunk-6-1.png" width="672" style="display: block; margin: auto;" /></p>
 </div>
 <div id="find-tissue-specific-genes-found-in-each-species-first-and-then-combine-the-results-in-a-venn-diagram-design-matrix-includes-rin-score" class="section level3">
 <h3>Find tissue specific genes found in each species first and then combine the results in a Venn Diagram (design matrix includes RIN score)</h3>
@@ -424,11 +425,11 @@ condition &lt;- as.data.frame(condition)
 condition &lt;- condition[-31,]
 design &lt;- model.matrix(~ 0 + condition + RIN)
 colnames(design) &lt;- gsub(&quot;condition&quot;, &quot;&quot;, dput(colnames(design)))</code></pre>
-<pre><code>## c(&quot;conditionChimp.heart&quot;, &quot;conditionChimp.kidney&quot;, &quot;conditionChimp.liver&quot;, 
-## &quot;conditionChimp.lung&quot;, &quot;conditionHuman.heart&quot;, &quot;conditionHuman.kidney&quot;, 
-## &quot;conditionHuman.liver&quot;, &quot;conditionHuman.lung&quot;, &quot;conditionRhesus.heart&quot;, 
-## &quot;conditionRhesus.kidney&quot;, &quot;conditionRhesus.liver&quot;, &quot;conditionRhesus.lung&quot;, 
-## &quot;RIN&quot;)</code></pre>
+<pre><code>c(&quot;conditionChimp.heart&quot;, &quot;conditionChimp.kidney&quot;, &quot;conditionChimp.liver&quot;, 
+&quot;conditionChimp.lung&quot;, &quot;conditionHuman.heart&quot;, &quot;conditionHuman.kidney&quot;, 
+&quot;conditionHuman.liver&quot;, &quot;conditionHuman.lung&quot;, &quot;conditionRhesus.heart&quot;, 
+&quot;conditionRhesus.kidney&quot;, &quot;conditionRhesus.liver&quot;, &quot;conditionRhesus.lung&quot;, 
+&quot;RIN&quot;)</code></pre>
 <pre class="r"><code># Run lmFit and eBayes in limma (we have to take out sample 31 because its RIN score was not recorded)
 samples &lt;- samples[-31,]
 fit.GC.loess.norm &lt;- lmFit(GC.loess.norm.voom[,-31], design, block=samples$Individual, correlation=corfit_consensus)
@@ -459,17 +460,17 @@ top2 &lt;- list(ChimpKidney=topTable(fit2, coef=1, adjust=&quot;BH&quot;, number
 # Find number of DE genes at FDR cutoff &lt; 1% for each tissue in all 3 species
 
 summary(top2$ChimpKidney$adj.P.Val &lt; 0.01 &amp; top2$HumanKidney$adj.P.Val &lt; 0.01 &amp; top2$RhesusKidney$adj.P.Val &lt; 0.01) ## 2363 (no RIN) v. 2331 (RIN)                                                              </code></pre>
-<pre><code>##    Mode   FALSE    TRUE    NA&#39;s 
-## logical   14285    2331       0</code></pre>
+<pre><code>   Mode   FALSE    TRUE    NA&#39;s 
+logical   14285    2331       0 </code></pre>
 <pre class="r"><code>summary(top2$ChimpHeart$adj.P.Val &lt; 0.01 &amp; top2$HumanHeart$adj.P.Val &lt; 0.01 &amp; top2$RhesusHeart$adj.P.Val &lt; 0.01) ## 3079 (no RIN) v. 3148 (RIN)                                                                 </code></pre>
-<pre><code>##    Mode   FALSE    TRUE    NA&#39;s 
-## logical   13468    3148       0</code></pre>
+<pre><code>   Mode   FALSE    TRUE    NA&#39;s 
+logical   13468    3148       0 </code></pre>
 <pre class="r"><code>summary(top2$ChimpLiver$adj.P.Val &lt; 0.01 &amp; top2$HumanLiver$adj.P.Val &lt; 0.01 &amp; top2$RhesusLiver$adj.P.Val &lt; 0.01) ## 4031 (no RIN) v. 4003 (RIN)                                                                </code></pre>
-<pre><code>##    Mode   FALSE    TRUE    NA&#39;s 
-## logical   12613    4003       0</code></pre>
+<pre><code>   Mode   FALSE    TRUE    NA&#39;s 
+logical   12613    4003       0 </code></pre>
 <pre class="r"><code>summary(top2$ChimpLung$adj.P.Val &lt; 0.01 &amp; top2$HumanLung$adj.P.Val &lt; 0.01 &amp; top2$RhesusLung$adj.P.Val &lt; 0.01) ## 3468 (no RIN) v. 2759 (RIN)</code></pre>
-<pre><code>##    Mode   FALSE    TRUE    NA&#39;s 
-## logical   13857    2759       0</code></pre>
+<pre><code>   Mode   FALSE    TRUE    NA&#39;s 
+logical   13857    2759       0 </code></pre>
 <pre class="r"><code>### Make a Venn Diagram of the results
 
 Tissues &lt;- c(&quot;Heart&quot;, &quot;Kidney&quot;, &quot;Liver&quot;, &quot;Lung&quot;)
@@ -490,7 +491,7 @@ for(i in 1:4){
 rl &lt;- lapply(list(&quot;Heart specific DE Genes (with RIN).png&quot;, &quot;Kidney specific DE Genes (with RIN).png&quot;, &quot;Liver specific DE Genes (with RIN).png&quot;, &quot;Lung specific DE Genes (with RIN).png&quot;), png::readPNG)
 gl &lt;- lapply(rl, grid::rasterGrob)
 do.call(gridExtra::grid.arrange, gl)</code></pre>
-<p><img src="Test_DE_genes_files/figure-html/unnamed-chunk-7-1.png" width="672" /></p>
+<p><img src="figure/Test_DE_genes.Rmd/unnamed-chunk-7-1.png" width="672" style="display: block; margin: auto;" /></p>
 </div>
 <div id="pairwise-comparisons-for-each-species-with-rin" class="section level3">
 <h3>Pairwise comparisons for each species (with RIN)</h3>
@@ -530,16 +531,16 @@ samples_no_NA &lt;- samples
 
 design &lt;- model.matrix(~ 0 + factor(samples_no_NA$Species) + factor(samples_no_NA$Tissue) + factor(samples_no_NA$Species):factor(samples_no_NA$Tissue) + RIN)
 colnames(design) &lt;- gsub(&quot;condition&quot;, &quot;&quot;, dput(colnames(design)))</code></pre>
-<pre><code>## c(&quot;factor(samples_no_NA$Species)Chimp&quot;, &quot;factor(samples_no_NA$Species)Human&quot;, 
-## &quot;factor(samples_no_NA$Species)Rhesus&quot;, &quot;factor(samples_no_NA$Tissue)kidney&quot;, 
-## &quot;factor(samples_no_NA$Tissue)liver&quot;, &quot;factor(samples_no_NA$Tissue)lung&quot;, 
-## &quot;RIN&quot;, &quot;factor(samples_no_NA$Species)Human:factor(samples_no_NA$Tissue)kidney&quot;, 
-## &quot;factor(samples_no_NA$Species)Rhesus:factor(samples_no_NA$Tissue)kidney&quot;, 
-## &quot;factor(samples_no_NA$Species)Human:factor(samples_no_NA$Tissue)liver&quot;, 
-## &quot;factor(samples_no_NA$Species)Rhesus:factor(samples_no_NA$Tissue)liver&quot;, 
-## &quot;factor(samples_no_NA$Species)Human:factor(samples_no_NA$Tissue)lung&quot;, 
-## &quot;factor(samples_no_NA$Species)Rhesus:factor(samples_no_NA$Tissue)lung&quot;
-## )</code></pre>
+<pre><code>c(&quot;factor(samples_no_NA$Species)Chimp&quot;, &quot;factor(samples_no_NA$Species)Human&quot;, 
+&quot;factor(samples_no_NA$Species)Rhesus&quot;, &quot;factor(samples_no_NA$Tissue)kidney&quot;, 
+&quot;factor(samples_no_NA$Tissue)liver&quot;, &quot;factor(samples_no_NA$Tissue)lung&quot;, 
+&quot;RIN&quot;, &quot;factor(samples_no_NA$Species)Human:factor(samples_no_NA$Tissue)kidney&quot;, 
+&quot;factor(samples_no_NA$Species)Rhesus:factor(samples_no_NA$Tissue)kidney&quot;, 
+&quot;factor(samples_no_NA$Species)Human:factor(samples_no_NA$Tissue)liver&quot;, 
+&quot;factor(samples_no_NA$Species)Rhesus:factor(samples_no_NA$Tissue)liver&quot;, 
+&quot;factor(samples_no_NA$Species)Human:factor(samples_no_NA$Tissue)lung&quot;, 
+&quot;factor(samples_no_NA$Species)Rhesus:factor(samples_no_NA$Tissue)lung&quot;
+)</code></pre>
 <pre class="r"><code># Run lmFit and eBayes in limma (we have to take out sample 31 because its RIN score was not recorded)
 
 fit.GC.loess.norm &lt;- lmFit(GC.loess.norm.voom[,-31], design, block=samples_no_NA$Individual, correlation=corfit_consensus)
