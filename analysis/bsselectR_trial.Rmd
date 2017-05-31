@@ -1,0 +1,142 @@
+---
+title: "Test_bsselectR"
+author: "Lauren Blake"
+date: "May 30, 2017"
+output: html_document
+---
+
+# We want to make a dropdown menu with gene expression data
+
+```{r}
+# Install the package from GitHub
+# devtools::install_github("walkerke/bsselectR")
+
+# Call the library
+library(bsselectR)
+library(ggplot2)
+
+# Delete graphics
+dev.off()
+```
+
+### First, an example from the website
+
+```{r}
+quotes <- c("Look deep into nature, and then you will understand everything better.", 
+            "A fool thinks himself to be wise, but a wise man knows himself to be a fool.", 
+            "My mission in life is not merely to survive, but to thrive; and to do so with some passion, some compassion, some humor, and some style.")
+
+names(quotes) <- c("Einstein", "Shakespeare", "Angelou")
+
+bsselect(quotes, type = "text")
+```
+
+### Now, let's try it with the tissue data
+
+```{r}
+# library 
+
+library(edgeR)
+library(limma)
+
+# Import the tissue data
+
+samples <- read.delim("../data/Sample_info_RNAseq_limma.txt")
+
+# Eliminate H1H
+samples <- samples[-17,]
+dim(samples)
+
+# Make labels
+
+labels <- paste(samples$Species, samples$Tissue, sep=" ")
+
+# Load count data
+
+counts_genes_in_cutoff <- read.delim("../data/counts_12184.txt")
+
+## Make the contrast matrix 
+
+species <- samples$Species
+tissue <- samples$Tissue
+
+# Rename columns of the contrast matrix
+
+design <- model.matrix(~ species*tissue)
+
+# TMM 
+
+dge_in_cutoff <- DGEList(counts=as.matrix(counts_genes_in_cutoff), genes=rownames(counts_genes_in_cutoff), group = as.character(t(labels)))
+dge_in_cutoff <- calcNormFactors(dge_in_cutoff)
+
+cpm_in_cutoff <- cpm(dge_in_cutoff, normalized.lib.sizes=TRUE, log=TRUE)
+head(cpm_in_cutoff)
+
+# Voom with individual as a random variable
+
+cpm.voom.cyclic <- voom(dge_in_cutoff, design, normalize.method="cyclicloess", plot=F)
+
+corfit <- duplicateCorrelation(cpm.voom.cyclic, design, block=samples$Individual)
+corfit$consensus <- 0.2006188
+
+# Final voom on filtered data
+
+cpm.voom.cyclic <- voom(dge_in_cutoff, design, normalize.method="cyclicloess", plot=F, block=samples$Individual, correlation=corfit$consensus)
+
+normalized_data <- cpm.voom.cyclic$E[1:50,]
+
+normalized_data
+```
+
+What is the problem with this?
+```{r}
+data <- normalized_data[,1]
+names(data) <- rownames(normalized_data)
+bsselect(data, type = "text")
+```
+
+What if we collapse everything to one column?
+
+```{r}
+
+check <- do.call(paste, as.data.frame(normalized_data, stringsAsFactors=FALSE))
+names(check) <- rownames(normalized_data)
+bsselect(check, type = "text")
+```
+
+Now, all the values travel together
+
+
+```{r}
+# Needed for pwalk command later
+library(purrr)
+
+# Needed for str_replace_all command
+
+library(stringr)
+library(bsselectR)
+
+colnames(normalized_data) <- labels
+
+# Make plots with color-blind friendl(ier) colors
+
+plots <- lapply(rownames(normalized_data), function(x) {
+  gene_expression = as.data.frame(normalized_data[grepl(x, rownames(normalized_data)), ])
+  #colnames(gene_expression) <- labels
+  try <- cbind(gene_expression, labels, tissue)
+  p <- ggplot(try, aes(x = factor(try[,2]), y = try[,1], fill = factor(tissue))) + geom_boxplot() + theme_bw() + theme(axis.text.x=element_text(angle = 90, hjust = 0)) + xlab("Species-tissue pair") + ylab("Normalized expression") + ggtitle(paste(x)) + scale_fill_manual(name = "Tissue type", breaks = c("Heart", "Kidney", "Liver", "Lung"), values= c(rgb(204/255, 121/255,167/255), rgb(230/255, 159/255, 0/255),  rgb(0,158/255,115/255), rgb(86/255,180/255,233/255)))                                   
+  p })
+  
+paths <- paste0(rownames(normalized_data), ".png")
+pwalk(list(paths, plots), ggsave, path = "test_interact_plots", dpi = 300)
+  
+gene_expression_plots <- paste0(list.files("test_interact_plots", full.names = TRUE))
+
+names(gene_expression_plots) <- str_replace_all(gene_expression_plots, c("\\.png" = "", "test_interact_plots/" = ""))
+
+
+bsselect(gene_expression_plots, type = "img",  live_search = TRUE, show_tick = TRUE)
+
+
+```
+
