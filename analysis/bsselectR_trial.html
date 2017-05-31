@@ -1063,7 +1063,70 @@ pwalk(list(paths, plots), ggsave, path = &quot;test_interact_plots&quot;, dpi = 
 names(gene_expression_plots) &lt;- str_replace_all(gene_expression_plots, c(&quot;\\.png&quot; = &quot;&quot;, &quot;test_interact_plots/&quot; = &quot;&quot;))
 
 
-shinyServer(bsselect(gene_expression_plots, type = &quot;img&quot;,  live_search = TRUE, show_tick = TRUE))</code></pre>
+bsselect(gene_expression_plots, type = &quot;img&quot;,  live_search = TRUE, show_tick = TRUE)</code></pre>
+
+<html>
+<select id="SexfRMSRFh" class="selectpicker" data-dropdown-align-right="false" data-dropup-auto="true" data-header="false" data-live-search="true" data-live-search-style="contains" data-show-tick="true" data-width="false" data-size="auto"><option value="test_interact_plots/ENSG00000000003.png">ENSG00000000003</option>
+<option value="test_interact_plots/ENSG00000000419.png">ENSG00000000419</option>
+<option value="test_interact_plots/ENSG00000000457.png">ENSG00000000457</option>
+<option value="test_interact_plots/ENSG00000000460.png">ENSG00000000460</option>
+<option value="test_interact_plots/ENSG00000000938.png">ENSG00000000938</option>
+<option value="test_interact_plots/ENSG00000000971.png">ENSG00000000971</option>
+<option value="test_interact_plots/ENSG00000001036.png">ENSG00000001036</option>
+<option value="test_interact_plots/ENSG00000001084.png">ENSG00000001084</option>
+<option value="test_interact_plots/ENSG00000001167.png">ENSG00000001167</option>
+<option value="test_interact_plots/ENSG00000001460.png">ENSG00000001460</option>
+<option value="test_interact_plots/ENSG00000001461.png">ENSG00000001461</option>
+<option value="test_interact_plots/ENSG00000001497.png">ENSG00000001497</option>
+<option value="test_interact_plots/ENSG00000001561.png">ENSG00000001561</option>
+<option value="test_interact_plots/ENSG00000001617.png">ENSG00000001617</option>
+<option value="test_interact_plots/ENSG00000001626.png">ENSG00000001626</option>
+<option value="test_interact_plots/ENSG00000001629.png">ENSG00000001629</option>
+<option value="test_interact_plots/ENSG00000001630.png">ENSG00000001630</option>
+<option value="test_interact_plots/ENSG00000001631.png">ENSG00000001631</option>
+<option value="test_interact_plots/ENSG00000002330.png">ENSG00000002330</option>
+<option value="test_interact_plots/ENSG00000002549.png">ENSG00000002549</option>
+<option value="test_interact_plots/ENSG00000002587.png">ENSG00000002587</option>
+<option value="test_interact_plots/ENSG00000002726.png">ENSG00000002726</option>
+<option value="test_interact_plots/ENSG00000002822.png">ENSG00000002822</option>
+<option value="test_interact_plots/ENSG00000002834.png">ENSG00000002834</option>
+<option value="test_interact_plots/ENSG00000002919.png">ENSG00000002919</option>
+<option value="test_interact_plots/ENSG00000002933.png">ENSG00000002933</option>
+<option value="test_interact_plots/ENSG00000003056.png">ENSG00000003056</option>
+<option value="test_interact_plots/ENSG00000003096.png">ENSG00000003096</option>
+<option value="test_interact_plots/ENSG00000003137.png">ENSG00000003137</option>
+<option value="test_interact_plots/ENSG00000003147.png">ENSG00000003147</option>
+<option value="test_interact_plots/ENSG00000003393.png">ENSG00000003393</option>
+<option value="test_interact_plots/ENSG00000003400.png">ENSG00000003400</option>
+<option value="test_interact_plots/ENSG00000003402.png">ENSG00000003402</option>
+<option value="test_interact_plots/ENSG00000003436.png">ENSG00000003436</option>
+<option value="test_interact_plots/ENSG00000003509.png">ENSG00000003509</option>
+<option value="test_interact_plots/ENSG00000003756.png">ENSG00000003756</option>
+<option value="test_interact_plots/ENSG00000003989.png">ENSG00000003989</option>
+<option value="test_interact_plots/ENSG00000004059.png">ENSG00000004059</option>
+<option value="test_interact_plots/ENSG00000004139.png">ENSG00000004139</option>
+<option value="test_interact_plots/ENSG00000004142.png">ENSG00000004142</option>
+<option value="test_interact_plots/ENSG00000004399.png">ENSG00000004399</option>
+<option value="test_interact_plots/ENSG00000004455.png">ENSG00000004455</option>
+<option value="test_interact_plots/ENSG00000004468.png">ENSG00000004468</option>
+<option value="test_interact_plots/ENSG00000004478.png">ENSG00000004478</option>
+<option value="test_interact_plots/ENSG00000004487.png">ENSG00000004487</option>
+<option value="test_interact_plots/ENSG00000004534.png">ENSG00000004534</option>
+<option value="test_interact_plots/ENSG00000004660.png">ENSG00000004660</option>
+<option value="test_interact_plots/ENSG00000004700.png">ENSG00000004700</option>
+<option value="test_interact_plots/ENSG00000004766.png">ENSG00000004766</option>
+<option value="test_interact_plots/ENSG00000004776.png">ENSG00000004776</option></select>
+<img src="test_interact_plots/ENSG00000000003.png" name="PKZxfcrmp5" height="500" width="100%"/>
+<script>$(document).ready(function(){
+                 $("#SexfRMSRFh").change(function(){
+                 $("img[name=PKZxfcrmp5]").attr("src",$(this).val());
+
+                 });
+
+  });</script>
+</html>
+<div id="htmlwidget-54323c4697401f3a9836" style="width:672px;height:480px;" class="bsselect html-widget" width="672" height="480"></div>
+<script type="application/json" data-for="htmlwidget-54323c4697401f3a9836">{"x":[],"evals":[],"jsHooks":[]}</script>
 </div>
 </div>
 
