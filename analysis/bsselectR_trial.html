@@ -200,10 +200,15 @@ $(document).ready(function () {
 library(bsselectR)
 library(ggplot2)</code></pre>
 <pre><code>## Warning: package &#39;ggplot2&#39; was built under R version 3.2.4</code></pre>
-<pre class="r"><code># Delete graphics
-dev.off()</code></pre>
-<pre><code>## null device 
-##           1</code></pre>
+<pre class="r"><code>library(&#39;rsconnect&#39;)</code></pre>
+<pre><code>## Warning: package &#39;rsconnect&#39; was built under R version 3.2.5</code></pre>
+<pre class="r"><code>library(&#39;shiny&#39;)</code></pre>
+<pre><code>## Warning: package &#39;shiny&#39; was built under R version 3.2.5</code></pre>
+<pre><code>## 
+## Attaching package: &#39;shiny&#39;</code></pre>
+<pre><code>## The following object is masked from &#39;package:rsconnect&#39;:
+## 
+##     serverInfo</code></pre>
 <div id="first-an-example-from-the-website" class="section level3">
 <h3>First, an example from the website</h3>
 <pre class="r"><code>quotes &lt;- c(&quot;Look deep into nature, and then you will understand everything better.&quot;, 
@@ -215,18 +220,18 @@ names(quotes) &lt;- c(&quot;Einstein&quot;, &quot;Shakespeare&quot;, &quot;Angel
 bsselect(quotes, type = &quot;text&quot;)</code></pre>
 
 <html>
-<select id="KAYsb1hjKC" class="selectpicker" data-dropdown-align-right="false" data-dropup-auto="true" data-header="false" data-live-search="false" data-live-search-style="contains" data-show-tick="false" data-width="false" data-size="auto"><option value="Look deep into nature, and then you will understand everything better.">Einstein</option>
+<select id="JFY3TToMXA" class="selectpicker" data-dropdown-align-right="false" data-dropup-auto="true" data-header="false" data-live-search="false" data-live-search-style="contains" data-show-tick="false" data-width="false" data-size="auto"><option value="Look deep into nature, and then you will understand everything better.">Einstein</option>
 <option value="A fool thinks himself to be wise, but a wise man knows himself to be a fool.">Shakespeare</option>
 <option value="My mission in life is not merely to survive, but to thrive; and to do so with some passion, some compassion, some humor, and some style.">Angelou</option></select>
-<p id="UaBXHRpnxb">Look deep into nature, and then you will understand everything better.</p>
+<p id="csHOlfCMMg">Look deep into nature, and then you will understand everything better.</p>
 <script>$(document).ready(function(){
-                  $("#KAYsb1hjKC").change(function(){
-                  $("#UaBXHRpnxb").text($(this).val());
+                  $("#JFY3TToMXA").change(function(){
+                  $("#csHOlfCMMg").text($(this).val());
                   });
 });</script>
 </html>
-<div id="htmlwidget-8655f6d6febc85b560d2" style="width:672px;height:480px;" class="bsselect html-widget" width="672" height="480"></div>
-<script type="application/json" data-for="htmlwidget-8655f6d6febc85b560d2">{"x":[],"evals":[],"jsHooks":[]}</script>
+<div id="htmlwidget-89b589bf6b2bc5e18c47" style="width:672px;height:480px;" class="bsselect html-widget" width="672" height="480"></div>
+<script type="application/json" data-for="htmlwidget-89b589bf6b2bc5e18c47">{"x":[],"evals":[],"jsHooks":[]}</script>
 </div>
 <div id="now-lets-try-it-with-the-tissue-data" class="section level3">
 <h3>Now, let’s try it with the tissue data</h3>
@@ -856,7 +861,7 @@ names(data) &lt;- rownames(normalized_data)
 bsselect(data, type = &quot;text&quot;)</code></pre>
 
 <html>
-<select id="WKxqzjWiNp" class="selectpicker" data-dropdown-align-right="false" data-dropup-auto="true" data-header="false" data-live-search="false" data-live-search-style="contains" data-show-tick="false" data-width="false" data-size="auto"><option value="4.63974545914325">ENSG00000000003</option>
+<select id="XiXkQAlsYH" class="selectpicker" data-dropdown-align-right="false" data-dropup-auto="true" data-header="false" data-live-search="false" data-live-search-style="contains" data-show-tick="false" data-width="false" data-size="auto"><option value="4.63974545914325">ENSG00000000003</option>
 <option value="5.9251948729491">ENSG00000000419</option>
 <option value="4.64450759055041">ENSG00000000457</option>
 <option value="1.35032419757269">ENSG00000000460</option>
@@ -906,22 +911,22 @@ bsselect(data, type = &quot;text&quot;)</code></pre>
 <option value="6.83587425309445">ENSG00000004700</option>
 <option value="5.24976455854198">ENSG00000004766</option>
 <option value="10.7158354163762">ENSG00000004776</option></select>
-<p id="aBieMKnEw7">4.63974545914325</p>
+<p id="UvLxhtBdz8">4.63974545914325</p>
 <script>$(document).ready(function(){
-                  $("#WKxqzjWiNp").change(function(){
-                  $("#aBieMKnEw7").text($(this).val());
+                  $("#XiXkQAlsYH").change(function(){
+                  $("#UvLxhtBdz8").text($(this).val());
                   });
 });</script>
 </html>
-<div id="htmlwidget-962fb6a85e54ca3bf01d" style="width:672px;height:480px;" class="bsselect html-widget" width="672" height="480"></div>
-<script type="application/json" data-for="htmlwidget-962fb6a85e54ca3bf01d">{"x":[],"evals":[],"jsHooks":[]}</script>
+<div id="htmlwidget-7ded59f4b1e32ea1fd21" style="width:672px;height:480px;" class="bsselect html-widget" width="672" height="480"></div>
+<script type="application/json" data-for="htmlwidget-7ded59f4b1e32ea1fd21">{"x":[],"evals":[],"jsHooks":[]}</script>
 <p>What if we collapse everything to one column?</p>
 <pre class="r"><code>check &lt;- do.call(paste, as.data.frame(normalized_data, stringsAsFactors=FALSE))
 names(check) &lt;- rownames(normalized_data)
 bsselect(check, type = &quot;text&quot;)</code></pre>
 
 <html>
-<select id="4bpQ9tvl8P" class="selectpicker" data-dropdown-align-right="false" data-dropup-auto="true" data-header="false" data-live-search="false" data-live-search-style="contains" data-show-tick="false" data-width="false" data-size="auto"><option value="4.63974545914325 6.51725638165646 8.26954956489779 5.5488553143759 4.72507820110496 6.15656453323023 8.02392306569653 4.63749463432629 4.93244426701581 6.45853313874047 7.74674348181092 5.9079123807266 4.27690811041775 6.56306421096153 8.44111887147812 5.5571669023088 6.97363306946902 6.62897135601687 5.29478970798884 3.68625672470302 7.2685949381852 6.66012283767907 4.31280989130646 3.65873769128007 7.16442737834733 7.72816375986944 5.42340240671015 4.34972261573193 6.44191310634342 6.6403674233101 4.60391765343918 4.33396171693839 6.94098571068452 8.28422094780841 6.00009904094606 4.6393368789238 7.16600724705518 8.59411774301812 5.74046327620819 4.4904907495738 7.13708666708352 8.14376858041622 5.5358839315221 4.90492529707337 7.08597597997087 7.66007205517222 5.4198990093264">ENSG00000000003</option>
+<select id="KrmpbUmsCJ" class="selectpicker" data-dropdown-align-right="false" data-dropup-auto="true" data-header="false" data-live-search="false" data-live-search-style="contains" data-show-tick="false" data-width="false" data-size="auto"><option value="4.63974545914325 6.51725638165646 8.26954956489779 5.5488553143759 4.72507820110496 6.15656453323023 8.02392306569653 4.63749463432629 4.93244426701581 6.45853313874047 7.74674348181092 5.9079123807266 4.27690811041775 6.56306421096153 8.44111887147812 5.5571669023088 6.97363306946902 6.62897135601687 5.29478970798884 3.68625672470302 7.2685949381852 6.66012283767907 4.31280989130646 3.65873769128007 7.16442737834733 7.72816375986944 5.42340240671015 4.34972261573193 6.44191310634342 6.6403674233101 4.60391765343918 4.33396171693839 6.94098571068452 8.28422094780841 6.00009904094606 4.6393368789238 7.16600724705518 8.59411774301812 5.74046327620819 4.4904907495738 7.13708666708352 8.14376858041622 5.5358839315221 4.90492529707337 7.08597597997087 7.66007205517222 5.4198990093264">ENSG00000000003</option>
 <option value="5.9251948729491 5.24925526999626 5.96764304415299 5.51969489542353 5.74537023912536 5.15483704902408 5.81658098732838 5.25171377047767 5.72953902809015 5.21753837408239 6.39816295121489 5.61618431872648 5.83648668295999 5.31261511871678 5.87854877298213 5.41042671022514 5.65797954266804 6.12230448180641 5.97032166632082 5.62655096986815 5.50690342123357 5.84941320680219 5.41137978038874 5.8220318943586 5.90844563604401 6.21187836998618 5.12768763183087 6.31948342191569 5.66350134396661 5.87134134344365 5.47078273814421 5.48389984681876 5.39383829791701 5.82836292319959 4.93630534374515 5.35388740188261 5.06465089465248 5.71307431150777 4.92626411294673 5.52083707842946 5.33847903070636 5.97113153168452 4.99687620568562 5.48656246088179 5.20303645454751 5.44064705433965 5.06339569051539">ENSG00000000419</option>
 <option value="4.64450759055041 5.24710341212302 5.94844363250794 4.99827276299923 4.91323847547459 5.32193490907881 6.54888996516131 5.02166070406894 4.70515029264427 5.23100472128906 6.52497815903183 5.19962629007023 4.69767824833673 5.07157260575362 6.61470963121418 5.32509963486917 4.3047525946137 4.97389902423099 4.60939131386785 3.45185280698203 4.18861462179302 4.47441912061166 4.24954172866216 4.45624074745096 4.73482427771641 5.01445438640979 4.08087533257837 3.38563728179684 4.11893770748719 5.22099926486278 4.26460228902697 4.33695197984347 5.02252798257104 5.20468789573661 4.85965913525571 4.41699546785888 5.17137888295459 5.55240549887076 5.2705388848143 4.33260914279155 5.11448477439375 5.39266176432607 5.17316331968445 4.61028606288881 5.13604210876395 5.328727317914 4.81505605258125">ENSG00000000457</option>
 <option value="1.35032419757269 1.68308746158829 2.00184035906812 2.10553579753263 1.56324410785535 1.65559125655485 2.29047772539862 1.69533190868013 1.56203934346977 1.13482728776081 2.53694818594342 1.93773839301545 1.29117933625986 1.54244489286622 2.27463228611804 2.07800758816729 2.42883999535826 4.93044633923069 2.94521028333401 1.91233020578934 1.70573537353649 2.60649041275255 2.08643430507595 -0.254974920267486 2.6488469498679 3.27768769479309 1.91895936537215 1.54794382937332 1.66688859594436 3.00785856085235 2.11952946461187 1.30796043947764 1.37205043516823 0.133460222497348 2.1968075820274 1.57639211117307 1.10491243343411 1.61004735445451 2.0248552736949 1.73484401945254 1.75233545721788 1.58745950546703 2.23674181999842 1.1995994386543 1.30329134973498 1.59872961452722 2.5149167864648">ENSG00000000460</option>
@@ -971,15 +976,15 @@ bsselect(check, type = &quot;text&quot;)</code></pre>
 <option value="6.83587425309445 4.02874981373585 5.35596474254077 4.89982183586645 6.32955569911632 4.54502462766622 4.24860805637788 5.66981636034847 5.95911318496671 4.85425022936803 4.88821851322233 5.27934939837814 6.25347145680473 4.8723695890032 3.60098340759479 5.92958747002665 4.38466037941616 4.64746638102428 5.3930625910788 4.57702181683516 4.00504142772548 4.13971846047432 5.10864553235936 5.10629913372891 4.60046675712028 3.61141992282081 5.33810654780096 4.92178345855194 4.3653442299868 4.55249613459419 6.04567696579936 5.36557684461186 3.65617344105288 3.68993911486965 4.48514723594234 5.40690196726705 4.21960945430514 3.86359999521885 5.01798968954023 5.50750297715071 4.01798744652356 3.73719311178694 4.84092255567428 5.72949611039545 4.07371611047369 4.39033177002371 5.07941270064255">ENSG00000004700</option>
 <option value="5.24976455854198 5.3011086836867 5.29327137200591 4.91367421864707 5.35932528063252 5.12164953038014 4.99455831515811 4.90783360832776 4.93301241783971 4.43015553558408 3.66019147749582 4.64696497606499 5.29231472862995 5.367391776937 4.69808230150611 5.10008184568319 5.26119844214163 4.97274142964921 5.21521550596571 5.08596601002026 5.55980192253337 5.52898596777966 5.02370733385719 4.20129174647141 5.83631704666888 4.83842310138636 4.5606592066035 4.84578043830887 5.33684865563731 5.05624396456596 5.02724942769254 5.86127051397293 5.74284961835545 5.12317846596067 5.62292100164195 6.38203672543913 5.78890600149144 7.30608945301225 5.83890873801768 6.37788982968246 5.91906727673497 6.16641472816424 5.50569879429598 6.08605843654852 5.9423745417285 5.83921533780763 5.74398248309681">ENSG00000004766</option>
 <option value="10.7158354163762 3.9529624857178 4.55615585826503 6.42455174131159 10.9213883884107 2.62740906754204 2.99612034115447 4.98917830553532 10.5836921389832 4.21715292188519 2.81555165503404 3.18676682356074 10.9724804197473 3.47053114031399 4.67410732219697 5.06068195067483 4.90861184780099 4.56200093448403 6.3031336487366 7.81714247659642 5.52676043894356 5.88425110298683 5.2450241287831 11.1366020747712 4.06651840098262 4.67134963984566 5.78345125971058 10.2224633836237 5.0714801051415 5.77596385268964 6.87975906011174 9.97851500161226 3.47374300920875 3.73896009648054 4.18839555506089 8.39877434679607 3.49837786089773 2.92996139481913 3.75857684699527 9.23071401249288 3.23600167759005 4.01468816663766 3.73930507573631 9.31710025408687 3.52145280205122 4.49531411308068 3.95838480921081">ENSG00000004776</option></select>
-<p id="NSn1MzwsKN">4.63974545914325 6.51725638165646 8.26954956489779 5.5488553143759 4.72507820110496 6.15656453323023 8.02392306569653 4.63749463432629 4.93244426701581 6.45853313874047 7.74674348181092 5.9079123807266 4.27690811041775 6.56306421096153 8.44111887147812 5.5571669023088 6.97363306946902 6.62897135601687 5.29478970798884 3.68625672470302 7.2685949381852 6.66012283767907 4.31280989130646 3.65873769128007 7.16442737834733 7.72816375986944 5.42340240671015 4.34972261573193 6.44191310634342 6.6403674233101 4.60391765343918 4.33396171693839 6.94098571068452 8.28422094780841 6.00009904094606 4.6393368789238 7.16600724705518 8.59411774301812 5.74046327620819 4.4904907495738 7.13708666708352 8.14376858041622 5.5358839315221 4.90492529707337 7.08597597997087 7.66007205517222 5.4198990093264</p>
+<p id="KCEHaF7EbD">4.63974545914325 6.51725638165646 8.26954956489779 5.5488553143759 4.72507820110496 6.15656453323023 8.02392306569653 4.63749463432629 4.93244426701581 6.45853313874047 7.74674348181092 5.9079123807266 4.27690811041775 6.56306421096153 8.44111887147812 5.5571669023088 6.97363306946902 6.62897135601687 5.29478970798884 3.68625672470302 7.2685949381852 6.66012283767907 4.31280989130646 3.65873769128007 7.16442737834733 7.72816375986944 5.42340240671015 4.34972261573193 6.44191310634342 6.6403674233101 4.60391765343918 4.33396171693839 6.94098571068452 8.28422094780841 6.00009904094606 4.6393368789238 7.16600724705518 8.59411774301812 5.74046327620819 4.4904907495738 7.13708666708352 8.14376858041622 5.5358839315221 4.90492529707337 7.08597597997087 7.66007205517222 5.4198990093264</p>
 <script>$(document).ready(function(){
-                  $("#4bpQ9tvl8P").change(function(){
-                  $("#NSn1MzwsKN").text($(this).val());
+                  $("#KrmpbUmsCJ").change(function(){
+                  $("#KCEHaF7EbD").text($(this).val());
                   });
 });</script>
 </html>
-<div id="htmlwidget-129cd36e26e5ecc52167" style="width:672px;height:480px;" class="bsselect html-widget" width="672" height="480"></div>
-<script type="application/json" data-for="htmlwidget-129cd36e26e5ecc52167">{"x":[],"evals":[],"jsHooks":[]}</script>
+<div id="htmlwidget-54ddc7d39a7dc7e2354e" style="width:672px;height:480px;" class="bsselect html-widget" width="672" height="480"></div>
+<script type="application/json" data-for="htmlwidget-54ddc7d39a7dc7e2354e">{"x":[],"evals":[],"jsHooks":[]}</script>
 <p>Now, all the values travel together</p>
 <pre class="r"><code># Needed for pwalk command later
 library(purrr)</code></pre>
@@ -1058,70 +1063,7 @@ pwalk(list(paths, plots), ggsave, path = &quot;test_interact_plots&quot;, dpi = 
 names(gene_expression_plots) &lt;- str_replace_all(gene_expression_plots, c(&quot;\\.png&quot; = &quot;&quot;, &quot;test_interact_plots/&quot; = &quot;&quot;))
 
 
-bsselect(gene_expression_plots, type = &quot;img&quot;,  live_search = TRUE, show_tick = TRUE)</code></pre>
-
-<html>
-<select id="vV5ruKtW4a" class="selectpicker" data-dropdown-align-right="false" data-dropup-auto="true" data-header="false" data-live-search="true" data-live-search-style="contains" data-show-tick="true" data-width="false" data-size="auto"><option value="test_interact_plots/ENSG00000000003.png">ENSG00000000003</option>
-<option value="test_interact_plots/ENSG00000000419.png">ENSG00000000419</option>
-<option value="test_interact_plots/ENSG00000000457.png">ENSG00000000457</option>
-<option value="test_interact_plots/ENSG00000000460.png">ENSG00000000460</option>
-<option value="test_interact_plots/ENSG00000000938.png">ENSG00000000938</option>
-<option value="test_interact_plots/ENSG00000000971.png">ENSG00000000971</option>
-<option value="test_interact_plots/ENSG00000001036.png">ENSG00000001036</option>
-<option value="test_interact_plots/ENSG00000001084.png">ENSG00000001084</option>
-<option value="test_interact_plots/ENSG00000001167.png">ENSG00000001167</option>
-<option value="test_interact_plots/ENSG00000001460.png">ENSG00000001460</option>
-<option value="test_interact_plots/ENSG00000001461.png">ENSG00000001461</option>
-<option value="test_interact_plots/ENSG00000001497.png">ENSG00000001497</option>
-<option value="test_interact_plots/ENSG00000001561.png">ENSG00000001561</option>
-<option value="test_interact_plots/ENSG00000001617.png">ENSG00000001617</option>
-<option value="test_interact_plots/ENSG00000001626.png">ENSG00000001626</option>
-<option value="test_interact_plots/ENSG00000001629.png">ENSG00000001629</option>
-<option value="test_interact_plots/ENSG00000001630.png">ENSG00000001630</option>
-<option value="test_interact_plots/ENSG00000001631.png">ENSG00000001631</option>
-<option value="test_interact_plots/ENSG00000002330.png">ENSG00000002330</option>
-<option value="test_interact_plots/ENSG00000002549.png">ENSG00000002549</option>
-<option value="test_interact_plots/ENSG00000002587.png">ENSG00000002587</option>
-<option value="test_interact_plots/ENSG00000002726.png">ENSG00000002726</option>
-<option value="test_interact_plots/ENSG00000002822.png">ENSG00000002822</option>
-<option value="test_interact_plots/ENSG00000002834.png">ENSG00000002834</option>
-<option value="test_interact_plots/ENSG00000002919.png">ENSG00000002919</option>
-<option value="test_interact_plots/ENSG00000002933.png">ENSG00000002933</option>
-<option value="test_interact_plots/ENSG00000003056.png">ENSG00000003056</option>
-<option value="test_interact_plots/ENSG00000003096.png">ENSG00000003096</option>
-<option value="test_interact_plots/ENSG00000003137.png">ENSG00000003137</option>
-<option value="test_interact_plots/ENSG00000003147.png">ENSG00000003147</option>
-<option value="test_interact_plots/ENSG00000003393.png">ENSG00000003393</option>
-<option value="test_interact_plots/ENSG00000003400.png">ENSG00000003400</option>
-<option value="test_interact_plots/ENSG00000003402.png">ENSG00000003402</option>
-<option value="test_interact_plots/ENSG00000003436.png">ENSG00000003436</option>
-<option value="test_interact_plots/ENSG00000003509.png">ENSG00000003509</option>
-<option value="test_interact_plots/ENSG00000003756.png">ENSG00000003756</option>
-<option value="test_interact_plots/ENSG00000003989.png">ENSG00000003989</option>
-<option value="test_interact_plots/ENSG00000004059.png">ENSG00000004059</option>
-<option value="test_interact_plots/ENSG00000004139.png">ENSG00000004139</option>
-<option value="test_interact_plots/ENSG00000004142.png">ENSG00000004142</option>
-<option value="test_interact_plots/ENSG00000004399.png">ENSG00000004399</option>
-<option value="test_interact_plots/ENSG00000004455.png">ENSG00000004455</option>
-<option value="test_interact_plots/ENSG00000004468.png">ENSG00000004468</option>
-<option value="test_interact_plots/ENSG00000004478.png">ENSG00000004478</option>
-<option value="test_interact_plots/ENSG00000004487.png">ENSG00000004487</option>
-<option value="test_interact_plots/ENSG00000004534.png">ENSG00000004534</option>
-<option value="test_interact_plots/ENSG00000004660.png">ENSG00000004660</option>
-<option value="test_interact_plots/ENSG00000004700.png">ENSG00000004700</option>
-<option value="test_interact_plots/ENSG00000004766.png">ENSG00000004766</option>
-<option value="test_interact_plots/ENSG00000004776.png">ENSG00000004776</option></select>
-<img src="test_interact_plots/ENSG00000000003.png" name="tonkhespBY" height="500" width="100%"/>
-<script>$(document).ready(function(){
-                 $("#vV5ruKtW4a").change(function(){
-                 $("img[name=tonkhespBY]").attr("src",$(this).val());
-
-                 });
-
-  });</script>
-</html>
-<div id="htmlwidget-6175cb045bfcf0e35460" style="width:672px;height:480px;" class="bsselect html-widget" width="672" height="480"></div>
-<script type="application/json" data-for="htmlwidget-6175cb045bfcf0e35460">{"x":[],"evals":[],"jsHooks":[]}</script>
+shinyServer(bsselect(gene_expression_plots, type = &quot;img&quot;,  live_search = TRUE, show_tick = TRUE))</code></pre>
 </div>
 </div>
 

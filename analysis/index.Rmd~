@@ -14,9 +14,12 @@ title: "Home"
 
 ## RNA-seq Data
 
-### QC and normalizations
+### Pre-processing
 
 *  [Unmapped and Mapped Reads](../analysis/Plots_unmapped_mapped_RNAseq_reads.html)
+
+### Normalization
+
 *  [Raw counts](../analysis/Normalization_plots.html)
 *  [Filtering](../analysis/Filtering_analysis.html)
 *  [GC content normalization](../analysis/GC_content_normalization_CHT.html)
@@ -29,7 +32,7 @@ title: "Home"
 *  [Best set of technical factors](../analysis/GLMnet_gene_exp.html)
 *  [Correlation between technical factors in the best sets and expression](../analysis/Follow_up_best_set_tech_factors.html)
 
-### Final filtering, normalizations, and analysis with technical factors
+### Final filtering, normalizations, and analysis with technical factors (12,184 genes)
 
 *  [Processing using filtering with lowly expressed genes](../analysis/Correlation_bet_tech_factors_in_best_set_and_expression_stringent_filtering.html)
 

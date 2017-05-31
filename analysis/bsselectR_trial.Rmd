@@ -14,9 +14,9 @@ output: html_document
 # Call the library
 library(bsselectR)
 library(ggplot2)
+library('rsconnect')
+library('shiny')
 
-# Delete graphics
-dev.off()
 ```
 
 ### First, an example from the website
@@ -135,7 +135,7 @@ gene_expression_plots <- paste0(list.files("test_interact_plots", full.names = T
 names(gene_expression_plots) <- str_replace_all(gene_expression_plots, c("\\.png" = "", "test_interact_plots/" = ""))
 
 
-bsselect(gene_expression_plots, type = "img",  live_search = TRUE, show_tick = TRUE)
+shinyServer(bsselect(gene_expression_plots, type = "img",  live_search = TRUE, show_tick = TRUE))
 
 
 ```
