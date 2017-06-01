@@ -1,0 +1,870 @@
+---
+title: "Test_DE_genes"
+author: "Lauren Blake"
+date: "August 3, 2016"
+output: html_document
+---
+
+The goal of this script is to find a list of differentially expressed genes between tissues and between species. The majority of the code for this section was written by Julien Roux. 
+
+Note: the expression data used here is the original filtering scheme of only keeping genes with log2(CPM) > -5.5 in at least 2/4 individuals for each tissue-species pair. 
+
+```{r chunk-options, include=FALSE}
+source("chunk-options.R")
+```
+
+```{r}
+# Load libraries
+
+library("gplots")
+library("ggplot2")
+library("RColorBrewer")
+library("scales")
+library("edgeR")
+library("R.utils")
+library("plyr")
+library("limma")
+library("VennDiagram")
+source("functions.R")
+
+# Load colors 
+
+colors <- colorRampPalette(c(brewer.pal(9, "Blues")[1],brewer.pal(9, "Blues")[9]))(100)
+pal <- c(brewer.pal(9, "Set1"), brewer.pal(8, "Set2"), brewer.pal(12, "Set3"))
+
+samples <- read.delim("../data/Sample_info_RNAseq_limma.txt")
+
+# Eliminate H1H
+samples <- samples[-17,]
+dim(samples)
+
+# Make labels
+
+labels <- paste(samples$Species, samples$Tissue, sep=" ")
+```
+
+## Pairwise comparisons
+
+```{r}
+## Make the contrast matrix 
+
+species <- samples$Species
+tissue <- samples$Tissue
+
+# Rename columns of the contrast matrix
+
+design <- model.matrix(~ species*tissue)
+colnames(design)[1] <- "Intercept"
+
+colnames(design) <- gsub("speciesHuman", "Human", colnames(design))
+colnames(design) <- gsub("speciesRhesus", "Rhesus", colnames(design))
+colnames(design) <- gsub("tissuekidney", "Kidney", colnames(design))
+colnames(design) <- gsub("tissueliver", "Liver", colnames(design))
+colnames(design) <- gsub("tissuelung", "Lung", colnames(design))
+colnames(design) <- gsub(":", ".", colnames(design))
+
+
+```
+
+
+```{r}
+# Load count data
+
+counts_genes_in_cutoff <- read.delim("../data/counts_12184.txt")
+
+# TMM 
+
+dge_in_cutoff <- DGEList(counts=as.matrix(counts_genes_in_cutoff), genes=rownames(counts_genes_in_cutoff), group = as.character(t(labels)))
+dge_in_cutoff <- calcNormFactors(dge_in_cutoff)
+
+cpm_in_cutoff <- cpm(dge_in_cutoff, normalized.lib.sizes=TRUE, log=TRUE)
+head(cpm_in_cutoff)
+hist(cpm_in_cutoff, xlab = "Log2(CPM)", main = "Log2(CPM) values for genes meeting the filtering criteria", breaks = 100 )
+
+# Voom with individual as a random variable
+
+cpm.voom.cyclic <- voom(dge_in_cutoff, design, normalize.method="cyclicloess", plot=T)
+
+#corfit <- duplicateCorrelation(cpm.voom.cyclic, design, block=samples$Individual)
+corfit$consensus <- 0.2006188
+
+# Final voom on filtered data
+
+cpm.voom.cyclic <- voom(dge_in_cutoff, design, normalize.method="cyclicloess", plot=TRUE, block=samples$Individual, correlation=corfit$consensus)
+
+```
+
+
+
+### Fit the linear model
+
+```{r}
+fit.cyclic.norm <- lmFit(cpm.voom.cyclic, design, plot = TRUE, block=samples$Individual, correlation=corfit$consensus)
+fit.cyclic.norm <- eBayes(fit.cyclic.norm)
+
+# MA Plots
+## If 'MA' is an 'MArrayLM' object, then the plot is a fitted model MA-plot in which the estimated coefficient is on the y-axis and the average A-value is on the x-axis.                
+
+limma::plotMA(fit.cyclic.norm, array=1, xlab="average coefficient", ylab="estimated coefficient")
+
+## - Potential caveat: variances could be different between human, chimp and rhesus (see Gordon Smyth email, 7 June 2013).                                                               
+##  We look at the standard error for each condition                                                    
+hist(fit.cyclic.norm$stdev.unscaled * fit.cyclic.norm$sigma, breaks=100)
+hist(log2(fit.cyclic.norm$stdev.unscaled * fit.cyclic.norm$sigma), breaks=100)
+boxplot(log2(fit.cyclic.norm$stdev.unscaled * fit.cyclic.norm$sigma))
+## This seems to be pretty comparable between conditions. The human heart is higher, probably because of H1H missing and H3H with a bit strange behavior                                     
+stderror <- log2(fit.cyclic.norm$stdev.unscaled * fit.cyclic.norm$sigma)
+boxplot(list(stderror[,1:4], stderror[,5:8], stderror[,9:12]))
+## A bit higher for human, and a bit lower for rhesus                                                                                                                                    
+boxplot(list(stderror[,2:4], stderror[,6:8], stderror[,8:12])) ## excluding heart samples  
+```
+
+```{r}
+# In the contrast matrix, we have many comparisons for species and tissues individually
+# Note: baseline is chimp heart
+
+cm1 <- makeContrasts(HvC_Liver = Human + Liver + Human.Liver - Liver, 
+                     HvC_Lung = Human + Lung + Human.Lung - Lung, 
+                     HvC_Heart = Human, 
+                     HvC_Kidney = Human + Kidney + Human.Kidney - Kidney, 
+                     HvR_Liver = Human + Liver + Human.Liver - (Rhesus + Liver + Rhesus.Liver), 
+                     HvR_Lung = Human + Lung + Human.Lung - (Rhesus + Lung + Rhesus.Lung), 
+                     HvR_Heart = Human - Rhesus, 
+                     HvR_Kidney = Human + Kidney + Human.Kidney - (Rhesus + Kidney + Rhesus.Kidney), 
+                     CvR_Liver = Liver - (Rhesus + Liver + Rhesus.Liver),  
+                     CvR_Lung = Lung - (Rhesus + Lung + Rhesus.Lung), 
+                     CvR_Heart = Rhesus, 
+                     CvR_Kidney = Kidney - (Rhesus + Kidney + Rhesus.Kidney), 
+                     H_HeartvLi = Human - (Human + Liver + Human.Liver), 
+                     H_HeartvLu = Human - (Human + Lung + Human.Lung), 
+                     H_HeartvK = Human - (Human + Kidney + Human.Kidney), 
+                     H_LivLu = (Human + Liver + Human.Liver) - (Human + Lung + Human.Lung), 
+                     H_LivK = (Human + Liver + Human.Liver) - (Human + Kidney + Human.Kidney),  
+                     H_LuvK = (Human + Lung + Human.Lung) - (Human + Kidney + Human.Kidney), 
+                     C_HeartvLi = Liver, 
+                     C_HeartvLu = Lung, 
+                     C_HeartvK = Kidney, 
+                     C_LivLu = Liver - Lung, 
+                     C_LivK = Liver - Kidney,  
+                     C_LuvK = Lung - Kidney,  
+                     R_HeartvLi = Rhesus - (Rhesus + Liver + Rhesus.Liver), 
+                     R_HeartvLu = Rhesus - (Rhesus + Lung + Rhesus.Lung), 
+                     R_HeartvK = Rhesus - (Rhesus + Kidney + Rhesus.Kidney), 
+                     R_LivLu = (Rhesus + Liver + Rhesus.Liver) - (Rhesus + Lung + Rhesus.Lung), 
+                     R_LivK = (Rhesus + Liver + Rhesus.Liver) - (Rhesus + Kidney + Rhesus.Kidney),  
+                     R_LuvK = (Rhesus + Lung + Rhesus.Lung) - (Rhesus + Kidney + Rhesus.Kidney), 
+                     Sig_HLi = Human.Liver, 
+                     Sig_HLu = Human.Lung, 
+                     Sig_HK = Human.Kidney, 
+                     Sig_RLi = Rhesus.Liver, 
+                     Sig_RLu = Rhesus.Lung, 
+                     Sig_RK = Rhesus.Kidney, 
+                     levels = design)
+
+# Implement contrasts
+
+contrasts_each_species <- contrasts.fit(fit.cyclic.norm, cm1)
+fit1 <- eBayes(contrasts_each_species)
+
+top3 <- list(HvC_Liver =topTable(fit1, coef=1, adjust="BH", number=Inf, sort.by="none"), 
+             HvC_Lung =topTable(fit1, coef=2, adjust="BH", number=Inf, sort.by="none"),  
+             HvC_Heart =topTable(fit1, coef=3, adjust="BH", number=Inf, sort.by="none"),  
+             HvC_Kidney =topTable(fit1, coef=4, adjust="BH", number=Inf, sort.by="none"), 
+             
+             HvR_Liver =topTable(fit1, coef=5, adjust="BH", number=Inf, sort.by="none"), 
+             HvR_Lung =topTable(fit1, coef=6, adjust="BH", number=Inf, sort.by="none"),
+             HvR_Heart =topTable(fit1, coef=7, adjust="BH", number=Inf, sort.by="none"), 
+             HvR_Kidney =topTable(fit1, coef=8, adjust="BH", number=Inf, sort.by="none"),  
+             
+             CvR_Liver =topTable(fit1, coef=9, adjust="BH", number=Inf, sort.by="none"),  
+             CvR_Lung =topTable(fit1, coef=10, adjust="BH", number=Inf, sort.by="none"), 
+             CvR_Heart =topTable(fit1, coef=11, adjust="BH", number=Inf, sort.by="none"), 
+             CvR_Kidney =topTable(fit1, coef=12, adjust="BH", number=Inf, sort.by="none"),
+             
+             H_HeartvLi =topTable(fit1, coef=13, adjust="BH", number=Inf, sort.by="none"), 
+             H_HeartvLu =topTable(fit1, coef=14, adjust="BH", number=Inf, sort.by="none"),  
+             H_HeartvK =topTable(fit1, coef=15, adjust="BH", number=Inf, sort.by="none"),  
+             H_LivLu =topTable(fit1, coef=16, adjust="BH", number=Inf, sort.by="none"), 
+             H_LivK =topTable(fit1, coef=17, adjust="BH", number=Inf, sort.by="none"), 
+             H_LuvK =topTable(fit1, coef=18, adjust="BH", number=Inf, sort.by="none"),
+             
+             C_HeartvLi =topTable(fit1, coef=19, adjust="BH", number=Inf, sort.by="none"), 
+             C_HeartvLu =topTable(fit1, coef=20, adjust="BH", number=Inf, sort.by="none"),  
+             C_HeartvK =topTable(fit1, coef=21, adjust="BH", number=Inf, sort.by="none"),  
+             C_LivLu =topTable(fit1, coef=22, adjust="BH", number=Inf, sort.by="none"), 
+             C_LivK =topTable(fit1, coef=23, adjust="BH", number=Inf, sort.by="none"), 
+             C_LuvK =topTable(fit1, coef=24, adjust="BH", number=Inf, sort.by="none"),
+             
+             R_HeartvLi =topTable(fit1, coef=25, adjust="BH", number=Inf, sort.by="none"), 
+             R_HeartvLu =topTable(fit1, coef=26, adjust="BH", number=Inf, sort.by="none"),  
+             R_HeartvK =topTable(fit1, coef=27, adjust="BH", number=Inf, sort.by="none"),  
+             R_LivLu =topTable(fit1, coef=28, adjust="BH", number=Inf, sort.by="none"), 
+             R_LivK =topTable(fit1, coef=29, adjust="BH", number=Inf, sort.by="none"), 
+             R_LuvK =topTable(fit1, coef=30, adjust="BH", number=Inf, sort.by="none"),
+             
+             Sig_HLi =topTable(fit1, coef=31, adjust="BH", number=Inf, sort.by="none"), 
+             Sig_HLu =topTable(fit1, coef=32, adjust="BH", number=Inf, sort.by="none"),  
+             Sig_HK =topTable(fit1, coef=33, adjust="BH", number=Inf, sort.by="none"),  
+             Sig_RLi =topTable(fit1, coef=34, adjust="BH", number=Inf, sort.by="none"), 
+             Sig_RLu =topTable(fit1, coef=35, adjust="BH", number=Inf, sort.by="none"), 
+             Sig_RK =topTable(fit1, coef=36, adjust="BH", number=Inf, sort.by="none") )
+
+
+# Set FDR level at 1% 
+
+FDR_level <- 0.01
+
+## DE between HvC
+
+mylist <- list()
+mylist[["Liver"]] <- row.names(top3[[names(top3)[1]]])[top3[[names(top3)[1]]]$adj.P.Val < FDR_level]
+mylist[["Lung"]] <-  row.names(top3[[names(top3)[2]]])[top3[[names(top3)[2]]]$adj.P.Val < FDR_level]
+mylist[["Heart"]] <- row.names(top3[[names(top3)[3]]])[top3[[names(top3)[3]]]$adj.P.Val < FDR_level]
+mylist[["Kidney"]] <- row.names(top3[[names(top3)[4]]])[top3[[names(top3)[4]]]$adj.P.Val < FDR_level]
+
+
+# Make 
+dev.off()
+Four_comp <- venn.diagram(mylist, filename= NULL, main="DE genes between Humans and Chimps (FDR 1%)", cex=1.5 , fill = pal[1:4], lty=1, height=2000, width=3000)
+grid.draw(Four_comp)
+
+## DE between HvR
+
+mylist <- list()
+mylist[["Liver"]] <- row.names(top3[[names(top3)[5]]])[top3[[names(top3)[5]]]$adj.P.Val < FDR_level]
+mylist[["Lung"]] <-  row.names(top3[[names(top3)[6]]])[top3[[names(top3)[6]]]$adj.P.Val < FDR_level]
+mylist[["Heart"]] <- row.names(top3[[names(top3)[7]]])[top3[[names(top3)[7]]]$adj.P.Val < FDR_level]
+mylist[["Kidney"]] <- row.names(top3[[names(top3)[8]]])[top3[[names(top3)[8]]]$adj.P.Val < FDR_level]
+
+# Make 
+dev.off()
+Four_comp <- venn.diagram(mylist, filename= NULL, main="DE genes between Humans and Rhesus (FDR 1%)", cex=1.5 , fill = pal[1:4], lty=1, height=2000, width=3000)
+grid.draw(Four_comp)
+
+## DE between CvR
+
+mylist <- list()
+mylist[["Liver"]] <- row.names(top3[[names(top3)[9]]])[top3[[names(top3)[9]]]$adj.P.Val < FDR_level]
+mylist[["Lung"]] <-  row.names(top3[[names(top3)[10]]])[top3[[names(top3)[10]]]$adj.P.Val < FDR_level]
+mylist[["Heart"]] <- row.names(top3[[names(top3)[11]]])[top3[[names(top3)[11]]]$adj.P.Val < FDR_level]
+mylist[["Kidney"]] <- row.names(top3[[names(top3)[12]]])[top3[[names(top3)[12]]]$adj.P.Val < FDR_level]
+
+# Make 
+dev.off()
+Four_comp <- venn.diagram(mylist, filename= NULL, main="DE genes between Chimps and Rhesus (FDR 1%)", cex=1.5 , fill = pal[1:4], lty=1, height=2000, width=3000)
+grid.draw(Four_comp)
+
+## DE between Heart and Liver
+
+mylist <- list()
+mylist[["Human"]] <- row.names(top3[[names(top3)[13]]])[top3[[names(top3)[13]]]$adj.P.Val < FDR_level]
+mylist[["Chimp"]] <-  row.names(top3[[names(top3)[19]]])[top3[[names(top3)[19]]]$adj.P.Val < FDR_level]
+mylist[["Rhesus"]] <- row.names(top3[[names(top3)[25]]])[top3[[names(top3)[25]]]$adj.P.Val < FDR_level]
+
+# Make 
+dev.off()
+Four_comp <- venn.diagram(mylist, filename= NULL, main="DE genes between Heart and Liver (FDR 1%)", cex=1.5 , fill = pal[1:3], lty=1, height=2000, width=3000)
+grid.draw(Four_comp)
+
+## DE between Heart and Lung
+
+mylist <- list()
+mylist[["Human"]] <- row.names(top3[[names(top3)[14]]])[top3[[names(top3)[14]]]$adj.P.Val < FDR_level]
+mylist[["Chimp"]] <-  row.names(top3[[names(top3)[20]]])[top3[[names(top3)[20]]]$adj.P.Val < FDR_level]
+mylist[["Rhesus"]] <- row.names(top3[[names(top3)[26]]])[top3[[names(top3)[26]]]$adj.P.Val < FDR_level]
+
+# Make 
+dev.off()
+Four_comp <- venn.diagram(mylist, filename= NULL, main="DE genes between Heart and Lung (FDR 1%)", cex=1.5 , fill = pal[1:3], lty=1, height=2000, width=3000)
+grid.draw(Four_comp)
+
+
+## DE between Heart and Kidney
+
+mylist <- list()
+mylist[["Human"]] <- row.names(top3[[names(top3)[15]]])[top3[[names(top3)[15]]]$adj.P.Val < FDR_level]
+mylist[["Chimp"]] <-  row.names(top3[[names(top3)[21]]])[top3[[names(top3)[21]]]$adj.P.Val < FDR_level]
+mylist[["Rhesus"]] <- row.names(top3[[names(top3)[27]]])[top3[[names(top3)[27]]]$adj.P.Val < FDR_level]
+
+# Make 
+dev.off()
+Four_comp <- venn.diagram(mylist, filename= NULL, main="DE genes between Heart and Kidney (FDR 1%)", cex=1.5 , fill = pal[1:3], lty=1, height=2000, width=3000)
+grid.draw(Four_comp)
+
+
+## DE between Liver and Lung
+
+mylist <- list()
+mylist[["Human"]] <- row.names(top3[[names(top3)[16]]])[top3[[names(top3)[16]]]$adj.P.Val < FDR_level]
+mylist[["Chimp"]] <-  row.names(top3[[names(top3)[22]]])[top3[[names(top3)[22]]]$adj.P.Val < FDR_level]
+mylist[["Rhesus"]] <- row.names(top3[[names(top3)[28]]])[top3[[names(top3)[28]]]$adj.P.Val < FDR_level]
+
+# Make 
+dev.off()
+Four_comp <- venn.diagram(mylist, filename= NULL, main="DE genes between Liver and Lung (FDR 1%)", cex=1.5 , fill = pal[1:3], lty=1, height=2000, width=3000)
+grid.draw(Four_comp)
+
+## DE between Liver and Kidney
+
+mylist <- list()
+mylist[["Human"]] <- row.names(top3[[names(top3)[17]]])[top3[[names(top3)[17]]]$adj.P.Val < FDR_level]
+mylist[["Chimp"]] <-  row.names(top3[[names(top3)[23]]])[top3[[names(top3)[23]]]$adj.P.Val < FDR_level]
+mylist[["Rhesus"]] <- row.names(top3[[names(top3)[29]]])[top3[[names(top3)[29]]]$adj.P.Val < FDR_level]
+
+# Make 
+dev.off()
+Four_comp <- venn.diagram(mylist, filename= NULL, main="DE genes between Liver and Kidney (FDR 1%)", cex=1.5 , fill = pal[1:3], lty=1, height=2000, width=3000)
+grid.draw(Four_comp)
+
+## DE between Lung and Kidney
+
+mylist <- list()
+mylist[["Human"]] <- row.names(top3[[names(top3)[18]]])[top3[[names(top3)[18]]]$adj.P.Val < FDR_level]
+mylist[["Chimp"]] <-  row.names(top3[[names(top3)[24]]])[top3[[names(top3)[24]]]$adj.P.Val < FDR_level]
+mylist[["Rhesus"]] <- row.names(top3[[names(top3)[30]]])[top3[[names(top3)[30]]]$adj.P.Val < FDR_level]
+
+# Make 
+dev.off()
+Four_comp <- venn.diagram(mylist, filename= NULL, main="DE genes between Lung and Kidney (FDR 1%)", cex=1.5 , fill = pal[1:3], lty=1, height=2000, width=3000)
+grid.draw(Four_comp)
+
+```
+
+
+## Find tissue specific genes found in each species first and then combine the results in a Venn Diagram (no RIN score)
+
+```{r}
+
+# Set FDR level at 1%
+
+FDR_level <- 0.01
+
+### Heart specific (DE in Heart v. Liver, Heart v. Lung, Heart v. Kidney but not Liver versus Lung, Liver versus Kidney, Lung v. Kidney)
+
+mylist <- list()
+mylist[["Human"]] <- intersect(intersect(intersect(intersect(intersect(row.names(top3[[names(top3)[13]]])[top3[[names(top3)[13]]]$adj.P.Val < FDR_level], row.names(top3[[names(top3)[14]]])[top3[[names(top3)[14]]]$adj.P.Val < FDR_level]),  row.names(top3[[names(top3)[15]]])[top3[[names(top3)[15]]]$adj.P.Val < FDR_level]), row.names(top3[[names(top3)[16]]])[top3[[names(top3)[16]]]$adj.P.Val > FDR_level]), row.names(top3[[names(top3)[17]]])[top3[[names(top3)[17]]]$adj.P.Val > FDR_level]), row.names(top3[[names(top3)[18]]])[top3[[names(top3)[18]]]$adj.P.Val > FDR_level])
+
+
+mylist[["Chimp"]] <- intersect(intersect(intersect(intersect(intersect(row.names(top3[[names(top3)[19]]])[top3[[names(top3)[19]]]$adj.P.Val < FDR_level], row.names(top3[[names(top3)[20]]])[top3[[names(top3)[20]]]$adj.P.Val < FDR_level]),  row.names(top3[[names(top3)[21]]])[top3[[names(top3)[21]]]$adj.P.Val < FDR_level]), row.names(top3[[names(top3)[22]]])[top3[[names(top3)[22]]]$adj.P.Val > FDR_level]), row.names(top3[[names(top3)[23]]])[top3[[names(top3)[23]]]$adj.P.Val > FDR_level]), row.names(top3[[names(top3)[24]]])[top3[[names(top3)[24]]]$adj.P.Val > FDR_level])
+  
+mylist[["Rhesus"]] <- intersect(intersect(intersect(intersect(intersect(row.names(top3[[names(top3)[25]]])[top3[[names(top3)[25]]]$adj.P.Val < FDR_level], row.names(top3[[names(top3)[26]]])[top3[[names(top3)[26]]]$adj.P.Val < FDR_level]),  row.names(top3[[names(top3)[27]]])[top3[[names(top3)[27]]]$adj.P.Val < FDR_level]), row.names(top3[[names(top3)[28]]])[top3[[names(top3)[28]]]$adj.P.Val > FDR_level]), row.names(top3[[names(top3)[29]]])[top3[[names(top3)[29]]]$adj.P.Val > FDR_level]), row.names(top3[[names(top3)[30]]])[top3[[names(top3)[30]]]$adj.P.Val > FDR_level])
+  
+
+# Make 
+dev.off()
+Four_comp <- venn.diagram(mylist, filename= NULL, main="Heart specific DE genes (FDR 1%)", cex=1.5 , fill = pal[1:3], lty=1, height=2000, width=3000)
+grid.draw(Four_comp)
+
+
+# Set FDR level at 1%
+
+FDR_level <- 0.01
+
+### Liver specific
+
+mylist <- list()
+mylist[["Human"]] <- intersect(intersect(intersect(intersect(intersect(row.names(top3[[names(top3)[13]]])[top3[[names(top3)[13]]]$adj.P.Val < FDR_level], row.names(top3[[names(top3)[16]]])[top3[[names(top3)[16]]]$adj.P.Val < FDR_level]),  row.names(top3[[names(top3)[17]]])[top3[[names(top3)[17]]]$adj.P.Val < FDR_level]), row.names(top3[[names(top3)[14]]])[top3[[names(top3)[14]]]$adj.P.Val > FDR_level]), row.names(top3[[names(top3)[15]]])[top3[[names(top3)[15]]]$adj.P.Val > FDR_level]), row.names(top3[[names(top3)[18]]])[top3[[names(top3)[18]]]$adj.P.Val > FDR_level])
+
+
+mylist[["Chimp"]] <- intersect(intersect(intersect(intersect(intersect(row.names(top3[[names(top3)[19]]])[top3[[names(top3)[19]]]$adj.P.Val < FDR_level], row.names(top3[[names(top3)[22]]])[top3[[names(top3)[22]]]$adj.P.Val < FDR_level]),  row.names(top3[[names(top3)[23]]])[top3[[names(top3)[23]]]$adj.P.Val < FDR_level]), row.names(top3[[names(top3)[20]]])[top3[[names(top3)[20]]]$adj.P.Val > FDR_level]), row.names(top3[[names(top3)[21]]])[top3[[names(top3)[21]]]$adj.P.Val > FDR_level]), row.names(top3[[names(top3)[24]]])[top3[[names(top3)[24]]]$adj.P.Val > FDR_level])
+  
+mylist[["Rhesus"]] <- intersect(intersect(intersect(intersect(intersect(row.names(top3[[names(top3)[25]]])[top3[[names(top3)[25]]]$adj.P.Val < FDR_level], row.names(top3[[names(top3)[28]]])[top3[[names(top3)[28]]]$adj.P.Val < FDR_level]),  row.names(top3[[names(top3)[29]]])[top3[[names(top3)[29]]]$adj.P.Val < FDR_level]), row.names(top3[[names(top3)[26]]])[top3[[names(top3)[26]]]$adj.P.Val > FDR_level]), row.names(top3[[names(top3)[27]]])[top3[[names(top3)[27]]]$adj.P.Val > FDR_level]), row.names(top3[[names(top3)[30]]])[top3[[names(top3)[30]]]$adj.P.Val > FDR_level])
+  
+
+# Make 
+dev.off()
+Four_comp <- venn.diagram(mylist, filename= NULL, main="Liver specific DE genes (FDR 1%)", cex=1.5 , fill = pal[1:3], lty=1, height=2000, width=3000)
+grid.draw(Four_comp)
+
+
+
+
+### Kidney specific 
+mylist <- list()
+mylist[["Human"]] <- intersect(intersect(intersect(intersect(intersect(row.names(top3[[names(top3)[15]]])[top3[[names(top3)[15]]]$adj.P.Val < FDR_level], row.names(top3[[names(top3)[17]]])[top3[[names(top3)[17]]]$adj.P.Val < FDR_level]),  row.names(top3[[names(top3)[18]]])[top3[[names(top3)[18]]]$adj.P.Val < FDR_level]), row.names(top3[[names(top3)[13]]])[top3[[names(top3)[13]]]$adj.P.Val > FDR_level]), row.names(top3[[names(top3)[14]]])[top3[[names(top3)[14]]]$adj.P.Val > FDR_level]), row.names(top3[[names(top3)[16]]])[top3[[names(top3)[16]]]$adj.P.Val > FDR_level])
+
+
+mylist[["Chimp"]] <- intersect(intersect(intersect(intersect(intersect(row.names(top3[[names(top3)[21]]])[top3[[names(top3)[21]]]$adj.P.Val < FDR_level], row.names(top3[[names(top3)[23]]])[top3[[names(top3)[23]]]$adj.P.Val < FDR_level]),  row.names(top3[[names(top3)[24]]])[top3[[names(top3)[24]]]$adj.P.Val < FDR_level]), row.names(top3[[names(top3)[19]]])[top3[[names(top3)[19]]]$adj.P.Val > FDR_level]), row.names(top3[[names(top3)[20]]])[top3[[names(top3)[20]]]$adj.P.Val > FDR_level]), row.names(top3[[names(top3)[22]]])[top3[[names(top3)[22]]]$adj.P.Val > FDR_level])
+  
+mylist[["Rhesus"]] <- intersect(intersect(intersect(intersect(intersect(row.names(top3[[names(top3)[27]]])[top3[[names(top3)[27]]]$adj.P.Val < FDR_level], row.names(top3[[names(top3)[29]]])[top3[[names(top3)[29]]]$adj.P.Val < FDR_level]),  row.names(top3[[names(top3)[30]]])[top3[[names(top3)[30]]]$adj.P.Val < FDR_level]), row.names(top3[[names(top3)[25]]])[top3[[names(top3)[25]]]$adj.P.Val > FDR_level]), row.names(top3[[names(top3)[26]]])[top3[[names(top3)[26]]]$adj.P.Val > FDR_level]), row.names(top3[[names(top3)[28]]])[top3[[names(top3)[28]]]$adj.P.Val > FDR_level])
+  
+
+# Make 
+dev.off()
+Four_comp <- venn.diagram(mylist, filename= NULL, main="Kidney specific DE genes (FDR 1%)", cex=1.5 , fill = pal[1:3], lty=1, height=2000, width=3000)
+grid.draw(Four_comp)
+
+
+
+### Lung specific 
+mylist <- list()
+mylist[["Human"]] <- intersect(intersect(intersect(intersect(intersect(row.names(top3[[names(top3)[14]]])[top3[[names(top3)[14]]]$adj.P.Val < FDR_level], row.names(top3[[names(top3)[16]]])[top3[[names(top3)[16]]]$adj.P.Val < FDR_level]),  row.names(top3[[names(top3)[18]]])[top3[[names(top3)[18]]]$adj.P.Val < FDR_level]), row.names(top3[[names(top3)[13]]])[top3[[names(top3)[13]]]$adj.P.Val > FDR_level]), row.names(top3[[names(top3)[15]]])[top3[[names(top3)[15]]]$adj.P.Val > FDR_level]), row.names(top3[[names(top3)[17]]])[top3[[names(top3)[17]]]$adj.P.Val > FDR_level])
+
+
+mylist[["Chimp"]] <- intersect(intersect(intersect(intersect(intersect(row.names(top3[[names(top3)[20]]])[top3[[names(top3)[20]]]$adj.P.Val < FDR_level], row.names(top3[[names(top3)[22]]])[top3[[names(top3)[22]]]$adj.P.Val < FDR_level]),  row.names(top3[[names(top3)[24]]])[top3[[names(top3)[24]]]$adj.P.Val < FDR_level]), row.names(top3[[names(top3)[19]]])[top3[[names(top3)[19]]]$adj.P.Val > FDR_level]), row.names(top3[[names(top3)[21]]])[top3[[names(top3)[21]]]$adj.P.Val > FDR_level]), row.names(top3[[names(top3)[23]]])[top3[[names(top3)[23]]]$adj.P.Val > FDR_level])
+  
+mylist[["Rhesus"]] <- intersect(intersect(intersect(intersect(intersect(row.names(top3[[names(top3)[26]]])[top3[[names(top3)[26]]]$adj.P.Val < FDR_level], row.names(top3[[names(top3)[28]]])[top3[[names(top3)[28]]]$adj.P.Val < FDR_level]),  row.names(top3[[names(top3)[30]]])[top3[[names(top3)[30]]]$adj.P.Val < FDR_level]), row.names(top3[[names(top3)[25]]])[top3[[names(top3)[25]]]$adj.P.Val > FDR_level]), row.names(top3[[names(top3)[27]]])[top3[[names(top3)[27]]]$adj.P.Val > FDR_level]), row.names(top3[[names(top3)[29]]])[top3[[names(top3)[29]]]$adj.P.Val > FDR_level])
+  
+
+# Make 
+dev.off()
+Four_comp <- venn.diagram(mylist, filename= NULL, main="Lung specific DE genes (FDR 1%)", cex=1.5 , fill = pal[1:3], lty=1, height=2000, width=3000)
+grid.draw(Four_comp)
+
+
+
+```
+
+
+## Find tissue specific genes found in each species first and then combine the results in a Venn Diagram (no RIN score)
+
+```{r}
+
+# Set FDR level at 1%
+
+FDR_level <- 0.01
+
+### Heart specific (DE in Heart v. Liver, Heart v. Lung, Heart v. Kidney but not Liver versus Lung, Liver versus Kidney, Lung v. Kidney)
+
+mylist <- list()
+mylist[["Human"]] <- intersect(intersect(intersect(intersect(intersect(row.names(top3[[names(top3)[13]]])[top3[[names(top3)[13]]]$adj.P.Val < FDR_level], row.names(top3[[names(top3)[14]]])[top3[[names(top3)[14]]]$adj.P.Val < FDR_level]),  row.names(top3[[names(top3)[15]]])[top3[[names(top3)[15]]]$adj.P.Val < FDR_level]), row.names(top3[[names(top3)[16]]])[top3[[names(top3)[16]]]$adj.P.Val > FDR_level]), row.names(top3[[names(top3)[17]]])[top3[[names(top3)[17]]]$adj.P.Val > FDR_level]), row.names(top3[[names(top3)[18]]])[top3[[names(top3)[18]]]$adj.P.Val > FDR_level])
+
+
+mylist[["Chimp"]] <- intersect(intersect(intersect(intersect(intersect(row.names(top3[[names(top3)[19]]])[top3[[names(top3)[19]]]$adj.P.Val < FDR_level], row.names(top3[[names(top3)[20]]])[top3[[names(top3)[20]]]$adj.P.Val < FDR_level]),  row.names(top3[[names(top3)[21]]])[top3[[names(top3)[21]]]$adj.P.Val < FDR_level]), row.names(top3[[names(top3)[22]]])[top3[[names(top3)[22]]]$adj.P.Val > FDR_level]), row.names(top3[[names(top3)[23]]])[top3[[names(top3)[23]]]$adj.P.Val > FDR_level]), row.names(top3[[names(top3)[24]]])[top3[[names(top3)[24]]]$adj.P.Val > FDR_level])
+  
+mylist[["Rhesus"]] <- intersect(intersect(intersect(intersect(intersect(row.names(top3[[names(top3)[25]]])[top3[[names(top3)[25]]]$adj.P.Val < FDR_level], row.names(top3[[names(top3)[26]]])[top3[[names(top3)[26]]]$adj.P.Val < FDR_level]),  row.names(top3[[names(top3)[27]]])[top3[[names(top3)[27]]]$adj.P.Val < FDR_level]), row.names(top3[[names(top3)[28]]])[top3[[names(top3)[28]]]$adj.P.Val > FDR_level]), row.names(top3[[names(top3)[29]]])[top3[[names(top3)[29]]]$adj.P.Val > FDR_level]), row.names(top3[[names(top3)[30]]])[top3[[names(top3)[30]]]$adj.P.Val > FDR_level])
+  
+
+# Make 
+dev.off()
+Four_comp <- venn.diagram(mylist, filename= NULL, main="Heart specific DE genes (FDR 1%)", cex=1.5 , fill = pal[1:3], lty=1, height=2000, width=3000)
+grid.draw(Four_comp)
+
+
+# Set FDR level at 1%
+
+FDR_level <- 0.01
+
+### Liver specific
+
+mylist <- list()
+mylist[["Human"]] <- intersect(intersect(intersect(intersect(intersect(row.names(top3[[names(top3)[13]]])[top3[[names(top3)[13]]]$adj.P.Val < FDR_level], row.names(top3[[names(top3)[16]]])[top3[[names(top3)[16]]]$adj.P.Val < FDR_level]),  row.names(top3[[names(top3)[17]]])[top3[[names(top3)[17]]]$adj.P.Val < FDR_level]), row.names(top3[[names(top3)[14]]])[top3[[names(top3)[14]]]$adj.P.Val > FDR_level]), row.names(top3[[names(top3)[15]]])[top3[[names(top3)[15]]]$adj.P.Val > FDR_level]), row.names(top3[[names(top3)[18]]])[top3[[names(top3)[18]]]$adj.P.Val > FDR_level])
+
+
+mylist[["Chimp"]] <- intersect(intersect(intersect(intersect(intersect(row.names(top3[[names(top3)[19]]])[top3[[names(top3)[19]]]$adj.P.Val < FDR_level], row.names(top3[[names(top3)[22]]])[top3[[names(top3)[22]]]$adj.P.Val < FDR_level]),  row.names(top3[[names(top3)[23]]])[top3[[names(top3)[23]]]$adj.P.Val < FDR_level]), row.names(top3[[names(top3)[20]]])[top3[[names(top3)[20]]]$adj.P.Val > FDR_level]), row.names(top3[[names(top3)[21]]])[top3[[names(top3)[21]]]$adj.P.Val > FDR_level]), row.names(top3[[names(top3)[24]]])[top3[[names(top3)[24]]]$adj.P.Val > FDR_level])
+  
+mylist[["Rhesus"]] <- intersect(intersect(intersect(intersect(intersect(row.names(top3[[names(top3)[25]]])[top3[[names(top3)[25]]]$adj.P.Val < FDR_level], row.names(top3[[names(top3)[28]]])[top3[[names(top3)[28]]]$adj.P.Val < FDR_level]),  row.names(top3[[names(top3)[29]]])[top3[[names(top3)[29]]]$adj.P.Val < FDR_level]), row.names(top3[[names(top3)[26]]])[top3[[names(top3)[26]]]$adj.P.Val > FDR_level]), row.names(top3[[names(top3)[27]]])[top3[[names(top3)[27]]]$adj.P.Val > FDR_level]), row.names(top3[[names(top3)[30]]])[top3[[names(top3)[30]]]$adj.P.Val > FDR_level])
+  
+
+# Make 
+dev.off()
+Four_comp <- venn.diagram(mylist, filename= NULL, main="Liver specific DE genes (FDR 1%)", cex=1.5 , fill = pal[1:3], lty=1, height=2000, width=3000)
+grid.draw(Four_comp)
+
+
+
+
+### Kidney specific 
+mylist <- list()
+mylist[["Human"]] <- intersect(intersect(intersect(intersect(intersect(row.names(top3[[names(top3)[15]]])[top3[[names(top3)[15]]]$adj.P.Val < FDR_level], row.names(top3[[names(top3)[17]]])[top3[[names(top3)[17]]]$adj.P.Val < FDR_level]),  row.names(top3[[names(top3)[18]]])[top3[[names(top3)[18]]]$adj.P.Val < FDR_level]), row.names(top3[[names(top3)[13]]])[top3[[names(top3)[13]]]$adj.P.Val > FDR_level]), row.names(top3[[names(top3)[14]]])[top3[[names(top3)[14]]]$adj.P.Val > FDR_level]), row.names(top3[[names(top3)[16]]])[top3[[names(top3)[16]]]$adj.P.Val > FDR_level])
+
+
+mylist[["Chimp"]] <- intersect(intersect(intersect(intersect(intersect(row.names(top3[[names(top3)[21]]])[top3[[names(top3)[21]]]$adj.P.Val < FDR_level], row.names(top3[[names(top3)[23]]])[top3[[names(top3)[23]]]$adj.P.Val < FDR_level]),  row.names(top3[[names(top3)[24]]])[top3[[names(top3)[24]]]$adj.P.Val < FDR_level]), row.names(top3[[names(top3)[19]]])[top3[[names(top3)[19]]]$adj.P.Val > FDR_level]), row.names(top3[[names(top3)[20]]])[top3[[names(top3)[20]]]$adj.P.Val > FDR_level]), row.names(top3[[names(top3)[22]]])[top3[[names(top3)[22]]]$adj.P.Val > FDR_level])
+  
+mylist[["Rhesus"]] <- intersect(intersect(intersect(intersect(intersect(row.names(top3[[names(top3)[27]]])[top3[[names(top3)[27]]]$adj.P.Val < FDR_level], row.names(top3[[names(top3)[29]]])[top3[[names(top3)[29]]]$adj.P.Val < FDR_level]),  row.names(top3[[names(top3)[30]]])[top3[[names(top3)[30]]]$adj.P.Val < FDR_level]), row.names(top3[[names(top3)[25]]])[top3[[names(top3)[25]]]$adj.P.Val > FDR_level]), row.names(top3[[names(top3)[26]]])[top3[[names(top3)[26]]]$adj.P.Val > FDR_level]), row.names(top3[[names(top3)[28]]])[top3[[names(top3)[28]]]$adj.P.Val > FDR_level])
+  
+
+# Make 
+dev.off()
+Four_comp <- venn.diagram(mylist, filename= NULL, main="Kidney specific DE genes (FDR 1%)", cex=1.5 , fill = pal[1:3], lty=1, height=2000, width=3000)
+grid.draw(Four_comp)
+
+
+
+### Lung specific 
+mylist <- list()
+mylist[["Human"]] <- intersect(intersect(intersect(intersect(intersect(row.names(top3[[names(top3)[14]]])[top3[[names(top3)[14]]]$adj.P.Val < FDR_level], row.names(top3[[names(top3)[16]]])[top3[[names(top3)[16]]]$adj.P.Val < FDR_level]),  row.names(top3[[names(top3)[18]]])[top3[[names(top3)[18]]]$adj.P.Val < FDR_level]), row.names(top3[[names(top3)[13]]])[top3[[names(top3)[13]]]$adj.P.Val > FDR_level]), row.names(top3[[names(top3)[15]]])[top3[[names(top3)[15]]]$adj.P.Val > FDR_level]), row.names(top3[[names(top3)[17]]])[top3[[names(top3)[17]]]$adj.P.Val > FDR_level])
+
+
+mylist[["Chimp"]] <- intersect(intersect(intersect(intersect(intersect(row.names(top3[[names(top3)[20]]])[top3[[names(top3)[20]]]$adj.P.Val < FDR_level], row.names(top3[[names(top3)[22]]])[top3[[names(top3)[22]]]$adj.P.Val < FDR_level]),  row.names(top3[[names(top3)[24]]])[top3[[names(top3)[24]]]$adj.P.Val < FDR_level]), row.names(top3[[names(top3)[19]]])[top3[[names(top3)[19]]]$adj.P.Val > FDR_level]), row.names(top3[[names(top3)[21]]])[top3[[names(top3)[21]]]$adj.P.Val > FDR_level]), row.names(top3[[names(top3)[23]]])[top3[[names(top3)[23]]]$adj.P.Val > FDR_level])
+  
+mylist[["Rhesus"]] <- intersect(intersect(intersect(intersect(intersect(row.names(top3[[names(top3)[26]]])[top3[[names(top3)[26]]]$adj.P.Val < FDR_level], row.names(top3[[names(top3)[28]]])[top3[[names(top3)[28]]]$adj.P.Val < FDR_level]),  row.names(top3[[names(top3)[30]]])[top3[[names(top3)[30]]]$adj.P.Val < FDR_level]), row.names(top3[[names(top3)[25]]])[top3[[names(top3)[25]]]$adj.P.Val > FDR_level]), row.names(top3[[names(top3)[27]]])[top3[[names(top3)[27]]]$adj.P.Val > FDR_level]), row.names(top3[[names(top3)[29]]])[top3[[names(top3)[29]]]$adj.P.Val > FDR_level])
+  
+
+# Make 
+dev.off()
+Four_comp <- venn.diagram(mylist, filename= NULL, main="Lung specific DE genes (FDR 1%)", cex=1.5 , fill = pal[1:3], lty=1, height=2000, width=3000)
+grid.draw(Four_comp)
+
+
+```
+
+
+## Looking for interesting cases: for all of the tissue-specific genes, see which have a species-specific component 
+
+```{r}
+
+# Set FDR level at 1%
+
+FDR_level <- 0.01
+
+### Heart specific with interactions
+
+mylist <- list()
+
+# Heart specific with human-by-heart interaction
+mylist[["Human"]] <- intersect(intersect(intersect(intersect(intersect(intersect(intersect(intersect(row.names(top3[[names(top3)[13]]])[top3[[names(top3)[13]]]$adj.P.Val < FDR_level], row.names(top3[[names(top3)[14]]])[top3[[names(top3)[14]]]$adj.P.Val < FDR_level]),  row.names(top3[[names(top3)[15]]])[top3[[names(top3)[15]]]$adj.P.Val < FDR_level]), row.names(top3[[names(top3)[16]]])[top3[[names(top3)[16]]]$adj.P.Val > FDR_level]), row.names(top3[[names(top3)[17]]])[top3[[names(top3)[17]]]$adj.P.Val > FDR_level]), row.names(top3[[names(top3)[18]]])[top3[[names(top3)[18]]]$adj.P.Val > FDR_level]), row.names(top3[[names(top3)[31]]])[top3[[names(top3)[31]]]$adj.P.Val < FDR_level]), row.names(top3[[names(top3)[32]]])[top3[[names(top3)[32]]]$adj.P.Val < FDR_level]), row.names(top3[[names(top3)[33]]])[top3[[names(top3)[33]]]$adj.P.Val < FDR_level])
+
+# Heart specific with chimp-by-tissue interactions
+
+chimp_specific <- intersect(intersect(intersect(intersect(intersect(intersect(intersect(intersect(intersect(intersect(intersect(row.names(top3[[names(top3)[19]]])[top3[[names(top3)[19]]]$adj.P.Val < FDR_level], row.names(top3[[names(top3)[20]]])[top3[[names(top3)[20]]]$adj.P.Val < FDR_level]),  row.names(top3[[names(top3)[21]]])[top3[[names(top3)[21]]]$adj.P.Val < FDR_level]), row.names(top3[[names(top3)[22]]])[top3[[names(top3)[22]]]$adj.P.Val > FDR_level]), row.names(top3[[names(top3)[23]]])[top3[[names(top3)[23]]]$adj.P.Val > FDR_level]), row.names(top3[[names(top3)[24]]])[top3[[names(top3)[24]]]$adj.P.Val > FDR_level]), row.names(top3[[names(top3)[31]]])[top3[[names(top3)[31]]]$adj.P.Val < FDR_level]), row.names(top3[[names(top3)[32]]])[top3[[names(top3)[32]]]$adj.P.Val < FDR_level]), row.names(top3[[names(top3)[33]]])[top3[[names(top3)[33]]]$adj.P.Val < FDR_level]), row.names(top3[[names(top3)[34]]])[top3[[names(top3)[34]]]$adj.P.Val < FDR_level]), row.names(top3[[names(top3)[35]]])[top3[[names(top3)[35]]]$adj.P.Val < FDR_level]), row.names(top3[[names(top3)[36]]])[top3[[names(top3)[36]]]$adj.P.Val < FDR_level])
+
+chimp_human <- intersect(intersect(intersect(intersect(intersect(intersect(intersect(intersect(intersect(intersect(intersect(row.names(top3[[names(top3)[19]]])[top3[[names(top3)[19]]]$adj.P.Val < FDR_level], row.names(top3[[names(top3)[20]]])[top3[[names(top3)[20]]]$adj.P.Val < FDR_level]),  row.names(top3[[names(top3)[21]]])[top3[[names(top3)[21]]]$adj.P.Val < FDR_level]), row.names(top3[[names(top3)[22]]])[top3[[names(top3)[22]]]$adj.P.Val > FDR_level]), row.names(top3[[names(top3)[23]]])[top3[[names(top3)[23]]]$adj.P.Val > FDR_level]), row.names(top3[[names(top3)[24]]])[top3[[names(top3)[24]]]$adj.P.Val > FDR_level]), row.names(top3[[names(top3)[31]]])[top3[[names(top3)[31]]]$adj.P.Val < FDR_level]), row.names(top3[[names(top3)[32]]])[top3[[names(top3)[32]]]$adj.P.Val < FDR_level]), row.names(top3[[names(top3)[33]]])[top3[[names(top3)[33]]]$adj.P.Val < FDR_level]), row.names(top3[[names(top3)[34]]])[top3[[names(top3)[34]]]$adj.P.Val > FDR_level]), row.names(top3[[names(top3)[35]]])[top3[[names(top3)[35]]]$adj.P.Val > FDR_level]), row.names(top3[[names(top3)[36]]])[top3[[names(top3)[36]]]$adj.P.Val > FDR_level])
+
+chimp_rhesus <- intersect(intersect(intersect(intersect(intersect(intersect(intersect(intersect(intersect(intersect(intersect(row.names(top3[[names(top3)[19]]])[top3[[names(top3)[19]]]$adj.P.Val < FDR_level], row.names(top3[[names(top3)[20]]])[top3[[names(top3)[20]]]$adj.P.Val < FDR_level]),  row.names(top3[[names(top3)[21]]])[top3[[names(top3)[21]]]$adj.P.Val < FDR_level]), row.names(top3[[names(top3)[22]]])[top3[[names(top3)[22]]]$adj.P.Val > FDR_level]), row.names(top3[[names(top3)[23]]])[top3[[names(top3)[23]]]$adj.P.Val > FDR_level]), row.names(top3[[names(top3)[24]]])[top3[[names(top3)[24]]]$adj.P.Val > FDR_level]), row.names(top3[[names(top3)[31]]])[top3[[names(top3)[31]]]$adj.P.Val > FDR_level]), row.names(top3[[names(top3)[32]]])[top3[[names(top3)[32]]]$adj.P.Val > FDR_level]), row.names(top3[[names(top3)[33]]])[top3[[names(top3)[33]]]$adj.P.Val > FDR_level]), row.names(top3[[names(top3)[34]]])[top3[[names(top3)[34]]]$adj.P.Val < FDR_level]), row.names(top3[[names(top3)[35]]])[top3[[names(top3)[35]]]$adj.P.Val < FDR_level]), row.names(top3[[names(top3)[36]]])[top3[[names(top3)[36]]]$adj.P.Val < FDR_level])
+
+mylist[["Chimp"]] <- union(union(chimp_specific, chimp_human), chimp_rhesus)
+
+  
+mylist[["Rhesus"]] <- intersect(intersect(intersect(intersect(intersect(intersect(intersect(intersect(row.names(top3[[names(top3)[25]]])[top3[[names(top3)[25]]]$adj.P.Val < FDR_level], row.names(top3[[names(top3)[26]]])[top3[[names(top3)[26]]]$adj.P.Val < FDR_level]),  row.names(top3[[names(top3)[27]]])[top3[[names(top3)[27]]]$adj.P.Val < FDR_level]), row.names(top3[[names(top3)[28]]])[top3[[names(top3)[28]]]$adj.P.Val > FDR_level]), row.names(top3[[names(top3)[29]]])[top3[[names(top3)[29]]]$adj.P.Val > FDR_level]), row.names(top3[[names(top3)[30]]])[top3[[names(top3)[30]]]$adj.P.Val > FDR_level]),  row.names(top3[[names(top3)[34]]])[top3[[names(top3)[34]]]$adj.P.Val < FDR_level]), row.names(top3[[names(top3)[35]]])[top3[[names(top3)[35]]]$adj.P.Val < FDR_level]), row.names(top3[[names(top3)[36]]])[top3[[names(top3)[36]]]$adj.P.Val < FDR_level])
+  
+
+# Make 
+dev.off()
+Four_comp <- venn.diagram(mylist, filename= NULL, main="Heart specific DE genes with species-by-tissue interactions (FDR 1%)", cex=1.5 , fill = pal[1:3], lty=1, height=2000, width=3000)
+grid.draw(Four_comp)
+
+
+# Set FDR level at 1%
+
+FDR_level <- 0.01
+
+### Liver specific with a human by liver interaction
+
+mylist <- list()
+mylist[["Human"]] <- intersect(intersect(intersect(intersect(intersect(intersect(intersect(intersect(row.names(top3[[names(top3)[13]]])[top3[[names(top3)[13]]]$adj.P.Val < FDR_level], row.names(top3[[names(top3)[16]]])[top3[[names(top3)[16]]]$adj.P.Val < FDR_level]),  row.names(top3[[names(top3)[17]]])[top3[[names(top3)[17]]]$adj.P.Val < FDR_level]), row.names(top3[[names(top3)[14]]])[top3[[names(top3)[14]]]$adj.P.Val > FDR_level]), row.names(top3[[names(top3)[15]]])[top3[[names(top3)[15]]]$adj.P.Val > FDR_level]), row.names(top3[[names(top3)[18]]])[top3[[names(top3)[18]]]$adj.P.Val > FDR_level]), row.names(top3[[names(top3)[31]]])[top3[[names(top3)[31]]]$adj.P.Val < FDR_level]), row.names(top3[[names(top3)[32]]])[top3[[names(top3)[32]]]$adj.P.Val > FDR_level]), row.names(top3[[names(top3)[33]]])[top3[[names(top3)[33]]]$adj.P.Val > FDR_level])
+
+mylist[["Chimp"]] 
+
+
+chimp_specific <- intersect(intersect(intersect(intersect(intersect(intersect(intersect(row.names(top3[[names(top3)[19]]])[top3[[names(top3)[19]]]$adj.P.Val < FDR_level], row.names(top3[[names(top3)[22]]])[top3[[names(top3)[22]]]$adj.P.Val < FDR_level]),  row.names(top3[[names(top3)[23]]])[top3[[names(top3)[23]]]$adj.P.Val < FDR_level]), row.names(top3[[names(top3)[20]]])[top3[[names(top3)[20]]]$adj.P.Val > FDR_level]), row.names(top3[[names(top3)[21]]])[top3[[names(top3)[21]]]$adj.P.Val > FDR_level]), row.names(top3[[names(top3)[24]]])[top3[[names(top3)[24]]]$adj.P.Val > FDR_level]), row.names(top3[[names(top3)[31]]])[top3[[names(top3)[31]]]$adj.P.Val < FDR_level]), row.names(top3[[names(top3)[34]]])[top3[[names(top3)[34]]]$adj.P.Val < FDR_level])
+
+chimp_human <- intersect(intersect(intersect(intersect(intersect(intersect(intersect(row.names(top3[[names(top3)[19]]])[top3[[names(top3)[19]]]$adj.P.Val < FDR_level], row.names(top3[[names(top3)[22]]])[top3[[names(top3)[22]]]$adj.P.Val < FDR_level]),  row.names(top3[[names(top3)[23]]])[top3[[names(top3)[23]]]$adj.P.Val < FDR_level]), row.names(top3[[names(top3)[20]]])[top3[[names(top3)[20]]]$adj.P.Val > FDR_level]), row.names(top3[[names(top3)[21]]])[top3[[names(top3)[21]]]$adj.P.Val > FDR_level]), row.names(top3[[names(top3)[24]]])[top3[[names(top3)[24]]]$adj.P.Val > FDR_level]), row.names(top3[[names(top3)[31]]])[top3[[names(top3)[31]]]$adj.P.Val < FDR_level]), row.names(top3[[names(top3)[34]]])[top3[[names(top3)[34]]]$adj.P.Val > FDR_level])
+  
+chimp_rhesus <- intersect(intersect(intersect(intersect(intersect(intersect(intersect(row.names(top3[[names(top3)[19]]])[top3[[names(top3)[19]]]$adj.P.Val < FDR_level], row.names(top3[[names(top3)[22]]])[top3[[names(top3)[22]]]$adj.P.Val < FDR_level]),  row.names(top3[[names(top3)[23]]])[top3[[names(top3)[23]]]$adj.P.Val < FDR_level]), row.names(top3[[names(top3)[20]]])[top3[[names(top3)[20]]]$adj.P.Val > FDR_level]), row.names(top3[[names(top3)[21]]])[top3[[names(top3)[21]]]$adj.P.Val > FDR_level]), row.names(top3[[names(top3)[24]]])[top3[[names(top3)[24]]]$adj.P.Val > FDR_level]), row.names(top3[[names(top3)[31]]])[top3[[names(top3)[31]]]$adj.P.Val > FDR_level]), row.names(top3[[names(top3)[34]]])[top3[[names(top3)[34]]]$adj.P.Val < FDR_level])
+
+mylist[["Chimp"]] <- union(union(chimp_specific, chimp_human), chimp_rhesus)
+
+  
+mylist[["Rhesus"]] <- intersect(intersect(intersect(intersect(intersect(intersect(intersect(intersect(row.names(top3[[names(top3)[25]]])[top3[[names(top3)[25]]]$adj.P.Val < FDR_level], row.names(top3[[names(top3)[28]]])[top3[[names(top3)[28]]]$adj.P.Val < FDR_level]),  row.names(top3[[names(top3)[29]]])[top3[[names(top3)[29]]]$adj.P.Val < FDR_level]), row.names(top3[[names(top3)[26]]])[top3[[names(top3)[26]]]$adj.P.Val > FDR_level]), row.names(top3[[names(top3)[27]]])[top3[[names(top3)[27]]]$adj.P.Val > FDR_level]), row.names(top3[[names(top3)[30]]])[top3[[names(top3)[30]]]$adj.P.Val > FDR_level]),  row.names(top3[[names(top3)[34]]])[top3[[names(top3)[34]]]$adj.P.Val < FDR_level]), row.names(top3[[names(top3)[35]]])[top3[[names(top3)[35]]]$adj.P.Val > FDR_level]), row.names(top3[[names(top3)[36]]])[top3[[names(top3)[36]]]$adj.P.Val > FDR_level])
+  
+
+# Make 
+dev.off()
+Four_comp <- venn.diagram(mylist, filename= NULL, main="Liver specific DE genes with species-specific interactions (FDR 1%)", cex=1.5 , fill = pal[1:3], lty=1, height=2000, width=3000)
+grid.draw(Four_comp)
+
+
+```
+
+
+
+## Species specific gene expression (DE between species in all 4 tissues)
+
+```{r}
+### DE between Human and Chimp/Human and Rhesus but not DE between Chimp and Rhesus
+mylist <- list()
+mylist[["Human"]] <- intersect(intersect(intersect(intersect(intersect(intersect(intersect(intersect(intersect(intersect(intersect(row.names(top3[[names(top3)[1]]])[top3[[names(top3)[1]]]$adj.P.Val < FDR_level], row.names(top3[[names(top3)[2]]])[top3[[names(top3)[2]]]$adj.P.Val < FDR_level]),  row.names(top3[[names(top3)[3]]])[top3[[names(top3)[3]]]$adj.P.Val < FDR_level]),  row.names(top3[[names(top3)[4]]])[top3[[names(top3)[4]]]$adj.P.Val < FDR_level]), row.names(top3[[names(top3)[5]]])[top3[[names(top3)[5]]]$adj.P.Val < FDR_level]), row.names(top3[[names(top3)[6]]])[top3[[names(top3)[6]]]$adj.P.Val < FDR_level]),  row.names(top3[[names(top3)[7]]])[top3[[names(top3)[7]]]$adj.P.Val < FDR_level]),          row.names(top3[[names(top3)[8]]])[top3[[names(top3)[8]]]$adj.P.Val < FDR_level]),          row.names(top3[[names(top3)[9]]])[top3[[names(top3)[9]]]$adj.P.Val > FDR_level]), row.names(top3[[names(top3)[10]]])[top3[[names(top3)[10]]]$adj.P.Val > FDR_level]), row.names(top3[[names(top3)[11]]])[top3[[names(top3)[11]]]$adj.P.Val > FDR_level]), row.names(top3[[names(top3)[12]]])[top3[[names(top3)[12]]]$adj.P.Val > FDR_level])
+
+
+mylist[["Chimp"]]  <- intersect(intersect(intersect(intersect(intersect(intersect(intersect(intersect(intersect(intersect(intersect(row.names(top3[[names(top3)[1]]])[top3[[names(top3)[1]]]$adj.P.Val < FDR_level], row.names(top3[[names(top3)[2]]])[top3[[names(top3)[2]]]$adj.P.Val < FDR_level]),  row.names(top3[[names(top3)[3]]])[top3[[names(top3)[3]]]$adj.P.Val < FDR_level]),  row.names(top3[[names(top3)[4]]])[top3[[names(top3)[4]]]$adj.P.Val < FDR_level]), row.names(top3[[names(top3)[9]]])[top3[[names(top3)[9]]]$adj.P.Val < FDR_level]), row.names(top3[[names(top3)[10]]])[top3[[names(top3)[10]]]$adj.P.Val < FDR_level]),  row.names(top3[[names(top3)[11]]])[top3[[names(top3)[11]]]$adj.P.Val < FDR_level]),          row.names(top3[[names(top3)[12]]])[top3[[names(top3)[12]]]$adj.P.Val < FDR_level]),          row.names(top3[[names(top3)[5]]])[top3[[names(top3)[5]]]$adj.P.Val > FDR_level]), row.names(top3[[names(top3)[6]]])[top3[[names(top3)[6]]]$adj.P.Val > FDR_level]), row.names(top3[[names(top3)[7]]])[top3[[names(top3)[7]]]$adj.P.Val > FDR_level]), row.names(top3[[names(top3)[8]]])[top3[[names(top3)[8]]]$adj.P.Val > FDR_level])
+
+mylist[["Rhesus"]] <- intersect(intersect(intersect(intersect(intersect(intersect(intersect(intersect(intersect(intersect(intersect(row.names(top3[[names(top3)[5]]])[top3[[names(top3)[5]]]$adj.P.Val < FDR_level], row.names(top3[[names(top3)[6]]])[top3[[names(top3)[6]]]$adj.P.Val < FDR_level]),  row.names(top3[[names(top3)[7]]])[top3[[names(top3)[7]]]$adj.P.Val < FDR_level]),  row.names(top3[[names(top3)[8]]])[top3[[names(top3)[8]]]$adj.P.Val < FDR_level]), row.names(top3[[names(top3)[9]]])[top3[[names(top3)[9]]]$adj.P.Val < FDR_level]), row.names(top3[[names(top3)[10]]])[top3[[names(top3)[10]]]$adj.P.Val < FDR_level]),  row.names(top3[[names(top3)[11]]])[top3[[names(top3)[11]]]$adj.P.Val < FDR_level]),          row.names(top3[[names(top3)[12]]])[top3[[names(top3)[12]]]$adj.P.Val < FDR_level]),          row.names(top3[[names(top3)[1]]])[top3[[names(top3)[1]]]$adj.P.Val > FDR_level]), row.names(top3[[names(top3)[2]]])[top3[[names(top3)[2]]]$adj.P.Val > FDR_level]), row.names(top3[[names(top3)[3]]])[top3[[names(top3)[3]]]$adj.P.Val > FDR_level]), row.names(top3[[names(top3)[4]]])[top3[[names(top3)[4]]]$adj.P.Val > FDR_level])
+  
+
+# Make 
+dev.off()
+Four_comp <- venn.diagram(mylist, filename= NULL, main="Species specific DE genes (FDR 1%)", cex=1.5 , fill = pal[1:3], lty=1, height=2000, width=3000)
+grid.draw(Four_comp)
+
+
+```
+
+
+## What happens when we combine groups? (Human and Chimp versus Rhesus)
+
+```{r}
+## Make the contrast matrix 
+
+species <- samples$Species
+
+# Replace Chimp and Human with "GA"
+
+chimp_GA <- gsub("Chimp", "GA", species)
+new_clade <- gsub("Human", "GA", chimp_GA)
+
+tissue <- samples$Tissue
+
+# Rename columns of the contrast matrix
+
+design <- model.matrix(~ new_clade*tissue)
+colnames(design)[1] <- "Intercept"
+
+colnames(design) <- gsub("new_cladeRhesus", "Rhesus", colnames(design))
+colnames(design) <- gsub("tissuekidney", "Kidney", colnames(design))
+colnames(design) <- gsub("tissueliver", "Liver", colnames(design))
+colnames(design) <- gsub("tissuelung", "Lung", colnames(design))
+colnames(design) <- gsub(":", ".", colnames(design))
+
+# Voom with individual as a random variable
+
+cpm.voom.cyclic <- voom(dge_in_cutoff, design, normalize.method="cyclicloess", plot=T)
+
+#corfit <- duplicateCorrelation(cpm.voom.cyclic, design, block=samples$Individual)
+corfit$consensus <- 0.2631636
+
+# Final voom on filtered data
+
+cpm.voom.cyclic <- voom(dge_in_cutoff, design, normalize.method="cyclicloess", plot=TRUE, block=samples$Individual, correlation=corfit$consensus)
+
+# Fit the linear model
+fit.cyclic.norm <- lmFit(cpm.voom.cyclic, design, plot = TRUE, block=samples$Individual, correlation=corfit$consensus)
+fit.cyclic.norm <- eBayes(fit.cyclic.norm)
+
+
+# Fit model
+
+cm3 <- makeContrasts(GAvR_Liver = Rhesus + Rhesus.Liver,
+                     GAvR_Lung = Rhesus + Rhesus.Lung, 
+                     GAvR_Heart = Rhesus, 
+                     GAvR_Kidney = Rhesus + Rhesus.Kidney,
+                     Sig_RLiver = Rhesus.Liver,
+                     Sig_RLung = Rhesus.Lung,
+                     Sig_RKidney = Rhesus.Kidney,
+                     levels = design)
+
+contrasts_GA <- contrasts.fit(fit.cyclic.norm, cm3)
+fit2 <- eBayes(contrasts_GA)
+
+top3 <- list(GA_Liver = topTable(fit2, coef=1, adjust="BH", number=Inf, sort.by="none"), 
+             GA_Lung = topTable(fit2, coef=2, adjust="BH", number=Inf, sort.by="none"),  
+             GA_Heart = topTable(fit2, coef=3, adjust="BH", number=Inf, sort.by="none"),  
+             GA_Kidney = topTable(fit2, coef=4, adjust="BH", number=Inf, sort.by="none"), 
+             Sign_RLiver = topTable(fit2, coef=5, adjust="BH", number=Inf, sort.by="none"),
+             Sign_RLung = topTable(fit2, coef=6, adjust="BH", number=Inf, sort.by="none"), 
+             Sign_RKidney =topTable(fit2, coef=7, adjust="BH", number=Inf, sort.by="none"))
+
+# Set FDR Level
+
+FDR_level <- 0.0001
+
+## DE between GA and Rhesus
+
+mylist <- list()
+mylist[["Liver"]] <- row.names(top3[[names(top3)[1]]])[top3[[names(top3)[1]]]$adj.P.Val < FDR_level]
+mylist[["Lung"]] <-  row.names(top3[[names(top3)[2]]])[top3[[names(top3)[2]]]$adj.P.Val < FDR_level]
+mylist[["Heart"]] <- row.names(top3[[names(top3)[3]]])[top3[[names(top3)[3]]]$adj.P.Val < FDR_level]
+mylist[["Kidney"]] <- row.names(top3[[names(top3)[4]]])[top3[[names(top3)[4]]]$adj.P.Val < FDR_level]
+
+
+# Make 
+dev.off()
+Four_comp <- venn.diagram(mylist, filename= NULL, main="DE genes between Great Apes and Rhesus (0.01% FDR)", cex=1.5 , fill = pal[1:4], lty=1, height=2000, width=3000)
+grid.draw(Four_comp)
+
+
+## Sign interaction
+
+mylist <- list()
+mylist[["Rhesus by Liver"]] <- row.names(top3[[names(top3)[5]]])[top3[[names(top3)[5]]]$adj.P.Val < FDR_level]
+mylist[["Rhesus by Lung"]] <-  row.names(top3[[names(top3)[6]]])[top3[[names(top3)[6]]]$adj.P.Val < FDR_level]
+mylist[["Rhesus by Kidney"]] <- row.names(top3[[names(top3)[7]]])[top3[[names(top3)[7]]]$adj.P.Val < FDR_level]
+
+# Make 
+dev.off()
+Four_comp <- venn.diagram(mylist, filename= NULL, main="Significant interaction in rhesus (0.01% FDR)", cex=1.5 , fill = pal[1:3], lty=1, height=2000, width=3000)
+grid.draw(Four_comp)
+
+
+
+# Set FDR Level
+
+FDR_level <- 0.001
+
+## DE between GA and Rhesus
+
+mylist <- list()
+mylist[["Liver"]] <- row.names(top3[[names(top3)[1]]])[top3[[names(top3)[1]]]$adj.P.Val < FDR_level]
+mylist[["Lung"]] <-  row.names(top3[[names(top3)[2]]])[top3[[names(top3)[2]]]$adj.P.Val < FDR_level]
+mylist[["Heart"]] <- row.names(top3[[names(top3)[3]]])[top3[[names(top3)[3]]]$adj.P.Val < FDR_level]
+mylist[["Kidney"]] <- row.names(top3[[names(top3)[4]]])[top3[[names(top3)[4]]]$adj.P.Val < FDR_level]
+
+
+# Make 
+dev.off()
+Four_comp <- venn.diagram(mylist, filename= NULL, main="DE genes between Great Apes and Rhesus (0.1% FDR)", cex=1.5 , fill = pal[1:4], lty=1, height=2000, width=3000)
+grid.draw(Four_comp)
+
+
+# Set FDR Level
+
+FDR_level <- 0.01
+
+## DE between GA and Rhesus
+
+mylist <- list()
+mylist[["Liver"]] <- row.names(top3[[names(top3)[1]]])[top3[[names(top3)[1]]]$adj.P.Val < FDR_level]
+mylist[["Lung"]] <-  row.names(top3[[names(top3)[2]]])[top3[[names(top3)[2]]]$adj.P.Val < FDR_level]
+mylist[["Heart"]] <- row.names(top3[[names(top3)[3]]])[top3[[names(top3)[3]]]$adj.P.Val < FDR_level]
+mylist[["Kidney"]] <- row.names(top3[[names(top3)[4]]])[top3[[names(top3)[4]]]$adj.P.Val < FDR_level]
+
+
+# Make 
+dev.off()
+Four_comp <- venn.diagram(mylist, filename= NULL, main="DE genes between Great Apes and Rhesus (1% FDR)", cex=1.5 , fill = pal[1:4], lty=1, height=2000, width=3000)
+grid.draw(Four_comp)
+
+
+
+```
+
+
+
+## What happens when we combine groups? (Human versus Chimp and Rhesus)
+
+```{r}
+## Make the contrast matrix 
+
+species <- samples$Species
+
+# Replace Chimp and Rhesus with "CR"
+
+chimp_GA <- gsub("Chimp", "CR", species)
+new_clade <- gsub("Rhesus", "CR", chimp_GA)
+
+tissue <- samples$Tissue
+
+# Rename columns of the contrast matrix
+
+design <- model.matrix(~ new_clade*tissue)
+colnames(design)[1] <- "Intercept"
+
+colnames(design) <- gsub("new_cladeHuman", "Human", colnames(design))
+colnames(design) <- gsub("tissuekidney", "Kidney", colnames(design))
+colnames(design) <- gsub("tissueliver", "Liver", colnames(design))
+colnames(design) <- gsub("tissuelung", "Lung", colnames(design))
+colnames(design) <- gsub(":", ".", colnames(design))
+
+# Voom with individual as a random variable
+
+cpm.voom.cyclic <- voom(dge_in_cutoff, design, normalize.method="cyclicloess", plot=T)
+
+# corfit <- duplicateCorrelation(cpm.voom.cyclic, design, block=samples$Individual)
+corfit$consensus <- 0.3073617
+
+# Final voom on filtered data
+
+cpm.voom.cyclic <- voom(dge_in_cutoff, design, normalize.method="cyclicloess", plot=TRUE, block=samples$Individual, correlation=corfit$consensus)
+
+# Fit the linear model
+fit.cyclic.norm <- lmFit(cpm.voom.cyclic, design, plot = TRUE, block=samples$Individual, correlation=corfit$consensus)
+fit.cyclic.norm <- eBayes(fit.cyclic.norm)
+
+
+# Fit model
+
+cm4 <- makeContrasts(HvCR_Liver = Human + Human.Liver,
+                     HvCR_Lung = Human + Human.Lung, 
+                     HvCR_Heart = Human, 
+                     HvCR_Kidney = Human + Human.Kidney,
+                     Sig_HLiver = Human.Liver,
+                     Sig_HLung = Human.Lung,
+                     Sig_HKidney = Human.Kidney,
+                     levels = design)
+
+contrasts_CR <- contrasts.fit(fit.cyclic.norm, cm4)
+fit2 <- eBayes(contrasts_CR)
+
+top3 <- list(CR_Liver = topTable(fit2, coef=1, adjust="BH", number=Inf, sort.by="none"), 
+             CR_Lung = topTable(fit2, coef=2, adjust="BH", number=Inf, sort.by="none"),  
+             CR_Heart = topTable(fit2, coef=3, adjust="BH", number=Inf, sort.by="none"),  
+             CR_Kidney = topTable(fit2, coef=4, adjust="BH", number=Inf, sort.by="none"), 
+             Sign_HLiver = topTable(fit2, coef=5, adjust="BH", number=Inf, sort.by="none"),
+             Sign_HLung = topTable(fit2, coef=6, adjust="BH", number=Inf, sort.by="none"), 
+             Sign_HKidney =topTable(fit2, coef=7, adjust="BH", number=Inf, sort.by="none"))
+
+# Set FDR Level
+
+FDR_level <- 0.0001
+
+## DE between Human and Chimp/Rhesus
+
+mylist <- list()
+mylist[["Liver"]] <- row.names(top3[[names(top3)[1]]])[top3[[names(top3)[1]]]$adj.P.Val < FDR_level]
+mylist[["Lung"]] <-  row.names(top3[[names(top3)[2]]])[top3[[names(top3)[2]]]$adj.P.Val < FDR_level]
+mylist[["Heart"]] <- row.names(top3[[names(top3)[3]]])[top3[[names(top3)[3]]]$adj.P.Val < FDR_level]
+mylist[["Kidney"]] <- row.names(top3[[names(top3)[4]]])[top3[[names(top3)[4]]]$adj.P.Val < FDR_level]
+
+
+# Make 
+dev.off()
+Four_comp <- venn.diagram(mylist, filename= NULL, main="DE genes between Human and Chimp/Rhesus (0.01% FDR)", cex=1.5 , fill = pal[1:4], lty=1, height=2000, width=3000)
+grid.draw(Four_comp)
+
+
+## Sign interaction
+
+mylist <- list()
+mylist[["Human by Liver"]] <- row.names(top3[[names(top3)[5]]])[top3[[names(top3)[5]]]$adj.P.Val < FDR_level]
+mylist[["Human by Lung"]] <-  row.names(top3[[names(top3)[6]]])[top3[[names(top3)[6]]]$adj.P.Val < FDR_level]
+mylist[["Human by Kidney"]] <- row.names(top3[[names(top3)[7]]])[top3[[names(top3)[7]]]$adj.P.Val < FDR_level]
+
+# Make 
+dev.off()
+Four_comp <- venn.diagram(mylist, filename= NULL, main="Significant interaction in humans (0.01% FDR)", cex=1.5 , fill = pal[1:3], lty=1, height=2000, width=3000)
+grid.draw(Four_comp)
+
+
+# Set FDR Level
+
+FDR_level <- 0.001
+
+## DE between GA and Rhesus
+
+mylist <- list()
+mylist[["Liver"]] <- row.names(top3[[names(top3)[1]]])[top3[[names(top3)[1]]]$adj.P.Val < FDR_level]
+mylist[["Lung"]] <-  row.names(top3[[names(top3)[2]]])[top3[[names(top3)[2]]]$adj.P.Val < FDR_level]
+mylist[["Heart"]] <- row.names(top3[[names(top3)[3]]])[top3[[names(top3)[3]]]$adj.P.Val < FDR_level]
+mylist[["Kidney"]] <- row.names(top3[[names(top3)[4]]])[top3[[names(top3)[4]]]$adj.P.Val < FDR_level]
+
+
+# Make 
+dev.off()
+Four_comp <- venn.diagram(mylist, filename= NULL, main="DE genes between Great Apes and Rhesus (0.1% FDR)", cex=1.5 , fill = pal[1:4], lty=1, height=2000, width=3000)
+grid.draw(Four_comp)
+
+
+# Set FDR Level
+
+FDR_level <- 0.01
+
+## DE between GA and Rhesus
+
+mylist <- list()
+mylist[["Liver"]] <- row.names(top3[[names(top3)[1]]])[top3[[names(top3)[1]]]$adj.P.Val < FDR_level]
+mylist[["Lung"]] <-  row.names(top3[[names(top3)[2]]])[top3[[names(top3)[2]]]$adj.P.Val < FDR_level]
+mylist[["Heart"]] <- row.names(top3[[names(top3)[3]]])[top3[[names(top3)[3]]]$adj.P.Val < FDR_level]
+mylist[["Kidney"]] <- row.names(top3[[names(top3)[4]]])[top3[[names(top3)[4]]]$adj.P.Val < FDR_level]
+
+
+# Make 
+dev.off()
+Four_comp <- venn.diagram(mylist, filename= NULL, main="DE genes between Humans versus Chimps/Rhesus (1% FDR)", cex=1.5 , fill = pal[1:4], lty=1, height=2000, width=3000)
+grid.draw(Four_comp)
+
+
+```
+
+
+
+

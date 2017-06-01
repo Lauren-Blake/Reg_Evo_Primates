@@ -179,16 +179,17 @@ $(document).ready(function () {
 
 <div id="TOC">
 <ul>
-<li><a href="#tissue-specific-expression">Tissue specific expression</a></li>
-<li><a href="#pairwise-comparisons">Pairwise comparisons</a></li>
+<li><a href="#pairwise-comparisons">Pairwise comparisons</a><ul>
 <li><a href="#fit-the-linear-model">Fit the linear model</a></li>
+</ul></li>
+<li><a href="#find-tissue-specific-genes-found-in-each-species-first-and-then-combine-the-results-in-a-venn-diagram-no-rin-score">Find tissue specific genes found in each species first and then combine the results in a Venn Diagram (no RIN score)</a></li>
+<li><a href="#find-tissue-specific-genes-found-in-each-species-first-and-then-combine-the-results-in-a-venn-diagram-no-rin-score-1">Find tissue specific genes found in each species first and then combine the results in a Venn Diagram (no RIN score)</a></li>
 <li><a href="#what-happens-when-we-combine-groups-human-and-chimp-versus-rhesus">What happens when we combine groups? (Human and Chimp versus Rhesus)</a></li>
 <li><a href="#what-happens-when-we-combine-groups-human-versus-chimp-and-rhesus">What happens when we combine groups? (Human versus Chimp and Rhesus)</a></li>
 </ul>
 </div>
 
-<p>The goal of this script is to find a list of differentially expressed genes between tissues and between species. The majority of the code for this section was written by Julien Roux.</p>
-<p>Note: the expression data used here is the original filtering scheme of only keeping genes with log2(CPM) &gt; -5.5 in at least 2/4 individuals for each tissue-species pair.</p>
+<p>The goal of this script is to find a list of differentially expressed genes between tissues and between species.</p>
 <pre class="r"><code># Load libraries
 
 library(&quot;gplots&quot;)</code></pre>
@@ -199,7 +200,7 @@ Attaching package: &#39;gplots&#39;</code></pre>
 
     lowess</code></pre>
 <pre class="r"><code>library(&quot;ggplot2&quot;)</code></pre>
-<pre><code>Warning: package &#39;ggplot2&#39; was built under R version 3.2.4</code></pre>
+<pre><code>Warning: package &#39;ggplot2&#39; was built under R version 3.2.5</code></pre>
 <pre class="r"><code>library(&quot;RColorBrewer&quot;)
 library(&quot;scales&quot;)</code></pre>
 <pre><code>Warning: package &#39;scales&#39; was built under R version 3.2.5</code></pre>
@@ -223,7 +224,7 @@ Attaching package: &#39;R.oo&#39;</code></pre>
 <pre><code>The following objects are masked from &#39;package:base&#39;:
 
     attach, detach, gc, load, save</code></pre>
-<pre><code>R.utils v2.4.0 (2016-09-13) successfully loaded. See ?R.utils for help.</code></pre>
+<pre><code>R.utils v2.5.0 (2016-11-07) successfully loaded. See ?R.utils for help.</code></pre>
 <pre><code>
 Attaching package: &#39;R.utils&#39;</code></pre>
 <pre><code>The following object is masked from &#39;package:utils&#39;:
@@ -240,18 +241,14 @@ library(&quot;VennDiagram&quot;)</code></pre>
 <pre><code>Loading required package: grid</code></pre>
 <pre><code>Loading required package: futile.logger</code></pre>
 <pre><code>Warning: package &#39;futile.logger&#39; was built under R version 3.2.5</code></pre>
-<pre class="r"><code>source(&quot;~/Desktop/Reg_Evo_Primates/analysis/functions.R&quot;)
+<pre class="r"><code>source(&quot;functions.R&quot;)
 
 # Load colors 
 
 colors &lt;- colorRampPalette(c(brewer.pal(9, &quot;Blues&quot;)[1],brewer.pal(9, &quot;Blues&quot;)[9]))(100)
 pal &lt;- c(brewer.pal(9, &quot;Set1&quot;), brewer.pal(8, &quot;Set2&quot;), brewer.pal(12, &quot;Set3&quot;))
 
-# Load the data (GC content normalization+TMM+voom+cyclic loess normalization)
-
-#GC.loess.norm.voom &lt;- read.delim(&quot;~/Desktop/Reg_Evo_Primates/data/gc_cyclic_loess_random_var_gene_exp_counts&quot;)
-
-samples &lt;- read.delim(&quot;~/Desktop/Reg_Evo_Primates/data/Sample_info_RNAseq_limma.txt&quot;)
+samples &lt;- read.delim(&quot;../data/Sample_info_RNAseq_limma.txt&quot;)
 
 # Eliminate H1H
 samples &lt;- samples[-17,]
@@ -260,11 +257,8 @@ dim(samples)</code></pre>
 <pre class="r"><code># Make labels
 
 labels &lt;- paste(samples$Species, samples$Tissue, sep=&quot; &quot;)</code></pre>
-<div id="tissue-specific-expression" class="section level3">
-<h3>Tissue specific expression</h3>
-</div>
-<div id="pairwise-comparisons" class="section level3">
-<h3>Pairwise comparisons</h3>
+<div id="pairwise-comparisons" class="section level2">
+<h2>Pairwise comparisons</h2>
 <pre class="r"><code>## Make the contrast matrix 
 
 species &lt;- samples$Species
@@ -283,7 +277,7 @@ colnames(design) &lt;- gsub(&quot;tissuelung&quot;, &quot;Lung&quot;, colnames(d
 colnames(design) &lt;- gsub(&quot;:&quot;, &quot;.&quot;, colnames(design))</code></pre>
 <pre class="r"><code># Load count data
 
-counts_genes_in_cutoff &lt;- read.delim(&quot;~/Desktop/Reg_Evo_Primates/data/counts_12184.txt&quot;)
+counts_genes_in_cutoff &lt;- read.delim(&quot;../data/counts_12184.txt&quot;)
 
 # TMM 
 
@@ -361,7 +355,6 @@ corfit$consensus &lt;- 0.2006188
 
 cpm.voom.cyclic &lt;- voom(dge_in_cutoff, design, normalize.method=&quot;cyclicloess&quot;, plot=TRUE, block=samples$Individual, correlation=corfit$consensus)</code></pre>
 <p><img src="figure/Test_DE_genes.Rmd/unnamed-chunk-3-3.png" width="672" style="display: block; margin: auto;" /></p>
-</div>
 <div id="fit-the-linear-model" class="section level3">
 <h3>Fit the linear model</h3>
 <pre class="r"><code>fit.cyclic.norm &lt;- lmFit(cpm.voom.cyclic, design, plot = TRUE, block=samples$Individual, correlation=corfit$consensus)
@@ -500,10 +493,13 @@ mylist[[&quot;Kidney&quot;]] &lt;- row.names(top3[[names(top3)[4]]])[top3[[names
 
 
 # Make 
-Four_comp &lt;- venn.diagram(mylist, filename= NULL, main=&quot;DE genes between Humans and Chimps (FDR 1%)&quot;, cex=1.5 , fill = pal[1:4], lty=1, height=2000, width=3000)
-grid.draw(Four_comp)</code></pre>
-<p><img src="figure/Test_DE_genes.Rmd/unnamed-chunk-5-1.png" width="672" style="display: block; margin: auto;" /></p>
-<pre class="r"><code>## DE between HvR
+dev.off()</code></pre>
+<pre><code>null device 
+          1 </code></pre>
+<pre class="r"><code>Four_comp &lt;- venn.diagram(mylist, filename= NULL, main=&quot;DE genes between Humans and Chimps (FDR 1%)&quot;, cex=1.5 , fill = pal[1:4], lty=1, height=2000, width=3000)
+grid.draw(Four_comp)
+
+## DE between HvR
 
 mylist &lt;- list()
 mylist[[&quot;Liver&quot;]] &lt;- row.names(top3[[names(top3)[5]]])[top3[[names(top3)[5]]]$adj.P.Val &lt; FDR_level]
@@ -530,7 +526,7 @@ mylist[[&quot;Kidney&quot;]] &lt;- row.names(top3[[names(top3)[12]]])[top3[[name
 dev.off()</code></pre>
 <pre><code>null device 
           1 </code></pre>
-<pre class="r"><code>Four_comp &lt;- venn.diagram(mylist, filename= NULL, main=&quot;DE genes between Humans and Rhesus (FDR 1%)&quot;, cex=1.5 , fill = pal[1:4], lty=1, height=2000, width=3000)
+<pre class="r"><code>Four_comp &lt;- venn.diagram(mylist, filename= NULL, main=&quot;DE genes between Chimps and Rhesus (FDR 1%)&quot;, cex=1.5 , fill = pal[1:4], lty=1, height=2000, width=3000)
 grid.draw(Four_comp)
 
 ## DE between Heart and Liver
@@ -544,28 +540,256 @@ mylist[[&quot;Rhesus&quot;]] &lt;- row.names(top3[[names(top3)[25]]])[top3[[name
 dev.off()</code></pre>
 <pre><code>null device 
           1 </code></pre>
-<pre class="r"><code>Four_comp &lt;- venn.diagram(mylist, filename= NULL, main=&quot;DE genes between Humans and Rhesus (FDR 1%)&quot;, cex=1.5 , fill = pal[1:3], lty=1, height=2000, width=3000)
+<pre class="r"><code>Four_comp &lt;- venn.diagram(mylist, filename= NULL, main=&quot;DE genes between Heart and Liver (FDR 1%)&quot;, cex=1.5 , fill = pal[1:3], lty=1, height=2000, width=3000)
 grid.draw(Four_comp)
 
 ## DE between Heart and Lung
 
+mylist &lt;- list()
+mylist[[&quot;Human&quot;]] &lt;- row.names(top3[[names(top3)[14]]])[top3[[names(top3)[14]]]$adj.P.Val &lt; FDR_level]
+mylist[[&quot;Chimp&quot;]] &lt;-  row.names(top3[[names(top3)[20]]])[top3[[names(top3)[20]]]$adj.P.Val &lt; FDR_level]
+mylist[[&quot;Rhesus&quot;]] &lt;- row.names(top3[[names(top3)[26]]])[top3[[names(top3)[26]]]$adj.P.Val &lt; FDR_level]
+
+# Make 
+dev.off()</code></pre>
+<pre><code>null device 
+          1 </code></pre>
+<pre class="r"><code>Four_comp &lt;- venn.diagram(mylist, filename= NULL, main=&quot;DE genes between Heart and Lung (FDR 1%)&quot;, cex=1.5 , fill = pal[1:3], lty=1, height=2000, width=3000)
+grid.draw(Four_comp)
 
 
 ## DE between Heart and Kidney
 
+mylist &lt;- list()
+mylist[[&quot;Human&quot;]] &lt;- row.names(top3[[names(top3)[15]]])[top3[[names(top3)[15]]]$adj.P.Val &lt; FDR_level]
+mylist[[&quot;Chimp&quot;]] &lt;-  row.names(top3[[names(top3)[21]]])[top3[[names(top3)[21]]]$adj.P.Val &lt; FDR_level]
+mylist[[&quot;Rhesus&quot;]] &lt;- row.names(top3[[names(top3)[27]]])[top3[[names(top3)[27]]]$adj.P.Val &lt; FDR_level]
+
+# Make 
+dev.off()</code></pre>
+<pre><code>null device 
+          1 </code></pre>
+<pre class="r"><code>Four_comp &lt;- venn.diagram(mylist, filename= NULL, main=&quot;DE genes between Heart and Kidney (FDR 1%)&quot;, cex=1.5 , fill = pal[1:3], lty=1, height=2000, width=3000)
+grid.draw(Four_comp)
 
 
 ## DE between Liver and Lung
 
+mylist &lt;- list()
+mylist[[&quot;Human&quot;]] &lt;- row.names(top3[[names(top3)[16]]])[top3[[names(top3)[16]]]$adj.P.Val &lt; FDR_level]
+mylist[[&quot;Chimp&quot;]] &lt;-  row.names(top3[[names(top3)[22]]])[top3[[names(top3)[22]]]$adj.P.Val &lt; FDR_level]
+mylist[[&quot;Rhesus&quot;]] &lt;- row.names(top3[[names(top3)[28]]])[top3[[names(top3)[28]]]$adj.P.Val &lt; FDR_level]
 
+# Make 
+dev.off()</code></pre>
+<pre><code>null device 
+          1 </code></pre>
+<pre class="r"><code>Four_comp &lt;- venn.diagram(mylist, filename= NULL, main=&quot;DE genes between Liver and Lung (FDR 1%)&quot;, cex=1.5 , fill = pal[1:3], lty=1, height=2000, width=3000)
+grid.draw(Four_comp)
 
 ## DE between Liver and Kidney
 
+mylist &lt;- list()
+mylist[[&quot;Human&quot;]] &lt;- row.names(top3[[names(top3)[17]]])[top3[[names(top3)[17]]]$adj.P.Val &lt; FDR_level]
+mylist[[&quot;Chimp&quot;]] &lt;-  row.names(top3[[names(top3)[23]]])[top3[[names(top3)[23]]]$adj.P.Val &lt; FDR_level]
+mylist[[&quot;Rhesus&quot;]] &lt;- row.names(top3[[names(top3)[29]]])[top3[[names(top3)[29]]]$adj.P.Val &lt; FDR_level]
 
-## DE between Lung and Kidney</code></pre>
+# Make 
+dev.off()</code></pre>
+<pre><code>null device 
+          1 </code></pre>
+<pre class="r"><code>Four_comp &lt;- venn.diagram(mylist, filename= NULL, main=&quot;DE genes between Liver and Kidney (FDR 1%)&quot;, cex=1.5 , fill = pal[1:3], lty=1, height=2000, width=3000)
+grid.draw(Four_comp)
+
+## DE between Lung and Kidney
+
+mylist &lt;- list()
+mylist[[&quot;Human&quot;]] &lt;- row.names(top3[[names(top3)[18]]])[top3[[names(top3)[18]]]$adj.P.Val &lt; FDR_level]
+mylist[[&quot;Chimp&quot;]] &lt;-  row.names(top3[[names(top3)[24]]])[top3[[names(top3)[24]]]$adj.P.Val &lt; FDR_level]
+mylist[[&quot;Rhesus&quot;]] &lt;- row.names(top3[[names(top3)[30]]])[top3[[names(top3)[30]]]$adj.P.Val &lt; FDR_level]
+
+# Make 
+dev.off()</code></pre>
+<pre><code>null device 
+          1 </code></pre>
+<pre class="r"><code>Four_comp &lt;- venn.diagram(mylist, filename= NULL, main=&quot;DE genes between Lung and Kidney (FDR 1%)&quot;, cex=1.5 , fill = pal[1:3], lty=1, height=2000, width=3000)
+grid.draw(Four_comp)</code></pre>
 </div>
-<div id="what-happens-when-we-combine-groups-human-and-chimp-versus-rhesus" class="section level3">
-<h3>What happens when we combine groups? (Human and Chimp versus Rhesus)</h3>
+</div>
+<div id="find-tissue-specific-genes-found-in-each-species-first-and-then-combine-the-results-in-a-venn-diagram-no-rin-score" class="section level2">
+<h2>Find tissue specific genes found in each species first and then combine the results in a Venn Diagram (no RIN score)</h2>
+<pre class="r"><code># Set FDR level at 1%
+
+FDR_level &lt;- 0.01
+
+### Heart specific (DE in Heart v. Liver, Heart v. Lung, Heart v. Kidney but not Liver versus Lung, Liver versus Kidney, Lung v. Kidney)
+
+mylist &lt;- list()
+mylist[[&quot;Human&quot;]] &lt;- intersect(intersect(intersect(intersect(intersect(row.names(top3[[names(top3)[13]]])[top3[[names(top3)[13]]]$adj.P.Val &lt; FDR_level], row.names(top3[[names(top3)[14]]])[top3[[names(top3)[14]]]$adj.P.Val &lt; FDR_level]),  row.names(top3[[names(top3)[15]]])[top3[[names(top3)[15]]]$adj.P.Val &lt; FDR_level]), row.names(top3[[names(top3)[16]]])[top3[[names(top3)[16]]]$adj.P.Val &gt; FDR_level]), row.names(top3[[names(top3)[17]]])[top3[[names(top3)[17]]]$adj.P.Val &gt; FDR_level]), row.names(top3[[names(top3)[18]]])[top3[[names(top3)[18]]]$adj.P.Val &gt; FDR_level])
+
+
+mylist[[&quot;Chimp&quot;]] &lt;- intersect(intersect(intersect(intersect(intersect(row.names(top3[[names(top3)[19]]])[top3[[names(top3)[19]]]$adj.P.Val &lt; FDR_level], row.names(top3[[names(top3)[20]]])[top3[[names(top3)[20]]]$adj.P.Val &lt; FDR_level]),  row.names(top3[[names(top3)[21]]])[top3[[names(top3)[21]]]$adj.P.Val &lt; FDR_level]), row.names(top3[[names(top3)[22]]])[top3[[names(top3)[22]]]$adj.P.Val &gt; FDR_level]), row.names(top3[[names(top3)[23]]])[top3[[names(top3)[23]]]$adj.P.Val &gt; FDR_level]), row.names(top3[[names(top3)[24]]])[top3[[names(top3)[24]]]$adj.P.Val &gt; FDR_level])
+  
+mylist[[&quot;Rhesus&quot;]] &lt;- intersect(intersect(intersect(intersect(intersect(row.names(top3[[names(top3)[25]]])[top3[[names(top3)[25]]]$adj.P.Val &lt; FDR_level], row.names(top3[[names(top3)[26]]])[top3[[names(top3)[26]]]$adj.P.Val &lt; FDR_level]),  row.names(top3[[names(top3)[27]]])[top3[[names(top3)[27]]]$adj.P.Val &lt; FDR_level]), row.names(top3[[names(top3)[28]]])[top3[[names(top3)[28]]]$adj.P.Val &gt; FDR_level]), row.names(top3[[names(top3)[29]]])[top3[[names(top3)[29]]]$adj.P.Val &gt; FDR_level]), row.names(top3[[names(top3)[30]]])[top3[[names(top3)[30]]]$adj.P.Val &gt; FDR_level])
+  
+
+# Make 
+dev.off()</code></pre>
+<pre><code>null device 
+          1 </code></pre>
+<pre class="r"><code>Four_comp &lt;- venn.diagram(mylist, filename= NULL, main=&quot;Heart specific DE genes (FDR 1%)&quot;, cex=1.5 , fill = pal[1:3], lty=1, height=2000, width=3000)
+grid.draw(Four_comp)
+
+
+# Set FDR level at 1%
+
+FDR_level &lt;- 0.01
+
+### Liver specific
+
+mylist &lt;- list()
+mylist[[&quot;Human&quot;]] &lt;- intersect(intersect(intersect(intersect(intersect(row.names(top3[[names(top3)[13]]])[top3[[names(top3)[13]]]$adj.P.Val &lt; FDR_level], row.names(top3[[names(top3)[16]]])[top3[[names(top3)[16]]]$adj.P.Val &lt; FDR_level]),  row.names(top3[[names(top3)[17]]])[top3[[names(top3)[17]]]$adj.P.Val &lt; FDR_level]), row.names(top3[[names(top3)[14]]])[top3[[names(top3)[14]]]$adj.P.Val &gt; FDR_level]), row.names(top3[[names(top3)[15]]])[top3[[names(top3)[15]]]$adj.P.Val &gt; FDR_level]), row.names(top3[[names(top3)[18]]])[top3[[names(top3)[18]]]$adj.P.Val &gt; FDR_level])
+
+
+mylist[[&quot;Chimp&quot;]] &lt;- intersect(intersect(intersect(intersect(intersect(row.names(top3[[names(top3)[19]]])[top3[[names(top3)[19]]]$adj.P.Val &lt; FDR_level], row.names(top3[[names(top3)[22]]])[top3[[names(top3)[22]]]$adj.P.Val &lt; FDR_level]),  row.names(top3[[names(top3)[23]]])[top3[[names(top3)[23]]]$adj.P.Val &lt; FDR_level]), row.names(top3[[names(top3)[20]]])[top3[[names(top3)[20]]]$adj.P.Val &gt; FDR_level]), row.names(top3[[names(top3)[21]]])[top3[[names(top3)[21]]]$adj.P.Val &gt; FDR_level]), row.names(top3[[names(top3)[24]]])[top3[[names(top3)[24]]]$adj.P.Val &gt; FDR_level])
+  
+mylist[[&quot;Rhesus&quot;]] &lt;- intersect(intersect(intersect(intersect(intersect(row.names(top3[[names(top3)[25]]])[top3[[names(top3)[25]]]$adj.P.Val &lt; FDR_level], row.names(top3[[names(top3)[28]]])[top3[[names(top3)[28]]]$adj.P.Val &lt; FDR_level]),  row.names(top3[[names(top3)[29]]])[top3[[names(top3)[29]]]$adj.P.Val &lt; FDR_level]), row.names(top3[[names(top3)[26]]])[top3[[names(top3)[26]]]$adj.P.Val &gt; FDR_level]), row.names(top3[[names(top3)[27]]])[top3[[names(top3)[27]]]$adj.P.Val &gt; FDR_level]), row.names(top3[[names(top3)[30]]])[top3[[names(top3)[30]]]$adj.P.Val &gt; FDR_level])
+  
+
+# Make 
+dev.off()</code></pre>
+<pre><code>null device 
+          1 </code></pre>
+<pre class="r"><code>Four_comp &lt;- venn.diagram(mylist, filename= NULL, main=&quot;Liver specific DE genes (FDR 1%)&quot;, cex=1.5 , fill = pal[1:3], lty=1, height=2000, width=3000)
+grid.draw(Four_comp)
+
+
+
+
+### Kidney specific 
+mylist &lt;- list()
+mylist[[&quot;Human&quot;]] &lt;- intersect(intersect(intersect(intersect(intersect(row.names(top3[[names(top3)[15]]])[top3[[names(top3)[15]]]$adj.P.Val &lt; FDR_level], row.names(top3[[names(top3)[17]]])[top3[[names(top3)[17]]]$adj.P.Val &lt; FDR_level]),  row.names(top3[[names(top3)[18]]])[top3[[names(top3)[18]]]$adj.P.Val &lt; FDR_level]), row.names(top3[[names(top3)[13]]])[top3[[names(top3)[13]]]$adj.P.Val &gt; FDR_level]), row.names(top3[[names(top3)[14]]])[top3[[names(top3)[14]]]$adj.P.Val &gt; FDR_level]), row.names(top3[[names(top3)[16]]])[top3[[names(top3)[16]]]$adj.P.Val &gt; FDR_level])
+
+
+mylist[[&quot;Chimp&quot;]] &lt;- intersect(intersect(intersect(intersect(intersect(row.names(top3[[names(top3)[21]]])[top3[[names(top3)[21]]]$adj.P.Val &lt; FDR_level], row.names(top3[[names(top3)[23]]])[top3[[names(top3)[23]]]$adj.P.Val &lt; FDR_level]),  row.names(top3[[names(top3)[24]]])[top3[[names(top3)[24]]]$adj.P.Val &lt; FDR_level]), row.names(top3[[names(top3)[19]]])[top3[[names(top3)[19]]]$adj.P.Val &gt; FDR_level]), row.names(top3[[names(top3)[20]]])[top3[[names(top3)[20]]]$adj.P.Val &gt; FDR_level]), row.names(top3[[names(top3)[22]]])[top3[[names(top3)[22]]]$adj.P.Val &gt; FDR_level])
+  
+mylist[[&quot;Rhesus&quot;]] &lt;- intersect(intersect(intersect(intersect(intersect(row.names(top3[[names(top3)[27]]])[top3[[names(top3)[27]]]$adj.P.Val &lt; FDR_level], row.names(top3[[names(top3)[29]]])[top3[[names(top3)[29]]]$adj.P.Val &lt; FDR_level]),  row.names(top3[[names(top3)[30]]])[top3[[names(top3)[30]]]$adj.P.Val &lt; FDR_level]), row.names(top3[[names(top3)[25]]])[top3[[names(top3)[25]]]$adj.P.Val &gt; FDR_level]), row.names(top3[[names(top3)[26]]])[top3[[names(top3)[26]]]$adj.P.Val &gt; FDR_level]), row.names(top3[[names(top3)[28]]])[top3[[names(top3)[28]]]$adj.P.Val &gt; FDR_level])
+  
+
+# Make 
+dev.off()</code></pre>
+<pre><code>null device 
+          1 </code></pre>
+<pre class="r"><code>Four_comp &lt;- venn.diagram(mylist, filename= NULL, main=&quot;Kidney specific DE genes (FDR 1%)&quot;, cex=1.5 , fill = pal[1:3], lty=1, height=2000, width=3000)
+grid.draw(Four_comp)
+
+
+
+### Lung specific 
+mylist &lt;- list()
+mylist[[&quot;Human&quot;]] &lt;- intersect(intersect(intersect(intersect(intersect(row.names(top3[[names(top3)[14]]])[top3[[names(top3)[14]]]$adj.P.Val &lt; FDR_level], row.names(top3[[names(top3)[16]]])[top3[[names(top3)[16]]]$adj.P.Val &lt; FDR_level]),  row.names(top3[[names(top3)[18]]])[top3[[names(top3)[18]]]$adj.P.Val &lt; FDR_level]), row.names(top3[[names(top3)[13]]])[top3[[names(top3)[13]]]$adj.P.Val &gt; FDR_level]), row.names(top3[[names(top3)[15]]])[top3[[names(top3)[15]]]$adj.P.Val &gt; FDR_level]), row.names(top3[[names(top3)[17]]])[top3[[names(top3)[17]]]$adj.P.Val &gt; FDR_level])
+
+
+mylist[[&quot;Chimp&quot;]] &lt;- intersect(intersect(intersect(intersect(intersect(row.names(top3[[names(top3)[20]]])[top3[[names(top3)[20]]]$adj.P.Val &lt; FDR_level], row.names(top3[[names(top3)[22]]])[top3[[names(top3)[22]]]$adj.P.Val &lt; FDR_level]),  row.names(top3[[names(top3)[24]]])[top3[[names(top3)[24]]]$adj.P.Val &lt; FDR_level]), row.names(top3[[names(top3)[19]]])[top3[[names(top3)[19]]]$adj.P.Val &gt; FDR_level]), row.names(top3[[names(top3)[21]]])[top3[[names(top3)[21]]]$adj.P.Val &gt; FDR_level]), row.names(top3[[names(top3)[23]]])[top3[[names(top3)[23]]]$adj.P.Val &gt; FDR_level])
+  
+mylist[[&quot;Rhesus&quot;]] &lt;- intersect(intersect(intersect(intersect(intersect(row.names(top3[[names(top3)[26]]])[top3[[names(top3)[26]]]$adj.P.Val &lt; FDR_level], row.names(top3[[names(top3)[28]]])[top3[[names(top3)[28]]]$adj.P.Val &lt; FDR_level]),  row.names(top3[[names(top3)[30]]])[top3[[names(top3)[30]]]$adj.P.Val &lt; FDR_level]), row.names(top3[[names(top3)[25]]])[top3[[names(top3)[25]]]$adj.P.Val &gt; FDR_level]), row.names(top3[[names(top3)[27]]])[top3[[names(top3)[27]]]$adj.P.Val &gt; FDR_level]), row.names(top3[[names(top3)[29]]])[top3[[names(top3)[29]]]$adj.P.Val &gt; FDR_level])
+  
+
+# Make 
+dev.off()</code></pre>
+<pre><code>null device 
+          1 </code></pre>
+<pre class="r"><code>Four_comp &lt;- venn.diagram(mylist, filename= NULL, main=&quot;Lung specific DE genes (FDR 1%)&quot;, cex=1.5 , fill = pal[1:3], lty=1, height=2000, width=3000)
+grid.draw(Four_comp)</code></pre>
+</div>
+<div id="find-tissue-specific-genes-found-in-each-species-first-and-then-combine-the-results-in-a-venn-diagram-no-rin-score-1" class="section level2">
+<h2>Find tissue specific genes found in each species first and then combine the results in a Venn Diagram (no RIN score)</h2>
+<pre class="r"><code># Set FDR level at 1%
+
+FDR_level &lt;- 0.01
+
+### Heart specific (DE in Heart v. Liver, Heart v. Lung, Heart v. Kidney but not Liver versus Lung, Liver versus Kidney, Lung v. Kidney)
+
+mylist &lt;- list()
+mylist[[&quot;Human&quot;]] &lt;- intersect(intersect(intersect(intersect(intersect(row.names(top3[[names(top3)[13]]])[top3[[names(top3)[13]]]$adj.P.Val &lt; FDR_level], row.names(top3[[names(top3)[14]]])[top3[[names(top3)[14]]]$adj.P.Val &lt; FDR_level]),  row.names(top3[[names(top3)[15]]])[top3[[names(top3)[15]]]$adj.P.Val &lt; FDR_level]), row.names(top3[[names(top3)[16]]])[top3[[names(top3)[16]]]$adj.P.Val &gt; FDR_level]), row.names(top3[[names(top3)[17]]])[top3[[names(top3)[17]]]$adj.P.Val &gt; FDR_level]), row.names(top3[[names(top3)[18]]])[top3[[names(top3)[18]]]$adj.P.Val &gt; FDR_level])
+
+
+mylist[[&quot;Chimp&quot;]] &lt;- intersect(intersect(intersect(intersect(intersect(row.names(top3[[names(top3)[19]]])[top3[[names(top3)[19]]]$adj.P.Val &lt; FDR_level], row.names(top3[[names(top3)[20]]])[top3[[names(top3)[20]]]$adj.P.Val &lt; FDR_level]),  row.names(top3[[names(top3)[21]]])[top3[[names(top3)[21]]]$adj.P.Val &lt; FDR_level]), row.names(top3[[names(top3)[22]]])[top3[[names(top3)[22]]]$adj.P.Val &gt; FDR_level]), row.names(top3[[names(top3)[23]]])[top3[[names(top3)[23]]]$adj.P.Val &gt; FDR_level]), row.names(top3[[names(top3)[24]]])[top3[[names(top3)[24]]]$adj.P.Val &gt; FDR_level])
+  
+mylist[[&quot;Rhesus&quot;]] &lt;- intersect(intersect(intersect(intersect(intersect(row.names(top3[[names(top3)[25]]])[top3[[names(top3)[25]]]$adj.P.Val &lt; FDR_level], row.names(top3[[names(top3)[26]]])[top3[[names(top3)[26]]]$adj.P.Val &lt; FDR_level]),  row.names(top3[[names(top3)[27]]])[top3[[names(top3)[27]]]$adj.P.Val &lt; FDR_level]), row.names(top3[[names(top3)[28]]])[top3[[names(top3)[28]]]$adj.P.Val &gt; FDR_level]), row.names(top3[[names(top3)[29]]])[top3[[names(top3)[29]]]$adj.P.Val &gt; FDR_level]), row.names(top3[[names(top3)[30]]])[top3[[names(top3)[30]]]$adj.P.Val &gt; FDR_level])
+  
+
+# Make 
+dev.off()</code></pre>
+<pre><code>null device 
+          1 </code></pre>
+<pre class="r"><code>Four_comp &lt;- venn.diagram(mylist, filename= NULL, main=&quot;Heart specific DE genes (FDR 1%)&quot;, cex=1.5 , fill = pal[1:3], lty=1, height=2000, width=3000)
+grid.draw(Four_comp)
+
+
+# Set FDR level at 1%
+
+FDR_level &lt;- 0.01
+
+### Liver specific
+
+mylist &lt;- list()
+mylist[[&quot;Human&quot;]] &lt;- intersect(intersect(intersect(intersect(intersect(row.names(top3[[names(top3)[13]]])[top3[[names(top3)[13]]]$adj.P.Val &lt; FDR_level], row.names(top3[[names(top3)[16]]])[top3[[names(top3)[16]]]$adj.P.Val &lt; FDR_level]),  row.names(top3[[names(top3)[17]]])[top3[[names(top3)[17]]]$adj.P.Val &lt; FDR_level]), row.names(top3[[names(top3)[14]]])[top3[[names(top3)[14]]]$adj.P.Val &gt; FDR_level]), row.names(top3[[names(top3)[15]]])[top3[[names(top3)[15]]]$adj.P.Val &gt; FDR_level]), row.names(top3[[names(top3)[18]]])[top3[[names(top3)[18]]]$adj.P.Val &gt; FDR_level])
+
+
+mylist[[&quot;Chimp&quot;]] &lt;- intersect(intersect(intersect(intersect(intersect(row.names(top3[[names(top3)[19]]])[top3[[names(top3)[19]]]$adj.P.Val &lt; FDR_level], row.names(top3[[names(top3)[22]]])[top3[[names(top3)[22]]]$adj.P.Val &lt; FDR_level]),  row.names(top3[[names(top3)[23]]])[top3[[names(top3)[23]]]$adj.P.Val &lt; FDR_level]), row.names(top3[[names(top3)[20]]])[top3[[names(top3)[20]]]$adj.P.Val &gt; FDR_level]), row.names(top3[[names(top3)[21]]])[top3[[names(top3)[21]]]$adj.P.Val &gt; FDR_level]), row.names(top3[[names(top3)[24]]])[top3[[names(top3)[24]]]$adj.P.Val &gt; FDR_level])
+  
+mylist[[&quot;Rhesus&quot;]] &lt;- intersect(intersect(intersect(intersect(intersect(row.names(top3[[names(top3)[25]]])[top3[[names(top3)[25]]]$adj.P.Val &lt; FDR_level], row.names(top3[[names(top3)[28]]])[top3[[names(top3)[28]]]$adj.P.Val &lt; FDR_level]),  row.names(top3[[names(top3)[29]]])[top3[[names(top3)[29]]]$adj.P.Val &lt; FDR_level]), row.names(top3[[names(top3)[26]]])[top3[[names(top3)[26]]]$adj.P.Val &gt; FDR_level]), row.names(top3[[names(top3)[27]]])[top3[[names(top3)[27]]]$adj.P.Val &gt; FDR_level]), row.names(top3[[names(top3)[30]]])[top3[[names(top3)[30]]]$adj.P.Val &gt; FDR_level])
+  
+
+# Make 
+dev.off()</code></pre>
+<pre><code>null device 
+          1 </code></pre>
+<pre class="r"><code>Four_comp &lt;- venn.diagram(mylist, filename= NULL, main=&quot;Liver specific DE genes (FDR 1%)&quot;, cex=1.5 , fill = pal[1:3], lty=1, height=2000, width=3000)
+grid.draw(Four_comp)
+
+
+
+
+### Kidney specific 
+mylist &lt;- list()
+mylist[[&quot;Human&quot;]] &lt;- intersect(intersect(intersect(intersect(intersect(row.names(top3[[names(top3)[15]]])[top3[[names(top3)[15]]]$adj.P.Val &lt; FDR_level], row.names(top3[[names(top3)[17]]])[top3[[names(top3)[17]]]$adj.P.Val &lt; FDR_level]),  row.names(top3[[names(top3)[18]]])[top3[[names(top3)[18]]]$adj.P.Val &lt; FDR_level]), row.names(top3[[names(top3)[13]]])[top3[[names(top3)[13]]]$adj.P.Val &gt; FDR_level]), row.names(top3[[names(top3)[14]]])[top3[[names(top3)[14]]]$adj.P.Val &gt; FDR_level]), row.names(top3[[names(top3)[16]]])[top3[[names(top3)[16]]]$adj.P.Val &gt; FDR_level])
+
+
+mylist[[&quot;Chimp&quot;]] &lt;- intersect(intersect(intersect(intersect(intersect(row.names(top3[[names(top3)[21]]])[top3[[names(top3)[21]]]$adj.P.Val &lt; FDR_level], row.names(top3[[names(top3)[23]]])[top3[[names(top3)[23]]]$adj.P.Val &lt; FDR_level]),  row.names(top3[[names(top3)[24]]])[top3[[names(top3)[24]]]$adj.P.Val &lt; FDR_level]), row.names(top3[[names(top3)[19]]])[top3[[names(top3)[19]]]$adj.P.Val &gt; FDR_level]), row.names(top3[[names(top3)[20]]])[top3[[names(top3)[20]]]$adj.P.Val &gt; FDR_level]), row.names(top3[[names(top3)[22]]])[top3[[names(top3)[22]]]$adj.P.Val &gt; FDR_level])
+  
+mylist[[&quot;Rhesus&quot;]] &lt;- intersect(intersect(intersect(intersect(intersect(row.names(top3[[names(top3)[27]]])[top3[[names(top3)[27]]]$adj.P.Val &lt; FDR_level], row.names(top3[[names(top3)[29]]])[top3[[names(top3)[29]]]$adj.P.Val &lt; FDR_level]),  row.names(top3[[names(top3)[30]]])[top3[[names(top3)[30]]]$adj.P.Val &lt; FDR_level]), row.names(top3[[names(top3)[25]]])[top3[[names(top3)[25]]]$adj.P.Val &gt; FDR_level]), row.names(top3[[names(top3)[26]]])[top3[[names(top3)[26]]]$adj.P.Val &gt; FDR_level]), row.names(top3[[names(top3)[28]]])[top3[[names(top3)[28]]]$adj.P.Val &gt; FDR_level])
+  
+
+# Make 
+dev.off()</code></pre>
+<pre><code>null device 
+          1 </code></pre>
+<pre class="r"><code>Four_comp &lt;- venn.diagram(mylist, filename= NULL, main=&quot;Kidney specific DE genes (FDR 1%)&quot;, cex=1.5 , fill = pal[1:3], lty=1, height=2000, width=3000)
+grid.draw(Four_comp)
+
+
+
+### Lung specific 
+mylist &lt;- list()
+mylist[[&quot;Human&quot;]] &lt;- intersect(intersect(intersect(intersect(intersect(row.names(top3[[names(top3)[14]]])[top3[[names(top3)[14]]]$adj.P.Val &lt; FDR_level], row.names(top3[[names(top3)[16]]])[top3[[names(top3)[16]]]$adj.P.Val &lt; FDR_level]),  row.names(top3[[names(top3)[18]]])[top3[[names(top3)[18]]]$adj.P.Val &lt; FDR_level]), row.names(top3[[names(top3)[13]]])[top3[[names(top3)[13]]]$adj.P.Val &gt; FDR_level]), row.names(top3[[names(top3)[15]]])[top3[[names(top3)[15]]]$adj.P.Val &gt; FDR_level]), row.names(top3[[names(top3)[17]]])[top3[[names(top3)[17]]]$adj.P.Val &gt; FDR_level])
+
+
+mylist[[&quot;Chimp&quot;]] &lt;- intersect(intersect(intersect(intersect(intersect(row.names(top3[[names(top3)[20]]])[top3[[names(top3)[20]]]$adj.P.Val &lt; FDR_level], row.names(top3[[names(top3)[22]]])[top3[[names(top3)[22]]]$adj.P.Val &lt; FDR_level]),  row.names(top3[[names(top3)[24]]])[top3[[names(top3)[24]]]$adj.P.Val &lt; FDR_level]), row.names(top3[[names(top3)[19]]])[top3[[names(top3)[19]]]$adj.P.Val &gt; FDR_level]), row.names(top3[[names(top3)[21]]])[top3[[names(top3)[21]]]$adj.P.Val &gt; FDR_level]), row.names(top3[[names(top3)[23]]])[top3[[names(top3)[23]]]$adj.P.Val &gt; FDR_level])
+  
+mylist[[&quot;Rhesus&quot;]] &lt;- intersect(intersect(intersect(intersect(intersect(row.names(top3[[names(top3)[26]]])[top3[[names(top3)[26]]]$adj.P.Val &lt; FDR_level], row.names(top3[[names(top3)[28]]])[top3[[names(top3)[28]]]$adj.P.Val &lt; FDR_level]),  row.names(top3[[names(top3)[30]]])[top3[[names(top3)[30]]]$adj.P.Val &lt; FDR_level]), row.names(top3[[names(top3)[25]]])[top3[[names(top3)[25]]]$adj.P.Val &gt; FDR_level]), row.names(top3[[names(top3)[27]]])[top3[[names(top3)[27]]]$adj.P.Val &gt; FDR_level]), row.names(top3[[names(top3)[29]]])[top3[[names(top3)[29]]]$adj.P.Val &gt; FDR_level])
+  
+
+# Make 
+dev.off()</code></pre>
+<pre><code>null device 
+          1 </code></pre>
+<pre class="r"><code>Four_comp &lt;- venn.diagram(mylist, filename= NULL, main=&quot;Lung specific DE genes (FDR 1%)&quot;, cex=1.5 , fill = pal[1:3], lty=1, height=2000, width=3000)
+grid.draw(Four_comp)</code></pre>
+</div>
+<div id="what-happens-when-we-combine-groups-human-and-chimp-versus-rhesus" class="section level2">
+<h2>What happens when we combine groups? (Human and Chimp versus Rhesus)</h2>
 <pre class="r"><code>## Make the contrast matrix 
 
 species &lt;- samples$Species
@@ -591,14 +815,14 @@ colnames(design) &lt;- gsub(&quot;:&quot;, &quot;.&quot;, colnames(design))
 # Voom with individual as a random variable
 
 cpm.voom.cyclic &lt;- voom(dge_in_cutoff, design, normalize.method=&quot;cyclicloess&quot;, plot=T)</code></pre>
-<p><img src="figure/Test_DE_genes.Rmd/unnamed-chunk-6-1.png" width="672" style="display: block; margin: auto;" /></p>
+<p><img src="figure/Test_DE_genes.Rmd/unnamed-chunk-8-1.png" width="672" style="display: block; margin: auto;" /></p>
 <pre class="r"><code>#corfit &lt;- duplicateCorrelation(cpm.voom.cyclic, design, block=samples$Individual)
 corfit$consensus &lt;- 0.2631636
 
 # Final voom on filtered data
 
 cpm.voom.cyclic &lt;- voom(dge_in_cutoff, design, normalize.method=&quot;cyclicloess&quot;, plot=TRUE, block=samples$Individual, correlation=corfit$consensus)</code></pre>
-<p><img src="figure/Test_DE_genes.Rmd/unnamed-chunk-6-2.png" width="672" style="display: block; margin: auto;" /></p>
+<p><img src="figure/Test_DE_genes.Rmd/unnamed-chunk-8-2.png" width="672" style="display: block; margin: auto;" /></p>
 <pre class="r"><code># Fit the linear model
 fit.cyclic.norm &lt;- lmFit(cpm.voom.cyclic, design, plot = TRUE, block=samples$Individual, correlation=corfit$consensus)
 fit.cyclic.norm &lt;- eBayes(fit.cyclic.norm)
@@ -704,8 +928,8 @@ dev.off()</code></pre>
 <pre class="r"><code>Four_comp &lt;- venn.diagram(mylist, filename= NULL, main=&quot;DE genes between Great Apes and Rhesus (1% FDR)&quot;, cex=1.5 , fill = pal[1:4], lty=1, height=2000, width=3000)
 grid.draw(Four_comp)</code></pre>
 </div>
-<div id="what-happens-when-we-combine-groups-human-versus-chimp-and-rhesus" class="section level3">
-<h3>What happens when we combine groups? (Human versus Chimp and Rhesus)</h3>
+<div id="what-happens-when-we-combine-groups-human-versus-chimp-and-rhesus" class="section level2">
+<h2>What happens when we combine groups? (Human versus Chimp and Rhesus)</h2>
 <pre class="r"><code>## Make the contrast matrix 
 
 species &lt;- samples$Species
@@ -731,14 +955,14 @@ colnames(design) &lt;- gsub(&quot;:&quot;, &quot;.&quot;, colnames(design))
 # Voom with individual as a random variable
 
 cpm.voom.cyclic &lt;- voom(dge_in_cutoff, design, normalize.method=&quot;cyclicloess&quot;, plot=T)</code></pre>
-<p><img src="figure/Test_DE_genes.Rmd/unnamed-chunk-7-1.png" width="672" style="display: block; margin: auto;" /></p>
+<p><img src="figure/Test_DE_genes.Rmd/unnamed-chunk-9-1.png" width="672" style="display: block; margin: auto;" /></p>
 <pre class="r"><code># corfit &lt;- duplicateCorrelation(cpm.voom.cyclic, design, block=samples$Individual)
 corfit$consensus &lt;- 0.3073617
 
 # Final voom on filtered data
 
 cpm.voom.cyclic &lt;- voom(dge_in_cutoff, design, normalize.method=&quot;cyclicloess&quot;, plot=TRUE, block=samples$Individual, correlation=corfit$consensus)</code></pre>
-<p><img src="figure/Test_DE_genes.Rmd/unnamed-chunk-7-2.png" width="672" style="display: block; margin: auto;" /></p>
+<p><img src="figure/Test_DE_genes.Rmd/unnamed-chunk-9-2.png" width="672" style="display: block; margin: auto;" /></p>
 <pre class="r"><code># Fit the linear model
 fit.cyclic.norm &lt;- lmFit(cpm.voom.cyclic, design, plot = TRUE, block=samples$Individual, correlation=corfit$consensus)
 fit.cyclic.norm &lt;- eBayes(fit.cyclic.norm)</code></pre>
