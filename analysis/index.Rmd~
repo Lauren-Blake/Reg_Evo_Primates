@@ -39,7 +39,7 @@ title: "Home"
 ### Univariate analysis on gene expression
 
 * [Test for differentially expressed genes](../analysis/Test_DE_genes.html) 
-* [Expression Visualization](../analysis/bsselectR_trial.html)
+* [Expression Visualization](../analysis/Expression_Methylation_visualization.html)
 
 ## Methylation Data
 
