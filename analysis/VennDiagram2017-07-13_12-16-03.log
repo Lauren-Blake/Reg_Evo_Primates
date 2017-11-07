@@ -1,0 +1,10 @@
+INFO [2017-07-13 12:16:03] [[1]]
+INFO [2017-07-13 12:16:03] mylist
+INFO [2017-07-13 12:16:03] 
+INFO [2017-07-13 12:16:03] $filename
+INFO [2017-07-13 12:16:03] NULL
+INFO [2017-07-13 12:16:03] 
+INFO [2017-07-13 12:16:03] $main
+INFO [2017-07-13 12:16:03] [1] "DE genes between Humans and Chimps (FDR 1%)"
+INFO [2017-07-13 12:16:03] 
+ERROR [2017-07-13 12:16:03] Incorrect number of elements.

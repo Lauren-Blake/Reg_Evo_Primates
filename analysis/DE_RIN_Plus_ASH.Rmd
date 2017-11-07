@@ -1,0 +1,2641 @@
+---
+title: "ASH_DE_RIN"
+author: "Lauren Blake"
+date: "June 7, 2017"
+output: html_document
+---
+
+
+
+```{r chunk-options, include=FALSE}
+source("chunk-options.R")
+```
+
+
+```{r}
+# Load libraries
+
+library("gplots")
+library("ggplot2")
+library("RColorBrewer")
+library("scales")
+library("edgeR")
+library("R.utils")
+library("plyr")
+library("limma")
+library("gridExtra")
+library("VennDiagram")
+source("functions.R")
+library(ashr)
+library(ggplot2)
+
+# Add function for making ggplot2 figures look good (from Bryan Pavlovic)
+
+bjp<-
+theme(
+  panel.border = element_rect(colour = "black", fill = NA, size = 2),
+  plot.title = element_text(size = 16, face = "bold", hjust = 0.5),
+  axis.text.y =  element_text(size = 14,face = "bold",color = "black"),
+  axis.text.x =  element_text(size = 14,face = "bold",color = "black"),
+  axis.title.y = element_text(size = 14,face = "bold"),
+  axis.title.x = element_text(size = 14,face = "bold"),
+  legend.text = element_text(size = 14,face = "bold"),
+  legend.title = element_text(size = 14,face = "bold"),
+  strip.text.x = element_text(size = 14,face = "bold"),
+  strip.text.y = element_text(size = 14,face = "bold"),
+  strip.background = element_rect(colour = "black", size = 2))
+
+# Set directory to save the data
+
+data_dir <- "../data"
+
+# Load colors 
+
+colors <- colorRampPalette(c(brewer.pal(9, "Blues")[1],brewer.pal(9, "Blues")[9]))(100)
+pal <- c(brewer.pal(9, "Set1"), brewer.pal(8, "Set2"), brewer.pal(12, "Set3"))
+
+# Retrieve RIN score for each sample
+RNA_seq_info <- read.csv("../data/RNA_seq_info.csv")
+RIN <- as.data.frame(RNA_seq_info[,22])
+RIN <- as.matrix(RIN)
+colnames(RIN) <- c("RIN")
+
+# Retrieve sample information
+samples <- read.delim("../data/Sample_info_RNAseq_limma.txt")
+
+# Eliminate H1H
+samples <- samples[-17,]
+dim(samples)
+
+# Make labels
+
+labels <- paste(samples$Species, samples$Tissue, sep=".")
+```
+
+## Pairwise comparisons
+
+```{r}
+## Make the contrast matrix and rename columns of the contrast matrix
+
+#design <- model.matrix(~ as.factor(tissue) + as.factor(species) + RIN)
+tissue <- samples$Tissue
+species <- samples$Species
+design <- model.matrix(~ tissue*species + RIN)
+colnames(design)[1] <- "Intercept"
+
+# Rename columns of the contrast matrix
+
+colnames(design)[2] <- "kidney"
+colnames(design)[3] <- "liver"
+colnames(design)[4] <- "lung"
+colnames(design)[5] <- "human"
+colnames(design)[6] <- "rhesus"
+
+colnames(design)[8] <- "kidneyHuman"
+colnames(design)[9] <- "liverHuman"
+colnames(design)[10] <- "lungHuman"
+colnames(design)[11] <- "kidneyRhesus"
+colnames(design)[12] <- "liverRhesus"
+colnames(design)[13] <- "lungRhesus"
+
+
+
+# Look at the number of samples in each column 
+colSums(design)
+```
+
+
+```{r}
+# Load count data
+
+counts_genes_in_cutoff <- read.delim("../data/counts_12184.txt")
+cpm_12184 <- read.delim("../data/cpm_12184.txt")
+
+# TMM 
+
+dge_in_cutoff <- DGEList(counts=as.matrix(counts_genes_in_cutoff), genes=rownames(counts_genes_in_cutoff), group = as.character(t(labels)))
+dge_in_cutoff <- calcNormFactors(dge_in_cutoff)
+
+cpm_in_cutoff <- cpm(dge_in_cutoff, normalized.lib.sizes=TRUE, log=TRUE)
+head(cpm_in_cutoff)
+hist(cpm_in_cutoff, xlab = "Log2(CPM)", main = "Log2(CPM) values for genes meeting the filtering criteria", breaks = 100 )
+
+# Voom with individual as a random variable
+
+cpm.voom.cyclic <- voom(dge_in_cutoff, design, normalize.method="cyclicloess", plot=T)
+
+corfit <- duplicateCorrelation(cpm.voom.cyclic, design, block=samples$Individual)
+corfit$consensus <- 0.06659086
+
+# Final voom on filtered data
+
+cpm.voom.cyclic <- voom(dge_in_cutoff, design, normalize.method="cyclicloess", plot=TRUE, block=samples$Individual, correlation=corfit$consensus)
+
+```
+
+
+
+
+
+
+
+### Fit the linear model
+
+```{r}
+fit.cyclic.norm <- lmFit(cpm.voom.cyclic, design, plot = TRUE, block=samples$Individual, correlation=corfit$consensus)
+fit.cyclic.norm <- eBayes(fit.cyclic.norm)
+View(fit.cyclic.norm)
+HvC_Heart =topTable(fit.cyclic.norm, coef=5, adjust="BH", number=Inf, sort.by="none")
+
+
+# MA Plots
+## If 'MA' is an 'MArrayLM' object, then the plot is a fitted model MA-plot in which the estimated coefficient is on the y-axis and the average A-value is on the x-axis.                
+
+limma::plotMA(fit.cyclic.norm, array=1, xlab="average coefficient", ylab="estimated coefficient")
+
+## - Potential caveat: variances could be different between human, chimp and rhesus (see Gordon Smyth email, 7 June 2013).                                                               
+##  We look at the standard error for each condition                                                    
+hist(fit.cyclic.norm$stdev.unscaled * fit.cyclic.norm$sigma, breaks=100)
+hist(log2(fit.cyclic.norm$stdev.unscaled * fit.cyclic.norm$sigma), breaks=100)
+boxplot(log2(fit.cyclic.norm$stdev.unscaled * fit.cyclic.norm$sigma))
+## This seems to be pretty comparable between conditions. The human heart is higher, probably because of H1H missing and H3H with a bit strange behavior                                     
+stderror <- log2(fit.cyclic.norm$stdev.unscaled * fit.cyclic.norm$sigma)
+boxplot(list(stderror[,1:4], stderror[,5:8], stderror[,9:12]))
+## A bit higher for human, and a bit lower for rhesus                                                                                                                                    
+boxplot(list(stderror[,2:4], stderror[,6:8], stderror[,8:12])) ## excluding heart samples  
+```
+
+```{r}
+# In the contrast matrix, we have many comparisons for species and tissues individually
+# Note: baseline is chimp heart
+
+cm1 <- makeContrasts(HvC_Liver = Human.liver - Chimp.liver, 
+                     HvC_Lung = Human.lung - Chimp.lung, 
+                     HvC_Heart = Human.heart - Chimp.heart, 
+                     HvC_Kidney = Human.kidney - Chimp.kidney, 
+                     HvR_Liver = Human.liver - Rhesus.liver, 
+                     HvR_Lung = Human.lung  - Rhesus.lung, 
+                     HvR_Heart = Human.heart - Rhesus.heart, 
+                     HvR_Kidney = Human.kidney - Rhesus.kidney, 
+                     CvR_Liver = Chimp.liver -  Rhesus.liver,  
+                     CvR_Lung = Chimp.lung - Rhesus.lung, 
+                     CvR_Heart = Chimp.heart - Rhesus.heart, 
+                     CvR_Kidney = Chimp.kidney - Rhesus.kidney, 
+                     H_HeartvLi = Human.heart - Human.liver, 
+                     H_HeartvLu = Human.heart - Human.lung, 
+                     H_HeartvK = Human.heart - Human.kidney, 
+                     H_LivLu = Human.liver - Human.lung, 
+                     H_LivK = Human.liver - Human.kidney,  
+                     H_LuvK = Human.lung - Human.kidney, 
+                     C_HeartvLi = Chimp.heart - Chimp.liver, 
+                     C_HeartvLu = Chimp.heart - Chimp.lung, 
+                     C_HeartvK = Chimp.heart - Chimp.kidney, 
+                     C_LivLu = Chimp.liver - Chimp.lung, 
+                     C_LivK = Chimp.liver - Chimp.kidney,  
+                     C_LuvK = Chimp.lung - Chimp.kidney,  
+                     R_HeartvLi = Rhesus.heart - Rhesus.liver, 
+                     R_HeartvLu = Rhesus.heart - Rhesus.lung, 
+                     R_HeartvK = Rhesus.heart - Rhesus.kidney, 
+                     R_LivLu = Rhesus.liver - Rhesus.lung, 
+                     R_LivK = Rhesus.liver - Rhesus.kidney,  
+                     R_LuvK = Rhesus.lung - Rhesus.kidney, 
+                     levels = design)
+
+# Implement contrasts
+
+contrasts_each_species <- contrasts.fit(fit.cyclic.norm, cm1)
+fit1 <- eBayes(contrasts_each_species)
+
+top3 <- list(HvC_Liver =topTable(fit1, coef=1, adjust="BH", number=Inf, sort.by="none"), 
+             HvC_Lung =topTable(fit1, coef=2, adjust="BH", number=Inf, sort.by="none"),  
+             HvC_Heart =topTable(fit1, coef=3, adjust="BH", number=Inf, sort.by="none"),  
+             HvC_Kidney =topTable(fit1, coef=4, adjust="BH", number=Inf, sort.by="none"), 
+             
+             HvR_Liver =topTable(fit1, coef=5, adjust="BH", number=Inf, sort.by="none"), 
+             HvR_Lung =topTable(fit1, coef=6, adjust="BH", number=Inf, sort.by="none"),
+             HvR_Heart =topTable(fit1, coef=7, adjust="BH", number=Inf, sort.by="none"), 
+             HvR_Kidney =topTable(fit1, coef=8, adjust="BH", number=Inf, sort.by="none"),  
+             
+             CvR_Liver =topTable(fit1, coef=9, adjust="BH", number=Inf, sort.by="none"),  
+             CvR_Lung =topTable(fit1, coef=10, adjust="BH", number=Inf, sort.by="none"), 
+             CvR_Heart =topTable(fit1, coef=11, adjust="BH", number=Inf, sort.by="none"), 
+             CvR_Kidney =topTable(fit1, coef=12, adjust="BH", number=Inf, sort.by="none"),
+             
+             H_HeartvLi =topTable(fit1, coef=13, adjust="BH", number=Inf, sort.by="none"), 
+             H_HeartvLu =topTable(fit1, coef=14, adjust="BH", number=Inf, sort.by="none"),  
+             H_HeartvK =topTable(fit1, coef=15, adjust="BH", number=Inf, sort.by="none"),  
+             H_LivLu =topTable(fit1, coef=16, adjust="BH", number=Inf, sort.by="none"), 
+             H_LivK =topTable(fit1, coef=17, adjust="BH", number=Inf, sort.by="none"), 
+             H_LuvK =topTable(fit1, coef=18, adjust="BH", number=Inf, sort.by="none"),
+             
+             C_HeartvLi =topTable(fit1, coef=19, adjust="BH", number=Inf, sort.by="none"), 
+             C_HeartvLu =topTable(fit1, coef=20, adjust="BH", number=Inf, sort.by="none"),  
+             C_HeartvK =topTable(fit1, coef=21, adjust="BH", number=Inf, sort.by="none"),  
+             C_LivLu =topTable(fit1, coef=22, adjust="BH", number=Inf, sort.by="none"), 
+             C_LivK =topTable(fit1, coef=23, adjust="BH", number=Inf, sort.by="none"), 
+             C_LuvK =topTable(fit1, coef=24, adjust="BH", number=Inf, sort.by="none"),
+             
+             R_HeartvLi =topTable(fit1, coef=25, adjust="BH", number=Inf, sort.by="none"), 
+             R_HeartvLu =topTable(fit1, coef=26, adjust="BH", number=Inf, sort.by="none"),  
+             R_HeartvK =topTable(fit1, coef=27, adjust="BH", number=Inf, sort.by="none"),  
+             R_LivLu =topTable(fit1, coef=28, adjust="BH", number=Inf, sort.by="none"), 
+             R_LivK =topTable(fit1, coef=29, adjust="BH", number=Inf, sort.by="none"), 
+             R_LuvK =topTable(fit1, coef=30, adjust="BH", number=Inf, sort.by="none") )
+
+
+# Set FDR level at 1% 
+
+FDR_level <- 0.1
+
+## DE between HvC
+
+HvC_Liver =topTable(fit1, coef=1, adjust="BH", number=Inf, sort.by="none")
+dim(HvC_Liver[which(HvC_Liver$adj.P.Val < FDR_level), ]) 
+
+HvC_Lung =topTable(fit1, coef=2, adjust="BH", number=Inf, sort.by="none")
+dim(HvC_Lung[which(HvC_Lung$adj.P.Val < FDR_level), ]) 
+
+HvC_Heart =topTable(fit1, coef=3, adjust="BH", number=Inf, sort.by="none") 
+dim(HvC_Heart[which(HvC_Heart$adj.P.Val < FDR_level), ]) 
+
+HvC_Kidney =topTable(fit1, coef=4, adjust="BH", number=Inf, sort.by="none") 
+dim(HvC_Kidney[which(HvC_Kidney$adj.P.Val < FDR_level), ]) 
+
+
+
+mylist <- list()
+mylist[["Liver"]] <- row.names(top3[[names(top3)[1]]])[top3[[names(top3)[1]]]$adj.P.Val < FDR_level]
+mylist[["Lung"]] <-  row.names(top3[[names(top3)[2]]])[top3[[names(top3)[2]]]$adj.P.Val < FDR_level]
+mylist[["Heart"]] <- row.names(top3[[names(top3)[3]]])[top3[[names(top3)[3]]]$adj.P.Val < FDR_level]
+mylist[["Kidney"]] <- row.names(top3[[names(top3)[4]]])[top3[[names(top3)[4]]]$adj.P.Val < FDR_level]
+
+
+# Make 
+dev.off()
+Four_comp <- venn.diagram(mylist, filename= NULL, main="DE genes between Humans and Chimps (FDR 1%)", cex=1.5 , fill = pal[1:4], lty=1, height=2000, width=3000)
+grid.draw(Four_comp)
+
+## DE between HvR
+
+HvR_Liver =topTable(fit1, coef=5, adjust="BH", number=Inf, sort.by="none")
+dim(HvR_Liver[which(HvR_Liver$adj.P.Val < FDR_level), ]) 
+
+HvR_Lung =topTable(fit1, coef=6, adjust="BH", number=Inf, sort.by="none")
+dim(HvR_Lung[which(HvR_Lung$adj.P.Val < FDR_level), ]) 
+             
+HvR_Heart =topTable(fit1, coef=7, adjust="BH", number=Inf, sort.by="none") 
+dim(HvR_Heart[which(HvR_Heart$adj.P.Val < FDR_level), ]) 
+             
+HvR_Kidney =topTable(fit1, coef=8, adjust="BH", number=Inf, sort.by="none")  
+dim(HvR_Kidney[which(HvR_Kidney$adj.P.Val < FDR_level), ]) 
+
+mylist <- list()
+mylist[["Liver"]] <- row.names(top3[[names(top3)[5]]])[top3[[names(top3)[5]]]$adj.P.Val < FDR_level]
+mylist[["Lung"]] <-  row.names(top3[[names(top3)[6]]])[top3[[names(top3)[6]]]$adj.P.Val < FDR_level]
+mylist[["Heart"]] <- row.names(top3[[names(top3)[7]]])[top3[[names(top3)[7]]]$adj.P.Val < FDR_level]
+mylist[["Kidney"]] <- row.names(top3[[names(top3)[8]]])[top3[[names(top3)[8]]]$adj.P.Val < FDR_level]
+
+# Make 
+dev.off()
+Four_comp <- venn.diagram(mylist, filename= NULL, main="DE genes between Humans and Rhesus (FDR 1%)", cex=1.5 , fill = pal[1:4], lty=1, height=2000, width=3000)
+grid.draw(Four_comp)
+
+## DE between CvR
+
+CvR_Liver =topTable(fit1, coef=9, adjust="BH", number=Inf, sort.by="none")
+dim(CvR_Liver[which(CvR_Liver$adj.P.Val < FDR_level), ]) 
+
+CvR_Lung =topTable(fit1, coef=10, adjust="BH", number=Inf, sort.by="none")
+dim(CvR_Lung[which(CvR_Lung$adj.P.Val < FDR_level), ]) 
+             
+CvR_Heart =topTable(fit1, coef=11, adjust="BH", number=Inf, sort.by="none") 
+dim(CvR_Heart[which(CvR_Heart$adj.P.Val < FDR_level), ]) 
+              
+CvR_Kidney =topTable(fit1, coef=12, adjust="BH", number=Inf, sort.by="none")
+dim(CvR_Kidney[which(CvR_Kidney$adj.P.Val < FDR_level), ]) 
+
+
+mylist <- list()
+mylist[["Liver"]] <- row.names(top3[[names(top3)[9]]])[top3[[names(top3)[9]]]$adj.P.Val < FDR_level]
+mylist[["Lung"]] <-  row.names(top3[[names(top3)[10]]])[top3[[names(top3)[10]]]$adj.P.Val < FDR_level]
+mylist[["Heart"]] <- row.names(top3[[names(top3)[11]]])[top3[[names(top3)[11]]]$adj.P.Val < FDR_level]
+mylist[["Kidney"]] <- row.names(top3[[names(top3)[12]]])[top3[[names(top3)[12]]]$adj.P.Val < FDR_level]
+
+# Make 
+dev.off()
+Four_comp <- venn.diagram(mylist, filename= NULL, main="DE genes between Chimps and Rhesus (FDR 1%)", cex=1.5 , fill = pal[1:4], lty=1, height=2000, width=3000)
+grid.draw(Four_comp)
+
+# DE between tissues within a species
+
+  # Within humans
+H_HeartvLi =topTable(fit1, coef=13, adjust="BH", number=Inf, sort.by="none") 
+dim(H_HeartvLi[which(H_HeartvLi$adj.P.Val < FDR_level), ]) 
+            
+H_HeartvLu =topTable(fit1, coef=14, adjust="BH", number=Inf, sort.by="none")  
+dim(H_HeartvLu[which(H_HeartvLu$adj.P.Val < FDR_level), ]) 
+               
+H_HeartvK =topTable(fit1, coef=15, adjust="BH", number=Inf, sort.by="none")  
+dim(H_HeartvK[which(H_HeartvK$adj.P.Val < FDR_level), ]) 
+               
+H_LivLu =topTable(fit1, coef=16, adjust="BH", number=Inf, sort.by="none")
+dim(H_LivLu[which(H_LivLu$adj.P.Val < FDR_level), ]) 
+               
+H_LivK =topTable(fit1, coef=17, adjust="BH", number=Inf, sort.by="none") 
+dim(H_LivK[which(H_LivK$adj.P.Val < FDR_level), ]) 
+               
+H_LuvK =topTable(fit1, coef=18, adjust="BH", number=Inf, sort.by="none")
+dim(H_LuvK[which(H_LuvK$adj.P.Val < FDR_level), ]) 
+   
+  # Within chimps
+
+C_HeartvLi =topTable(fit1, coef=19, adjust="BH", number=Inf, sort.by="none") 
+dim(C_HeartvLi[which(C_HeartvLi$adj.P.Val < FDR_level), ]) 
+             
+C_HeartvLu =topTable(fit1, coef=20, adjust="BH", number=Inf, sort.by="none")  
+dim(C_HeartvLu[which(C_HeartvLu$adj.P.Val < FDR_level), ]) 
+              
+C_HeartvK =topTable(fit1, coef=21, adjust="BH", number=Inf, sort.by="none")  
+dim(C_HeartvK[which(C_HeartvK$adj.P.Val < FDR_level), ]) 
+          
+C_LivLu =topTable(fit1, coef=22, adjust="BH", number=Inf, sort.by="none")
+dim(C_LivLu[which(C_LivLu$adj.P.Val < FDR_level), ]) 
+             
+C_LivK =topTable(fit1, coef=23, adjust="BH", number=Inf, sort.by="none") 
+dim(C_LivK[which(C_LivK$adj.P.Val < FDR_level), ]) 
+             
+C_LuvK =topTable(fit1, coef=24, adjust="BH", number=Inf, sort.by="none")
+dim(C_LuvK[which(C_LuvK$adj.P.Val < FDR_level), ]) 
+
+  # Within rhesus
+
+R_HeartvLi =topTable(fit1, coef=25, adjust="BH", number=Inf, sort.by="none")
+dim(R_HeartvLi[which(R_HeartvLi$adj.P.Val < FDR_level), ]) 
+             
+R_HeartvLu =topTable(fit1, coef=26, adjust="BH", number=Inf, sort.by="none") 
+dim(R_HeartvLu[which(R_HeartvLu$adj.P.Val < FDR_level), ]) 
+             
+R_HeartvK =topTable(fit1, coef=27, adjust="BH", number=Inf, sort.by="none")  
+dim(R_HeartvK[which(R_HeartvK$adj.P.Val < FDR_level), ]) 
+              
+R_LivLu =topTable(fit1, coef=28, adjust="BH", number=Inf, sort.by="none")
+dim(R_LivLu[which(R_LivLu$adj.P.Val < FDR_level), ]) 
+             
+R_LivK =topTable(fit1, coef=29, adjust="BH", number=Inf, sort.by="none") 
+dim(R_LivK[which(R_LivK$adj.P.Val < FDR_level), ]) 
+             
+R_LuvK =topTable(fit1, coef=30, adjust="BH", number=Inf, sort.by="none")
+dim(R_LuvK[which(R_LuvK$adj.P.Val < FDR_level), ]) 
+
+
+## DE between Heart and Liver
+
+mylist <- list()
+mylist[["Human"]] <- row.names(top3[[names(top3)[13]]])[top3[[names(top3)[13]]]$adj.P.Val < FDR_level]
+mylist[["Chimp"]] <-  row.names(top3[[names(top3)[19]]])[top3[[names(top3)[19]]]$adj.P.Val < FDR_level]
+mylist[["Rhesus"]] <- row.names(top3[[names(top3)[25]]])[top3[[names(top3)[25]]]$adj.P.Val < FDR_level]
+
+# Make 
+dev.off()
+Four_comp <- venn.diagram(mylist, filename= NULL, main="DE genes between Heart and Liver (FDR 1%)", cex=1.5 , fill = pal[1:3], lty=1, height=2000, width=3000)
+grid.draw(Four_comp)
+
+## DE between Heart and Lung
+
+mylist <- list()
+mylist[["Human"]] <- row.names(top3[[names(top3)[14]]])[top3[[names(top3)[14]]]$adj.P.Val < FDR_level]
+mylist[["Chimp"]] <-  row.names(top3[[names(top3)[20]]])[top3[[names(top3)[20]]]$adj.P.Val < FDR_level]
+mylist[["Rhesus"]] <- row.names(top3[[names(top3)[26]]])[top3[[names(top3)[26]]]$adj.P.Val < FDR_level]
+
+# Make 
+dev.off()
+Four_comp <- venn.diagram(mylist, filename= NULL, main="DE genes between Heart and Lung (FDR 1%)", cex=1.5 , fill = pal[1:3], lty=1, height=2000, width=3000)
+grid.draw(Four_comp)
+
+
+## DE between Heart and Kidney
+
+mylist <- list()
+mylist[["Human"]] <- row.names(top3[[names(top3)[15]]])[top3[[names(top3)[15]]]$adj.P.Val < FDR_level]
+mylist[["Chimp"]] <-  row.names(top3[[names(top3)[21]]])[top3[[names(top3)[21]]]$adj.P.Val < FDR_level]
+mylist[["Rhesus"]] <- row.names(top3[[names(top3)[27]]])[top3[[names(top3)[27]]]$adj.P.Val < FDR_level]
+
+# Make 
+dev.off()
+Four_comp <- venn.diagram(mylist, filename= NULL, main="DE genes between Heart and Kidney (FDR 1%)", cex=1.5 , fill = pal[1:3], lty=1, height=2000, width=3000)
+grid.draw(Four_comp)
+
+
+## DE between Liver and Lung
+
+mylist <- list()
+mylist[["Human"]] <- row.names(top3[[names(top3)[16]]])[top3[[names(top3)[16]]]$adj.P.Val < FDR_level]
+mylist[["Chimp"]] <-  row.names(top3[[names(top3)[22]]])[top3[[names(top3)[22]]]$adj.P.Val < FDR_level]
+mylist[["Rhesus"]] <- row.names(top3[[names(top3)[28]]])[top3[[names(top3)[28]]]$adj.P.Val < FDR_level]
+
+# Make 
+dev.off()
+Four_comp <- venn.diagram(mylist, filename= NULL, main="DE genes between Liver and Lung (FDR 1%)", cex=1.5 , fill = pal[1:3], lty=1, height=2000, width=3000)
+grid.draw(Four_comp)
+
+## DE between Liver and Kidney
+
+mylist <- list()
+mylist[["Human"]] <- row.names(top3[[names(top3)[17]]])[top3[[names(top3)[17]]]$adj.P.Val < FDR_level]
+mylist[["Chimp"]] <-  row.names(top3[[names(top3)[23]]])[top3[[names(top3)[23]]]$adj.P.Val < FDR_level]
+mylist[["Rhesus"]] <- row.names(top3[[names(top3)[29]]])[top3[[names(top3)[29]]]$adj.P.Val < FDR_level]
+
+# Make 
+dev.off()
+Four_comp <- venn.diagram(mylist, filename= NULL, main="DE genes between Liver and Kidney (FDR 1%)", cex=1.5 , fill = pal[1:3], lty=1, height=2000, width=3000)
+grid.draw(Four_comp)
+
+## DE between Lung and Kidney
+
+mylist <- list()
+mylist[["Human"]] <- row.names(top3[[names(top3)[18]]])[top3[[names(top3)[18]]]$adj.P.Val < FDR_level]
+mylist[["Chimp"]] <-  row.names(top3[[names(top3)[24]]])[top3[[names(top3)[24]]]$adj.P.Val < FDR_level]
+mylist[["Rhesus"]] <- row.names(top3[[names(top3)[30]]])[top3[[names(top3)[30]]]$adj.P.Val < FDR_level]
+
+# Make 
+dev.off()
+Four_comp <- venn.diagram(mylist, filename= NULL, main="DE genes between Lung and Kidney (FDR 1%)", cex=1.5 , fill = pal[1:3], lty=1, height=2000, width=3000)
+grid.draw(Four_comp)
+
+```
+
+## Make Venn Diagrams for directionality using ASH
+
+In this section, we are going to detect genes that have differences in the same direction (false sign rate = 1%). 
+
+### Run ASH
+
+```{r}
+# Prepare the data for ASH
+tests <- colnames(fit1$coefficients)
+results <- vector(length = length(tests), mode = "list")
+names(results) <- tests
+
+# Perform multiple testing correction with adaptive shrinkage (ASH) 
+ #
+ # x - object MArrayLM from eBayes output
+ # coef - coefficient tested by eBayes
+
+run_ash <- function(x, coef){
+  #stopifnot(class(x) == "MArrayLM", coef %in% colnames(x$coefficients),
+  #             length(unique(x$df.total) == 1))
+  result <- ash(betahat = x$coefficients[, coef], sebetahat = x$stdev.unscaled[, coef] * sqrt(x$s2.post), df = x$df.total[1])
+  return(result)
+}
+
+get_results <- function(x, number = nrow(x$coefficients), sort.by = "none",
+                        ...) {
+  # x - object MArrayLM from eBayes output
+  # ... - additional arguments passed to topTable
+  stopifnot(class(x) == "MArrayLM")
+  results <- topTable(x, number = number, sort.by = sort.by, ...)
+  return(results)
+}
+
+# Get lfsr, lfdr, s value, q value, and a beta_est value. 
+for (test in tests) {
+  # Extract limma results
+  results[[test]] <- get_results(fit1, coef = test)
+  # Add mutliple testing correction with ASH
+  output_ash <- run_ash(fit1, coef = test)
+  results[[test]] <- cbind(results[[test]], sebetahat = output_ash$data$s, lfsr = output_ash$result$lfsr,
+                           lfdr = output_ash$result$lfdr, qvalue = output_ash$result$qvalue,
+                           svalue = output_ash$result$svalue, beta_est = output_ash$result$PosteriorMean, se_est =
+                             output_ash$result$PosteriorSD)
+}
+
+# Save results from analysis with limma and ash.
+saveRDS(results, file.path(data_dir, RDS))
+
+```
+
+### Find where the genes are upregulated between tissues
+
+```{r}
+# Set false sign rate
+FDR_level <- 0.01
+FSR_level <- 0.01
+
+# Heart versus kidney
+
+mylist <- list()
+
+test <- "H_HeartvK"
+mylist[["Human"]] <- (results[[test]]$genes)[results[[test]]$adj.P.Val < FDR_level & results[[test]]$svalue < FSR_level & results[[test]]$beta_est > 0]
+
+test <- "C_HeartvK"
+mylist[["Chimpanzee"]] <-   (results[[test]]$genes)[results[[test]]$adj.P.Val < FDR_level & results[[test]]$adj.P.Val < FDR_level & results[[test]]$svalue < FSR_level & results[[test]]$beta_est > 0]
+
+test <- "R_HeartvK"
+mylist[["Rhesus Macaque"]] <-  (results[[test]]$genes)[results[[test]]$adj.P.Val < FDR_level & results[[test]]$svalue < FSR_level & results[[test]]$beta_est > 0]
+
+# Make Venn Diagram
+dev.off()
+Heart_kidney <- venn.diagram(mylist, filename= NULL, main="Upregulated in Heart compared to Kidney (FSR 1%)", main.cex = 2, cat.cex = 1.5, cex=2.5 , fill = pal[1:3], lty=1, height=2000, width=3000)
+grid.draw(Heart_kidney)
+
+
+# Heart versus liver
+
+mylist <- list()
+
+test <- "H_HeartvLi"
+mylist[["Human"]] <- (results[[test]]$genes)[results[[test]]$adj.P.Val < FDR_level & results[[test]]$svalue < FSR_level & results[[test]]$beta_est > 0]
+
+test <- "C_HeartvLi"
+mylist[["Chimpanzee"]] <-   (results[[test]]$genes)[results[[test]]$adj.P.Val < FDR_level & results[[test]]$svalue < FSR_level & results[[test]]$beta_est > 0]
+
+test <- "R_HeartvLi"
+mylist[["Rhesus Macaque"]] <-  (results[[test]]$genes)[results[[test]]$adj.P.Val < FDR_level & results[[test]]$svalue < FSR_level & results[[test]]$beta_est > 0]
+
+# Make Venn Diagram
+dev.off()
+Heart_liver <- venn.diagram(mylist, filename= NULL, main="Upregulated in Heart compared to Liver (FSR 1%)", main.cex = 2, cat.cex = 1.5, cex=2.5 , fill = pal[1:3], lty=1, height=2000, width=3000)
+grid.draw(Heart_liver)
+
+
+# Heart versus lung
+
+mylist <- list()
+
+test <- "H_HeartvLu"
+mylist[["Human"]] <- (results[[test]]$genes)[results[[test]]$adj.P.Val < FDR_level & results[[test]]$svalue < FSR_level & results[[test]]$beta_est > 0]
+
+test <- "C_HeartvLu"
+mylist[["Chimpanzee"]] <-   (results[[test]]$genes)[results[[test]]$adj.P.Val < FDR_level & results[[test]]$svalue < FSR_level & results[[test]]$beta_est > 0]
+
+test <- "R_HeartvLu"
+mylist[["Rhesus Macaque"]] <-  (results[[test]]$genes)[results[[test]]$adj.P.Val < FDR_level & results[[test]]$svalue < FSR_level & results[[test]]$beta_est > 0]
+
+# Make Venn Diagram
+dev.off()
+Heart_lung <- venn.diagram(mylist, filename= NULL, main="Upregulated in Heart compared to Lung (FSR 1%)", main.cex = 2, cat.cex = 1.5, cex=2.5, fill = pal[1:3], lty=1, height=2000, width=3000)
+grid.draw(Heart_lung)
+
+
+# Liver versus lung
+
+mylist <- list()
+
+test <- "H_LivLu"
+mylist[["Human"]] <- (results[[test]]$genes)[results[[test]]$adj.P.Val < FDR_level & results[[test]]$svalue < FSR_level & results[[test]]$beta_est > 0]
+
+test <- "C_LivLu"
+mylist[["Chimpanzee"]] <-   (results[[test]]$genes)[results[[test]]$adj.P.Val < FDR_level & results[[test]]$svalue < FSR_level & results[[test]]$beta_est > 0]
+
+test <- "R_LivLu"
+mylist[["Rhesus Macaque"]] <- (results[[test]]$genes)[results[[test]]$adj.P.Val < FDR_level & results[[test]]$svalue < FSR_level & results[[test]]$beta_est > 0]
+
+# Make Venn Diagram
+dev.off()
+Liver_lung <- venn.diagram(mylist, filename= NULL, main="Upregulated in Liver compared to Lung (FSR 1%)", main.cex = 2, cat.cex = 1.5, cex=2.5, fill = pal[1:3], lty=1, height=2000, width=3000)
+grid.draw(Liver_lung)
+
+
+# Liver versus kidney
+
+mylist <- list()
+
+test <- "H_LivK"
+mylist[["Human"]] <- (results[[test]]$genes)[results[[test]]$adj.P.Val < FDR_level & results[[test]]$svalue < FSR_level & results[[test]]$beta_est > 0]
+
+test <- "C_LivK"
+mylist[["Chimpanzee"]] <-   (results[[test]]$genes)[results[[test]]$adj.P.Val < FDR_level & results[[test]]$svalue < FSR_level & results[[test]]$beta_est > 0]
+
+test <- "R_LivK"
+mylist[["Rhesus Macaque"]] <- (results[[test]]$genes)[results[[test]]$adj.P.Val < FDR_level & results[[test]]$svalue < FSR_level & results[[test]]$beta_est > 0]
+
+# Make Venn Diagram
+dev.off()
+Liver_kidney <- venn.diagram(mylist, filename= NULL, main="Upregulated in Liver compared to Kidney (FSR 1%)",  main.cex = 2, cat.cex = 1.5, cex=2.5, fill = pal[1:3], lty=1, height=2000, width=3000)
+grid.draw(Liver_kidney)
+
+
+# Lung versus Kidney
+
+mylist <- list()
+
+test <- "H_LuvK"
+mylist[["Human"]] <- (results[[test]]$genes)[results[[test]]$adj.P.Val < FDR_level & results[[test]]$svalue < FSR_level & results[[test]]$beta_est > 0]
+
+test <- "C_LuvK"
+mylist[["Chimpanzee"]] <-   (results[[test]]$genes)[results[[test]]$adj.P.Val < FDR_level & results[[test]]$svalue < FSR_level & results[[test]]$beta_est > 0]
+
+test <- "R_LuvK"
+mylist[["Rhesus Macaque"]] <- (results[[test]]$genes)[results[[test]]$adj.P.Val < FDR_level & results[[test]]$svalue < FSR_level & results[[test]]$beta_est > 0]
+
+# Make Venn Diagram
+dev.off()
+Lung_kidney <- venn.diagram(mylist, filename= NULL, main="Upregulated in Lung compared to Kidney (FSR 1%)",  main.cex = 2, cat.cex = 1.5, cex=2.5, fill = pal[1:3], lty=1, height=2000, width=3000)
+grid.draw(Lung_kidney)
+
+
+```
+
+### Find where the genes are downregulated between tissues
+
+```{r}
+# Set false sign rate
+
+FSR_level <- 0.01
+
+# Heart versus kidney
+
+mylist <- list()
+
+test <- "H_HeartvK"
+mylist[["Human"]] <- (results[[test]]$genes)[results[[test]]$adj.P.Val < FDR_level & results[[test]]$svalue < FSR_level & results[[test]]$beta_est < 0]
+
+test <- "C_HeartvK"
+mylist[["Chimpanzee"]] <-   (results[[test]]$genes)[results[[test]]$adj.P.Val < FDR_level & results[[test]]$svalue < FSR_level & results[[test]]$beta_est < 0]
+
+test <- "R_HeartvK"
+mylist[["Rhesus Macaque"]] <-  (results[[test]]$genes)[results[[test]]$adj.P.Val < FDR_level & results[[test]]$svalue < FSR_level & results[[test]]$beta_est < 0]
+
+# Make Venn Diagram
+dev.off()
+Heart_kidney_down <- venn.diagram(mylist, filename= NULL, main="Downregulated in Heart compared to Kidney (FSR 1%)",  main.cex = 2, cat.cex = 1.5, cex=2.5, fill = pal[1:3], lty=1, height=2000, width=3000)
+grid.draw(Heart_kidney_down)
+
+# Heart versus liver
+
+mylist <- list()
+
+test <- "H_HeartvLi"
+mylist[["Human"]] <- (results[[test]]$genes)[results[[test]]$adj.P.Val < FDR_level & results[[test]]$svalue < FSR_level & results[[test]]$beta_est < 0]
+
+test <- "C_HeartvLi"
+mylist[["Chimpanzee"]] <-   (results[[test]]$genes)[results[[test]]$adj.P.Val < FDR_level & results[[test]]$svalue < FSR_level & results[[test]]$beta_est < 0]
+
+test <- "R_HeartvLi"
+mylist[["Rhesus Macaque"]] <-  (results[[test]]$genes)[results[[test]]$adj.P.Val < FDR_level & results[[test]]$svalue < FSR_level & results[[test]]$beta_est < 0]
+
+# Make Venn Diagram
+dev.off()
+Heart_liver_down <- venn.diagram(mylist, filename= NULL, main="Downregulated in Heart compared to Liver (FSR 1%)", main.cex = 2, cat.cex = 1.5, cex=2.5 , fill = pal[1:3], lty=1, height=2000, width=3000)
+grid.draw(Heart_liver_down)
+
+
+# Heart versus lung
+
+mylist <- list()
+
+test <- "H_HeartvLu"
+mylist[["Human"]] <- (results[[test]]$genes)[results[[test]]$adj.P.Val < FDR_level & results[[test]]$svalue < FSR_level & results[[test]]$beta_est < 0]
+
+test <- "C_HeartvLu"
+mylist[["Chimpanzee"]] <-   (results[[test]]$genes)[results[[test]]$adj.P.Val < FDR_level & results[[test]]$svalue < FSR_level & results[[test]]$beta_est < 0]
+
+test <- "R_HeartvLu"
+mylist[["Rhesus Macaque"]] <-  (results[[test]]$genes)[results[[test]]$adj.P.Val < FDR_level & results[[test]]$svalue < FSR_level & results[[test]]$beta_est < 0]
+
+# Make Venn Diagram
+dev.off()
+Heart_lung_down <- venn.diagram(mylist, filename= NULL, main="Downregulated in Heart compared to Lung (FSR 1%)",  main.cex = 2, cat.cex = 1.5, cex=2.5, fill = pal[1:3], lty=1, height=2000, width=3000)
+grid.draw(Heart_lung_down)
+
+
+# Liver versus lung
+
+mylist <- list()
+
+test <- "H_LivLu"
+mylist[["Human"]] <- (results[[test]]$genes)[results[[test]]$adj.P.Val < FDR_level & results[[test]]$svalue < FSR_level & results[[test]]$beta_est < 0]
+
+test <- "C_LivLu"
+mylist[["Chimpanzee"]] <-   (results[[test]]$genes)[results[[test]]$adj.P.Val < FDR_level & results[[test]]$svalue < FSR_level & results[[test]]$beta_est < 0]
+
+test <- "R_LivLu"
+mylist[["Rhesus Macaque"]] <- (results[[test]]$genes)[results[[test]]$adj.P.Val < FDR_level & results[[test]]$svalue < FSR_level & results[[test]]$beta_est < 0]
+
+# Make Venn Diagram
+dev.off()
+Liver_lung_down <- venn.diagram(mylist, filename= NULL, main="Downregulated in Liver compared to Lung (FSR 1%)", main.cex = 2, cat.cex = 1.5, cex=2.5, fill = pal[1:3], lty=1, height=2000, width=3000)
+grid.draw(Liver_lung_down)
+
+
+# Liver versus kidney
+
+mylist <- list()
+
+test <- "H_LivK"
+mylist[["Human"]] <- (results[[test]]$genes)[results[[test]]$adj.P.Val < FDR_level & results[[test]]$svalue < FSR_level & results[[test]]$beta_est < 0]
+
+test <- "C_LivK"
+mylist[["Chimpanzee"]] <-   (results[[test]]$genes)[results[[test]]$adj.P.Val < FDR_level & results[[test]]$svalue < FSR_level & results[[test]]$beta_est < 0]
+
+test <- "R_LivK"
+mylist[["Rhesus Macaque"]] <- (results[[test]]$genes)[results[[test]]$adj.P.Val < FDR_level & results[[test]]$svalue < FSR_level & results[[test]]$beta_est < 0]
+
+# Make Venn Diagram
+dev.off()
+Liver_kidney_down <- venn.diagram(mylist, filename= NULL, main="Downregulated in Liver compared to Kidney (FSR 1%)", main.cex = 2, cat.cex = 1.5, cex=2.5, fill = pal[1:3], lty=1, height=2000, width=3000)
+grid.draw(Liver_kidney_down)
+
+
+# Lung versus Kidney
+
+mylist <- list()
+
+test <- "H_LuvK"
+mylist[["Human"]] <- (results[[test]]$genes)[results[[test]]$adj.P.Val < FDR_level & results[[test]]$svalue < FSR_level & results[[test]]$beta_est < 0]
+
+test <- "C_LuvK"
+mylist[["Chimpanzee"]] <-   (results[[test]]$genes)[results[[test]]$adj.P.Val < FDR_level & results[[test]]$svalue < FSR_level & results[[test]]$beta_est < 0]
+
+test <- "R_LuvK"
+mylist[["Rhesus Macaque"]] <- (results[[test]]$genes)[results[[test]]$adj.P.Val < FDR_level & results[[test]]$svalue < FSR_level & results[[test]]$beta_est < 0]
+
+# Make Venn Diagram
+dev.off()
+Lung_kidney_down <- venn.diagram(mylist, filename= NULL, main="Downregulated in Lung compared to Kidney (FSR 1%)", main.cex = 2, cat.cex = 1.5, cex=2.5, fill = pal[1:3], lty=1, height=2000, width=3000)
+grid.draw(Lung_kidney_down)
+
+```
+
+### Find where the genes are upregulated between species
+
+```{r}
+# Set false sign rate
+
+FSR_level <- 0.01
+
+  # DE between humans and chimpanzees
+
+mylist <- list()
+
+test <- "HvC_Liver"
+mylist[["Liver"]] <- (results[[test]]$genes)[results[[test]]$adj.P.Val < FDR_level & results[[test]]$svalue < FSR_level & results[[test]]$beta_est > 0]
+
+test <- "HvC_Lung"
+mylist[["Lung"]] <-  (results[[test]]$genes)[results[[test]]$adj.P.Val < FDR_level & results[[test]]$svalue < FSR_level & results[[test]]$beta_est > 0]
+
+test <- "HvC_Heart"
+mylist[["Heart"]] <- (results[[test]]$genes)[results[[test]]$adj.P.Val < FDR_level & results[[test]]$svalue < FSR_level & results[[test]]$beta_est > 0]
+
+test <- "HvC_Kidney"
+mylist[["Kidney"]] <- (results[[test]]$genes)[results[[test]]$adj.P.Val < FDR_level & results[[test]]$svalue < FSR_level & results[[test]]$beta_est > 0]
+
+# Make Venn Diagram
+dev.off()
+Human_chimp_up <- venn.diagram(mylist, filename= NULL, main="Upregulated in Humans compared to Chimps (FSR 1%)", main.cex = 2, cat.cex = 1.5, cex=2.5, fill = pal[1:4], lty=1, height=2000, width=3000)
+grid.draw(Human_chimp_up)
+
+
+  # DE between humans and rhesus
+mylist <- list()
+test <- "HvR_Liver"
+mylist[["Liver"]] <- (results[[test]]$genes)[results[[test]]$adj.P.Val < FDR_level & results[[test]]$svalue < FSR_level & results[[test]]$beta_est > 0]
+
+test <- "HvR_Lung"
+mylist[["Lung"]] <-  (results[[test]]$genes)[results[[test]]$adj.P.Val < FDR_level & results[[test]]$svalue < FSR_level & results[[test]]$beta_est > 0]
+
+test <- "HvR_Heart"
+mylist[["Heart"]] <- (results[[test]]$genes)[results[[test]]$adj.P.Val < FDR_level & results[[test]]$svalue < FSR_level & results[[test]]$beta_est > 0]
+
+test <- "HvR_Kidney"
+mylist[["Kidney"]] <- (results[[test]]$genes)[results[[test]]$adj.P.Val < FDR_level & results[[test]]$svalue < FSR_level & results[[test]]$beta_est > 0]
+
+# Make Venn Diagram
+dev.off()
+Human_rhesus_up <- venn.diagram(mylist, filename= NULL, main="Upregulated in Humans compared to Rhesus (FSR 1%)", main.cex = 2, cat.cex = 1.5, cex=2.5, fill = pal[1:4], lty=1, height=2000, width=3000)
+grid.draw(Human_rhesus_up)
+
+
+
+  # DE between chimpanzees and rhesus
+mylist <- list()
+test <- "CvR_Liver"
+mylist[["Liver"]] <- (results[[test]]$genes)[results[[test]]$adj.P.Val < FDR_level & results[[test]]$svalue < FSR_level & results[[test]]$beta_est > 0]
+
+test <- "CvR_Lung"
+mylist[["Lung"]] <-  (results[[test]]$genes)[results[[test]]$adj.P.Val < FDR_level & results[[test]]$svalue < FSR_level & results[[test]]$beta_est > 0]
+
+test <- "CvR_Heart"
+mylist[["Heart"]] <- (results[[test]]$genes)[results[[test]]$adj.P.Val < FDR_level & results[[test]]$svalue < FSR_level & results[[test]]$beta_est > 0]
+
+test <- "CvR_Kidney"
+mylist[["Kidney"]] <- (results[[test]]$genes)[results[[test]]$adj.P.Val < FDR_level & results[[test]]$svalue < FSR_level & results[[test]]$beta_est > 0]
+
+# Make Venn Diagram
+dev.off()
+Chimp_rhesus_up <- venn.diagram(mylist, filename= NULL, main="Upregulated in Chimps relative to Rhesus (FSR 1%)", main.cex = 2, cat.cex = 1.5, cex=2.5, fill = pal[1:4], lty=1, height=2000, width=3000)
+grid.draw(Chimp_rhesus_up)
+
+
+```
+
+### Find where the genes are downregulated between species
+
+```{r}
+# Set false sign rate
+
+FSR_level <- 0.01
+
+  # DE between humans and chimpanzees
+
+mylist <- list()
+
+test <- "HvC_Liver"
+mylist[["Liver"]] <- (results[[test]]$genes)[results[[test]]$adj.P.Val < FDR_level & results[[test]]$svalue < FSR_level & results[[test]]$beta_est < 0]
+
+test <- "HvC_Lung"
+mylist[["Lung"]] <-  (results[[test]]$genes)[results[[test]]$adj.P.Val < FDR_level & results[[test]]$svalue < FSR_level & results[[test]]$beta_est < 0]
+
+test <- "HvC_Heart"
+mylist[["Heart"]] <- (results[[test]]$genes)[results[[test]]$adj.P.Val < FDR_level & results[[test]]$svalue < FSR_level & results[[test]]$beta_est < 0]
+
+test <- "HvC_Kidney"
+mylist[["Kidney"]] <- (results[[test]]$genes)[results[[test]]$adj.P.Val < FDR_level & results[[test]]$svalue < FSR_level & results[[test]]$beta_est < 0]
+
+# Make Venn Diagram
+dev.off()
+Human_chimp_down <- venn.diagram(mylist, filename= NULL, main="Downregulated in Humans compared to Chimps (FSR 1%)", main.cex = 2, cat.cex = 1.5, cex=2.5, fill = pal[1:4], lty=1, height=2000, width=3000)
+grid.draw(Human_chimp_down)
+
+
+  # DE between humans and rhesus
+mylist <- list()
+test <- "HvR_Liver"
+mylist[["Liver"]] <- (results[[test]]$genes)[results[[test]]$adj.P.Val < FDR_level & results[[test]]$svalue < FSR_level & results[[test]]$beta_est < 0]
+
+test <- "HvR_Lung"
+mylist[["Lung"]] <-  (results[[test]]$genes)[results[[test]]$adj.P.Val < FDR_level & results[[test]]$svalue < FSR_level & results[[test]]$beta_est < 0]
+
+test <- "HvR_Heart"
+mylist[["Heart"]] <- (results[[test]]$genes)[results[[test]]$adj.P.Val < FDR_level & results[[test]]$svalue < FSR_level & results[[test]]$beta_est < 0]
+
+test <- "HvR_Kidney"
+mylist[["Kidney"]] <- (results[[test]]$genes)[results[[test]]$adj.P.Val < FDR_level & results[[test]]$svalue < FSR_level & results[[test]]$beta_est < 0]
+
+# Make Venn Diagram
+dev.off()
+Human_rhesus_down <- venn.diagram(mylist, filename= NULL, main="Downregulated in Humans compared to Rhesus (FSR 1%)", main.cex = 2, cat.cex = 1.5, cex=2.5, fill = pal[1:4], lty=1, height=2000, width=3000)
+grid.draw(Human_rhesus_down)
+
+
+
+  # DE between chimpanzees and rhesus
+mylist <- list()
+test <- "CvR_Liver"
+mylist[["Liver"]] <- (results[[test]]$genes)[results[[test]]$adj.P.Val < FDR_level & results[[test]]$svalue < FSR_level & results[[test]]$beta_est < 0]
+
+test <- "CvR_Lung"
+mylist[["Lung"]] <-  (results[[test]]$genes)[results[[test]]$adj.P.Val < FDR_level & results[[test]]$svalue < FSR_level & results[[test]]$beta_est < 0]
+
+test <- "CvR_Heart"
+mylist[["Heart"]] <- (results[[test]]$genes)[results[[test]]$adj.P.Val < FDR_level & results[[test]]$svalue < FSR_level & results[[test]]$beta_est < 0]
+
+test <- "CvR_Kidney"
+mylist[["Kidney"]] <- (results[[test]]$genes)[results[[test]]$adj.P.Val < FDR_level & results[[test]]$svalue < FSR_level & results[[test]]$beta_est < 0]
+
+# Make Venn Diagram
+dev.off()
+Chimp_rhesus_down <- venn.diagram(mylist, filename= NULL, main="Downregulated in Chimps relative to Rhesus (FSR 1%)", main.cex = 2, cat.cex = 1.5, cex=2.5, fill = pal[1:4], lty=1, height=2000, width=3000)
+grid.draw(Chimp_rhesus_down)
+
+```
+
+
+## Find genes with a tissue-specific direction (significant and upregulated in 1 versus 2, 3, 4 but not significant in 2 v 3, 4 and 3 v 4)
+
+```{r}
+# Combine the human ASH results
+combined_human <- cbind(results[["H_HeartvLi"]], results[["H_HeartvLu"]], results[["H_HeartvK"]], results[["H_LivLu"]], results[["H_LivK"]], results[["H_LuvK"]])
+
+dim(combined_human)
+
+# Combine the chimp ASH results
+combined_chimp <- cbind(results[["C_HeartvLi"]], results[["C_HeartvLu"]], results[["C_HeartvK"]], results[["C_LivLu"]], results[["C_LivK"]], results[["C_LuvK"]])
+
+dim(combined_chimp)
+
+# Combine the rhesus ASH results
+combined_rhesus <- cbind(results[["R_HeartvLi"]], results[["R_HeartvLu"]], results[["R_HeartvK"]], results[["R_LivLu"]], results[["R_LivK"]], results[["R_LuvK"]])
+
+dim(combined_rhesus)
+
+
+# Upregulated in human liver but not in any of the other tissues
+human_heart_1 <- combined_human[combined_human[,12] < FSR_level & combined_human[,13] < 0, ]
+human_heart_2 <- human_heart_1[!(human_heart_1[,26] < FSR_level),]
+human_heart_3 <- human_heart_2[!(human_heart_2[,40] < FSR_level),]
+human_heart_4 <- human_heart_3[human_heart_3[,54] < FSR_level & human_heart_3[,55] > 0, ]
+human_heart_5 <- human_heart_4[human_heart_4[,68] < FSR_level & human_heart_4[,69] > 0,]
+human_liver_6_up <- human_heart_5[!(human_heart_5[,82] < FSR_level ),]
+dim(human_liver_6_up)
+
+# Upregulated in chimp liver but not in any of the other tissues
+chimp_heart_1 <- combined_chimp[combined_chimp[,12] < FSR_level & combined_chimp[,13] < 0, ]
+chimp_heart_2 <- chimp_heart_1[!(chimp_heart_1[,26]) < FSR_level,]
+chimp_heart_3 <- chimp_heart_2[!(chimp_heart_2[,40] < FSR_level),]
+chimp_heart_4 <- chimp_heart_3[chimp_heart_3[,54] < FSR_level & chimp_heart_3[,55] > 0,]
+chimp_heart_5 <- chimp_heart_4[chimp_heart_4[,68] < FSR_level & chimp_heart_4[,69] > 0,]
+chimp_liver_6_up <- chimp_heart_5[!(chimp_heart_5[,82] < FSR_level),]
+dim(chimp_liver_6_up)
+
+# Upregulated in rhesus liver but not in any of the other tissues
+rhesus_heart_1 <- combined_rhesus[combined_rhesus[,12] < FSR_level & combined_rhesus[,13] < 0, ]
+rhesus_heart_2 <- rhesus_heart_1[!(rhesus_heart_1[,26] < FSR_level),]
+rhesus_heart_3 <- rhesus_heart_2[!(rhesus_heart_2[,40] < FSR_level),]
+rhesus_heart_4 <- rhesus_heart_3[rhesus_heart_3[,54] < FSR_level & rhesus_heart_3[,55] > 0,]
+rhesus_heart_5 <- rhesus_heart_4[rhesus_heart_4[,68] < FSR_level & rhesus_heart_4[,69] > 0,]
+rhesus_liver_6_up <- rhesus_heart_5[!(rhesus_heart_5[,82] < FSR_level),]
+dim(rhesus_liver_6_up)
+
+mylist <- list()
+mylist[["Human"]] <- rownames(human_liver_6_up)
+mylist[["Chimpanzee"]] <- rownames(chimp_liver_6_up)
+mylist[["Rhesus Macaque"]] <- rownames(rhesus_liver_6_up)
+
+# Make Venn Diagram
+dev.off()
+Liver_specific_up <- venn.diagram(mylist, filename= NULL, main="Upregulated livers (FSR 1%)", main.cex = 2, cat.cex = 1.5, cex=2.5, fill = pal[1:3], lty=1, height=2000, width=3000)
+grid.draw(Liver_specific_up)
+
+names_union_liver <- intersect(intersect(rownames(human_liver_6_up), rownames(chimp_liver_6_up)), rownames(rhesus_liver_6_up))
+
+exp <- t(as.data.frame(cpm_12184[grepl("ENSG00000104951", rownames(cpm_12184)), ]))
+make_exp_df <- as.data.frame(cbind(exp, species, tissue))
+make_exp_df$species <- as.factor(make_exp_df$species)
+levels(make_exp_df$species) <- c("Chimpanzee", "Human", "Rhesus")
+colnames(make_exp_df) <- c("CPM", "Species", "Tissue")
+ggplot(make_exp_df, aes(x=as.factor(Tissue), y=CPM, fill=as.factor(Tissue))) + geom_boxplot() + facet_wrap(~Species)  + xlab("Tissue") + ylab("Normalized Expression") + scale_x_discrete(labels=c("Heart","Kidney","Liver", "Lung")) + bjp + theme(legend.position="none") + ggtitle("ENSG00000104951") 
+
+
+# Downregulated in human liver but not in any of the other tissues
+human_heart_1 <- combined_human[combined_human[,12] < FSR_level & combined_human[,13] > 0, ]
+human_heart_2 <- human_heart_1[!(human_heart_1[,26] < FSR_level),]
+human_heart_3 <- human_heart_2[!(human_heart_2[,40] < FSR_level),]
+human_heart_4 <- human_heart_3[human_heart_3[,54] < FSR_level & human_heart_3[,55] < 0, ]
+human_heart_5 <- human_heart_4[human_heart_4[,68] < FSR_level & human_heart_4[,69] < 0,]
+human_liver_6_down <- human_heart_5[!(human_heart_5[,82] < FSR_level ),]
+dim(human_liver_6_down)
+
+# Downregulated in chimp liver but not in any of the other tissues
+chimp_heart_1 <- combined_chimp[combined_chimp[,12] < FSR_level & combined_chimp[,13] > 0, ]
+chimp_heart_2 <- chimp_heart_1[!(chimp_heart_1[,26]) < FSR_level,]
+chimp_heart_3 <- chimp_heart_2[!(chimp_heart_2[,40] < FSR_level),]
+chimp_heart_4 <- chimp_heart_3[chimp_heart_3[,54] < FSR_level & chimp_heart_3[,55] < 0,]
+chimp_heart_5 <- chimp_heart_4[chimp_heart_4[,68] < FSR_level & chimp_heart_4[,69] < 0,]
+chimp_liver_6_down <- chimp_heart_5[!(chimp_heart_5[,82] < FSR_level),]
+dim(chimp_liver_6_down)
+
+# Downregulated in rhesus liver but not in any of the other tissues
+rhesus_heart_1 <- combined_rhesus[combined_rhesus[,12] < FSR_level & combined_rhesus[,13] > 0, ]
+rhesus_heart_2 <- rhesus_heart_1[!(rhesus_heart_1[,26] < FSR_level),]
+rhesus_heart_3 <- rhesus_heart_2[!(rhesus_heart_2[,40] < FSR_level),]
+rhesus_heart_4 <- rhesus_heart_3[rhesus_heart_3[,54] < FSR_level & rhesus_heart_3[,55] < 0,]
+rhesus_heart_5 <- rhesus_heart_4[rhesus_heart_4[,68] < FSR_level & rhesus_heart_4[,69] < 0,]
+rhesus_liver_6_down <- rhesus_heart_5[!(rhesus_heart_5[,82] < FSR_level),]
+dim(rhesus_liver_6_down)
+
+mylist <- list()
+mylist[["Human"]] <- rownames(human_liver_6_down)
+mylist[["Chimpanzee"]] <- rownames(chimp_liver_6_down)
+mylist[["Rhesus Macaque"]] <- rownames(rhesus_liver_6_down)
+
+# Make Venn Diagram
+dev.off()
+Liver_specific_down <- venn.diagram(mylist, filename= NULL, main="Downregulated livers (FSR 1%)",  main.cex = 2, cat.cex = 1.5, cex=2.5, fill = pal[1:3], lty=1, height=2000, width=3000)
+grid.draw(Liver_specific_down)
+
+names_union_liver_down <- intersect(intersect(rownames(human_liver_6_down), rownames(chimp_liver_6_down)), rownames(rhesus_liver_6_down))
+
+exp <- t(as.data.frame(cpm_12184[grepl("ENSG00000106605", rownames(cpm_12184)), ]))
+make_exp_df <- as.data.frame(cbind(exp, species, tissue))
+make_exp_df$species <- as.factor(make_exp_df$species)
+levels(make_exp_df$species) <- c("Chimpanzee", "Human", "Rhesus")
+colnames(make_exp_df) <- c("CPM", "Species", "Tissue")
+ggplot(make_exp_df, aes(x=as.factor(Tissue), y=CPM, fill=as.factor(Tissue))) + geom_boxplot() + facet_wrap(~Species)
+
+# Upregulated in human heart but not in any of the other tissues
+human_heart_1 <- combined_human[combined_human[,12] < FSR_level & combined_human[,13] > 0, ]
+human_heart_2 <- human_heart_1[human_heart_1[,26] < FSR_level & human_heart_1[,27] > 0,]
+human_heart_3 <- human_heart_2[human_heart_2[,40] < FSR_level & human_heart_2[,41] > 0,]
+human_heart_4 <- human_heart_3[!(human_heart_3[,54] > FSR_level), ]
+human_heart_5 <- human_heart_4[!(human_heart_4[,68] > FSR_level),]
+human_heart_6_up <- human_heart_5[!(human_heart_5[,82] > FSR_level ),]
+dim(human_heart_6_up)
+
+# Downregulated in chimp heart but not in any of the other tissues
+chimp_heart_1 <- combined_chimp[combined_chimp[,12] < FSR_level & combined_chimp[,13] > 0, ]
+chimp_heart_2 <- chimp_heart_1[chimp_heart_1[,26] < FSR_level & chimp_heart_1[,27] > 0,]
+chimp_heart_3 <- chimp_heart_2[chimp_heart_2[,40] < FSR_level & chimp_heart_2[,41] > 0,]
+chimp_heart_4 <- chimp_heart_3[chimp_heart_3[,54] < 0.01,]
+chimp_heart_5 <- chimp_heart_4[chimp_heart_4[,68] < 0.01,]
+chimp_heart_6_up <- chimp_heart_5[chimp_heart_5[,82] < 0.01,]
+dim(chimp_heart_6_up)
+
+# Downregulated in rhesus heart but not in any of the other tissues
+rhesus_heart_1 <- combined_rhesus[combined_rhesus[,12] < FSR_level & combined_rhesus[,13] > 0, ]
+rhesus_heart_2 <- rhesus_heart_1[rhesus_heart_1[,26] < FSR_level & rhesus_heart_1[,27] > 0,]
+rhesus_heart_3 <- rhesus_heart_2[rhesus_heart_2[,40] < FSR_level & rhesus_heart_2[,41] > 0,]
+rhesus_heart_4 <- rhesus_heart_3[!(rhesus_heart_3[,54] > 0.01),]
+rhesus_heart_5 <- rhesus_heart_4[!(rhesus_heart_4[,68] > 0.01),]
+rhesus_heart_6_up <- rhesus_heart_5[!(rhesus_heart_5[,82] > 0.01),]
+dim(rhesus_heart_6_up)
+
+mylist <- list()
+mylist[["Human"]] <- rownames(human_heart_6_up)
+mylist[["Chimpanzee"]] <- rownames(chimp_heart_6_up)
+mylist[["Rhesus Macaque"]] <- rownames(rhesus_heart_6_up)
+
+# Make Venn Diagram
+dev.off()
+Heart_specific_up <- venn.diagram(mylist, filename= NULL, main="Upregulated hearts (FSR 1%)", main.cex = 2, cat.cex = 1.5, cex=2.5, fill = pal[1:3], lty=1, height=2000, width=3000)
+grid.draw(Heart_specific_up)
+
+
+# Downregulated in human heart but not in any of the other tissues
+human_heart_1 <- combined_human[combined_human[,12] < FSR_level & combined_human[,13] < 0, ]
+human_heart_2 <- human_heart_1[human_heart_1[,26] < FSR_level & human_heart_1[,27] < 0,]
+human_heart_3 <- human_heart_2[human_heart_2[,40] < FSR_level & human_heart_2[,41] < 0,]
+human_heart_4 <- human_heart_3[!(human_heart_3[,54] < FSR_level), ]
+human_heart_5 <- human_heart_4[!(human_heart_4[,68] < FSR_level),]
+human_heart_6_down <- human_heart_5[!(human_heart_5[,82] < FSR_level ),]
+dim(human_heart_6_down)
+
+# Downregulated in chimp heart but not in any of the other tissues
+chimp_heart_1 <- combined_chimp[combined_chimp[,12] < FSR_level & combined_chimp[,13] < 0, ]
+chimp_heart_2 <- chimp_heart_1[chimp_heart_1[,26] < FSR_level & chimp_heart_1[,27] < 0,]
+chimp_heart_3 <- chimp_heart_2[chimp_heart_2[,40] < FSR_level & chimp_heart_2[,41] < 0,]
+chimp_heart_4 <- chimp_heart_3[chimp_heart_3[,54] > 0.01,]
+chimp_heart_5 <- chimp_heart_4[chimp_heart_4[,68] > 0.01,]
+chimp_heart_6_down <- chimp_heart_5[chimp_heart_5[,82] > 0.01,]
+dim(chimp_heart_6_down)
+
+# Downregulated in rhesus heart but not in any of the other tissues
+rhesus_heart_1 <- combined_rhesus[combined_rhesus[,12] < FSR_level & combined_rhesus[,13] < 0, ]
+rhesus_heart_2 <- rhesus_heart_1[rhesus_heart_1[,26] < FSR_level & rhesus_heart_1[,27] < 0,]
+rhesus_heart_3 <- rhesus_heart_2[rhesus_heart_2[,40] < FSR_level & rhesus_heart_2[,41] < 0,]
+rhesus_heart_4 <- rhesus_heart_3[!(rhesus_heart_3[,54] < 0.01),]
+rhesus_heart_5 <- rhesus_heart_4[!(rhesus_heart_4[,68] < 0.01),]
+rhesus_heart_6_down <- rhesus_heart_5[!(rhesus_heart_5[,82] < 0.01),]
+dim(rhesus_heart_6_down)
+
+mylist <- list()
+mylist[["Human"]] <- rownames(human_heart_6_down)
+mylist[["Chimpanzee"]] <- rownames(chimp_heart_6_down)
+mylist[["Rhesus Macaque"]] <- rownames(rhesus_heart_6_down)
+
+# Make Venn Diagram
+dev.off()
+Heart_specific_down <- venn.diagram(mylist, filename= NULL, main="Downregulated hearts (FSR 1%)", main.cex = 2, cat.cex = 1.5, cex=2.5, fill = pal[1:3], lty=1, height=2000, width=3000)
+grid.draw(Heart_specific_down)
+
+names_union_heart_down <- intersect(intersect(rownames(human_heart_6_down), rownames(chimp_heart_6_down)), rownames(rhesus_heart_6_down))
+
+exp <- t(as.data.frame(cpm_12184[grepl("ENSG00000082996", rownames(cpm_12184)), ]))
+make_exp_df <- as.data.frame(cbind(exp, species, tissue))
+make_exp_df$species <- as.factor(make_exp_df$species)
+levels(make_exp_df$species) <- c("Chimpanzee", "Human", "Rhesus")
+colnames(make_exp_df) <- c("CPM", "Species", "Tissue")
+ggplot(make_exp_df, aes(x=as.factor(Tissue), y=CPM, fill=as.factor(Tissue))) + geom_boxplot() + facet_wrap(~Species)
+
+
+# Upregulated in human lung but not in any of the other tissues
+human_heart_1 <- combined_human[!(combined_human[,12] < FSR_level), ]
+human_heart_2 <- human_heart_1[human_heart_1[,26] < FSR_level & human_heart_1[,27] < 0,]
+human_heart_3 <- human_heart_2[!(human_heart_2[,40] < FSR_level),]
+human_heart_4 <- human_heart_3[human_heart_3[,54] < FSR_level & human_heart_3[,55] < 0, ]
+human_heart_5 <- human_heart_4[!(human_heart_4[,68] < FSR_level),]
+human_lung_6_up <- human_heart_5[human_heart_5[,82] < FSR_level & human_heart_5[,83] > 0,]
+dim(human_lung_6_up)
+
+# Upregulated in chimp lung but not in any of the other tissues
+chimp_heart_1 <- combined_chimp[!(combined_chimp[,12] < FSR_level), ]
+chimp_heart_2 <- chimp_heart_1[chimp_heart_1[,26] < FSR_level & chimp_heart_1[,27] < 0,]
+chimp_heart_3 <- chimp_heart_2[!(chimp_heart_2[,40] < FSR_level),]
+chimp_heart_4 <- chimp_heart_3[chimp_heart_3[,54] < FSR_level & chimp_heart_3[,55] < 0,]
+chimp_heart_5 <- chimp_heart_4[!(chimp_heart_4[,68] < FSR_level),]
+chimp_lung_6_up <- chimp_heart_5[chimp_heart_5[,82] < FSR_level & chimp_heart_5[,83] > 0,]
+dim(chimp_lung_6_up)
+
+# Upregulated in rhesus lung but not in any of the other tissues
+rhesus_heart_1 <- combined_rhesus[!(combined_rhesus[,12] < FSR_level), ]
+rhesus_heart_2 <- rhesus_heart_1[rhesus_heart_1[,26] < FSR_level & rhesus_heart_1[,27] < 0,]
+rhesus_heart_3 <- rhesus_heart_2[!(rhesus_heart_2[,40] < FSR_level),]
+rhesus_heart_4 <- rhesus_heart_3[rhesus_heart_3[,54] < FSR_level & rhesus_heart_3[,55] < 0,]
+rhesus_heart_5 <- rhesus_heart_4[!(rhesus_heart_4[,68] < FSR_level),]
+rhesus_lung_6_up <- rhesus_heart_5[rhesus_heart_5[,82] < FSR_level & rhesus_heart_5[,83] > 0,]
+dim(rhesus_lung_6_up)
+
+mylist <- list()
+mylist[["Human"]] <- rownames(human_lung_6_up)
+mylist[["Chimpanzee"]] <- rownames(chimp_lung_6_up)
+mylist[["Rhesus Macaque"]] <- rownames(rhesus_lung_6_up)
+
+# Make Venn Diagram
+dev.off()
+Lung_specific_up <- venn.diagram(mylist, filename= NULL, main="Upregulated lung specific (FSR 1%)", main.cex = 2, cat.cex = 1.5, cex=2.5, fill = pal[1:3], lty=1, height=2000, width=3000)
+grid.draw(Lung_specific_up)
+
+names_union_lung <- intersect(intersect(rownames(human_lung_6_up), rownames(chimp_lung_6_up)), rownames(rhesus_lung_6_up))
+
+exp <- t(as.data.frame(cpm_12184[grepl("ENSG00000009413", rownames(cpm_12184)), ]))
+make_exp_df <- as.data.frame(cbind(exp, species, tissue))
+make_exp_df$species <- as.factor(make_exp_df$species)
+levels(make_exp_df$species) <- c("Chimpanzee", "Human", "Rhesus")
+colnames(make_exp_df) <- c("CPM", "Species", "Tissue")
+ggplot(make_exp_df, aes(x=as.factor(Tissue), y=CPM, fill=as.factor(Tissue))) + geom_boxplot() + facet_wrap(~Species)
+
+
+# Downregulated in human lung but not in any of the other tissues
+human_heart_1 <- combined_human[!(combined_human[,12] < FSR_level), ]
+human_heart_2 <- human_heart_1[human_heart_1[,26] < FSR_level & human_heart_1[,27] > 0,]
+human_heart_3 <- human_heart_2[!(human_heart_2[,40] < FSR_level),]
+human_heart_4 <- human_heart_3[human_heart_3[,54] < FSR_level & human_heart_3[,55] > 0, ]
+human_heart_5 <- human_heart_4[!(human_heart_4[,68] < FSR_level),]
+human_lung_6_down <- human_heart_5[human_heart_5[,82] < FSR_level & human_heart_5[,83] < 0,]
+dim(human_lung_6_down)
+
+# Downregulated in chimp lung but not in any of the other tissues
+chimp_heart_1 <- combined_chimp[!(combined_chimp[,12] < FSR_level), ]
+chimp_heart_2 <- chimp_heart_1[chimp_heart_1[,26] < FSR_level & chimp_heart_1[,27] > 0,]
+chimp_heart_3 <- chimp_heart_2[!(chimp_heart_2[,40] < FSR_level),]
+chimp_heart_4 <- chimp_heart_3[chimp_heart_3[,54] < FSR_level & chimp_heart_3[,55] > 0,]
+chimp_heart_5 <- chimp_heart_4[!(chimp_heart_4[,68] < FSR_level),]
+chimp_lung_6_down <- chimp_heart_5[chimp_heart_5[,82] < FSR_level & chimp_heart_5[,83] < 0,]
+dim(chimp_lung_6_down)
+
+# Downregulated in rhesus lung but not in any of the other tissues
+rhesus_heart_1 <- combined_rhesus[!(combined_rhesus[,12] < FSR_level), ]
+rhesus_heart_2 <- rhesus_heart_1[rhesus_heart_1[,26] < FSR_level & rhesus_heart_1[,27] > 0,]
+rhesus_heart_3 <- rhesus_heart_2[!(rhesus_heart_2[,40] < FSR_level),]
+rhesus_heart_4 <- rhesus_heart_3[rhesus_heart_3[,54] < FSR_level & rhesus_heart_3[,55] > 0,]
+rhesus_heart_5 <- rhesus_heart_4[!(rhesus_heart_4[,68] < FSR_level),]
+rhesus_lung_6_down <- rhesus_heart_5[rhesus_heart_5[,82] < FSR_level & rhesus_heart_5[,83] < 0,]
+dim(rhesus_lung_6_down)
+
+mylist <- list()
+mylist[["Human"]] <- rownames(human_lung_6_down)
+mylist[["Chimpanzee"]] <- rownames(chimp_lung_6_down)
+mylist[["Rhesus Macaque"]] <- rownames(rhesus_lung_6_down)
+
+# Make Venn Diagram
+dev.off()
+Lung_specific_down <- venn.diagram(mylist, filename= NULL, main="Downregulated lung specific (FSR 1%)", main.cex = 2, cat.cex = 1.5, cex=2.5, fill = pal[1:3], lty=1, height=2000, width=3000)
+grid.draw(Lung_specific_down)
+
+names_union_lung_down <- intersect(intersect(rownames(human_lung_6_down), rownames(chimp_lung_6_down)), rownames(rhesus_lung_6_down))
+
+exp <- t(as.data.frame(cpm_12184[grepl("ENSG00000118922", rownames(cpm_12184)), ]))
+make_exp_df <- as.data.frame(cbind(exp, species, tissue))
+make_exp_df$species <- as.factor(make_exp_df$species)
+levels(make_exp_df$species) <- c("Chimpanzee", "Human", "Rhesus")
+colnames(make_exp_df) <- c("CPM", "Species", "Tissue")
+ggplot(make_exp_df, aes(x=as.factor(Tissue), y=CPM, fill=as.factor(Tissue))) + geom_boxplot() + facet_wrap(~Species)
+
+
+
+# Upregulated in human kidney but not in any of the other tissues
+human_heart_1 <- combined_human[!(combined_human[,12] < FSR_level), ]
+human_heart_2 <- human_heart_1[!(human_heart_1[,26] < FSR_level),]
+human_heart_3 <- human_heart_2[human_heart_2[,40] < FSR_level & human_heart_2[,41] < 0,]
+human_heart_4 <- human_heart_3[!(human_heart_3[,54] < FSR_level), ]
+human_heart_5 <- human_heart_4[human_heart_4[,68] < FSR_level & human_heart_4[,69] < 0,]
+human_kidney_6_up <- human_heart_5[human_heart_5[,82] < FSR_level & human_heart_5[,83] < 0,]
+dim(human_kidney_6_up)
+
+# Upregulated in chimp kidney but not in any of the other tissues
+chimp_heart_1 <- combined_chimp[!(combined_chimp[,12] < FSR_level), ]
+chimp_heart_2 <- chimp_heart_1[!(chimp_heart_1[,26] < FSR_level),]
+chimp_heart_3 <- chimp_heart_2[chimp_heart_2[,40] < FSR_level & chimp_heart_2[,41] < 0,]
+chimp_heart_4 <- chimp_heart_3[!(chimp_heart_3[,54] < FSR_level),]
+chimp_heart_5 <- chimp_heart_4[chimp_heart_4[,68] < FSR_level & chimp_heart_4[,69] < 0,]
+chimp_kidney_6_up <- chimp_heart_5[chimp_heart_5[,82] < FSR_level & chimp_heart_5[,83] < 0,]
+dim(chimp_kidney_6_up)
+
+# Upregulated in rhesus kidney but not in any of the other tissues
+rhesus_heart_1 <- combined_rhesus[!(combined_rhesus[,12] < FSR_level), ]
+rhesus_heart_2 <- rhesus_heart_1[!(rhesus_heart_1[,26] < FSR_level),]
+rhesus_heart_3 <- rhesus_heart_2[rhesus_heart_2[,40] < FSR_level & rhesus_heart_2[,41] < 0,]
+rhesus_heart_4 <- rhesus_heart_3[!(rhesus_heart_3[,54] < FSR_level),]
+rhesus_heart_5 <- rhesus_heart_4[rhesus_heart_4[,68] < FSR_level & rhesus_heart_4[,69] < 0,]
+rhesus_kidney_6_up <- rhesus_heart_5[rhesus_heart_5[,82] < FSR_level & rhesus_heart_5[,83] < 0,]
+dim(rhesus_kidney_6_up)
+
+mylist <- list()
+mylist[["Human"]] <- rownames(human_kidney_6_up)
+mylist[["Chimpanzee"]] <- rownames(chimp_kidney_6_up)
+mylist[["Rhesus Macaque"]] <- rownames(rhesus_kidney_6_up)
+
+# Make Venn Diagram
+dev.off()
+kidney_specific_up <- venn.diagram(mylist, filename= NULL, main="Upregulated kidneys (FSR 1%)", main.cex = 2, cat.cex = 1.5, cex=2.5, fill = pal[1:3], lty=1, height=2000, width=3000)
+grid.draw(kidney_specific_up)
+
+names_union_kidney <- intersect(intersect(rownames(human_kidney_6_up), rownames(chimp_kidney_6_up)), rownames(rhesus_kidney_6_up))
+
+exp <- t(as.data.frame(cpm_12184[grepl("ENSG00000048471", rownames(cpm_12184)), ]))
+make_exp_df <- as.data.frame(cbind(exp, species, tissue))
+make_exp_df$species <- as.factor(make_exp_df$species)
+levels(make_exp_df$species) <- c("Chimpanzee", "Human", "Rhesus")
+colnames(make_exp_df) <- c("CPM", "Species", "Tissue")
+ggplot(make_exp_df, aes(x=as.factor(Tissue), y=CPM, fill=as.factor(Tissue))) + geom_boxplot() + facet_wrap(~Species)
+
+
+# Downregulated in human kidney but not in any of the other tissues
+human_heart_1 <- combined_human[!(combined_human[,12] < FSR_level), ]
+human_heart_2 <- human_heart_1[!(human_heart_1[,26] < FSR_level),]
+human_heart_3 <- human_heart_2[human_heart_2[,40] < FSR_level & human_heart_2[,41] > 0,]
+human_heart_4 <- human_heart_3[!(human_heart_3[,54] < FSR_level), ]
+human_heart_5 <- human_heart_4[human_heart_4[,68] < FSR_level & human_heart_4[,69] > 0,]
+human_kidney_6_down <- human_heart_5[human_heart_5[,82] < FSR_level & human_heart_5[,83] > 0,]
+dim(human_kidney_6_down)
+
+# Downregulated in chimp kidney but not in any of the other tissues
+chimp_heart_1 <- combined_chimp[!(combined_chimp[,12] < FSR_level), ]
+chimp_heart_2 <- chimp_heart_1[!(chimp_heart_1[,26] < FSR_level),]
+chimp_heart_3 <- chimp_heart_2[chimp_heart_2[,40] < FSR_level & chimp_heart_2[,41] > 0,]
+chimp_heart_4 <- chimp_heart_3[!(chimp_heart_3[,54] < FSR_level),]
+chimp_heart_5 <- chimp_heart_4[chimp_heart_4[,68] < FSR_level & chimp_heart_4[,69] > 0,]
+chimp_kidney_6_down <- chimp_heart_5[chimp_heart_5[,82] < FSR_level & chimp_heart_5[,83] > 0,]
+dim(chimp_kidney_6_down)
+
+# Upregulated in rhesus kidney but not in any of the other tissues
+rhesus_heart_1 <- combined_rhesus[!(combined_rhesus[,12] < FSR_level), ]
+rhesus_heart_2 <- rhesus_heart_1[!(rhesus_heart_1[,26] < FSR_level),]
+rhesus_heart_3 <- rhesus_heart_2[rhesus_heart_2[,40] < FSR_level & rhesus_heart_2[,41] > 0,]
+rhesus_heart_4 <- rhesus_heart_3[!(rhesus_heart_3[,54] < FSR_level),]
+rhesus_heart_5 <- rhesus_heart_4[rhesus_heart_4[,68] < FSR_level & rhesus_heart_4[,69] > 0,]
+rhesus_kidney_6_down <- rhesus_heart_5[rhesus_heart_5[,82] < FSR_level & rhesus_heart_5[,83] > 0,]
+dim(rhesus_kidney_6_down)
+
+mylist <- list()
+mylist[["Human"]] <- rownames(human_kidney_6_down)
+mylist[["Chimpanzee"]] <- rownames(chimp_kidney_6_down)
+mylist[["Rhesus Macaque"]] <- rownames(rhesus_kidney_6_down)
+
+# Make Venn Diagram
+dev.off()
+Kidney_specific_down <- venn.diagram(mylist, filename= NULL, main="Downregulated kidney specific (FSR 1%)", main.cex = 2, cat.cex = 1.5, cex=2.5, fill = pal[1:3], lty=1, height=2000, width=3000)
+grid.draw(Kidney_specific_down)
+
+names_union_kidney_down <- intersect(intersect(rownames(human_kidney_6_down), rownames(chimp_kidney_6_down)), rownames(rhesus_kidney_6_down))
+
+exp <- t(as.data.frame(cpm_12184[grepl("ENSG00000119402", rownames(cpm_12184)), ]))
+make_exp_df <- as.data.frame(cbind(exp, species, tissue))
+make_exp_df$species <- as.factor(make_exp_df$species)
+levels(make_exp_df$species) <- c("Chimpanzee", "Human", "Rhesus")
+colnames(make_exp_df) <- c("CPM", "Species", "Tissue")
+ggplot(make_exp_df, aes(x=as.factor(Tissue), y=CPM, fill=as.factor(Tissue))) + geom_boxplot() + facet_wrap(~Species)
+
+
+
+# Check to make sure that there is no intersection between the tissue specific directions 
+
+# Upregulated genes
+
+intersect(intersect(intersect(rownames(human_kidney_6_up), rownames(human_liver_6_up)), rownames(human_heart_6_up)),  rownames(human_lung_6_up))
+
+intersect(intersect(intersect(rownames(chimp_kidney_6_up), rownames(chimp_liver_6_up)), rownames(chimp_heart_6_up)),  rownames(chimp_lung_6_up))
+
+intersect(intersect(intersect(rownames(rhesus_kidney_6_up), rownames(rhesus_liver_6_up)), rownames(rhesus_heart_6_up)),  rownames(rhesus_lung_6_up))
+
+# Downregulated
+intersect(intersect(intersect(rownames(human_kidney_6_down), rownames(human_liver_6_down)), rownames(human_heart_6_down)),  rownames(human_lung_6_down))
+
+intersect(intersect(intersect(rownames(chimp_kidney_6_down), rownames(chimp_liver_6_down)), rownames(chimp_heart_6_down)),  rownames(chimp_lung_6_down))
+
+intersect(intersect(intersect(rownames(rhesus_kidney_6_down), rownames(rhesus_liver_6_down)), rownames(rhesus_heart_6_down)),  rownames(rhesus_lung_6_down))
+
+# Both
+
+intersect(intersect(intersect(intersect(intersect(intersect(intersect(rownames(human_kidney_6_up), rownames(human_liver_6_up)), rownames(human_heart_6_up)),  rownames(human_lung_6_up)), rownames(human_kidney_6_down)), rownames(human_liver_6_down)), rownames(human_heart_6_down)),  rownames(human_lung_6_down))
+
+intersect(intersect(intersect(intersect(intersect(intersect(intersect(rownames(chimp_kidney_6_up), rownames(chimp_liver_6_up)), rownames(chimp_heart_6_up)),  rownames(chimp_lung_6_up)), rownames(chimp_kidney_6_down)), rownames(chimp_liver_6_down)), rownames(chimp_heart_6_down)),  rownames(chimp_lung_6_down))
+
+intersect(intersect(intersect(intersect(intersect(intersect(intersect(rownames(rhesus_kidney_6_up), rownames(rhesus_liver_6_up)), rownames(rhesus_heart_6_up)),  rownames(rhesus_lung_6_up)), rownames(rhesus_kidney_6_down)), rownames(rhesus_liver_6_down)), rownames(rhesus_heart_6_down)),  rownames(rhesus_lung_6_down))
+```
+
+## Experimenting with interactions (3 species, 1 tissue versus a group of 3 tissues)
+
+There are many possible interactions (e.g. Human and Chimp heart versus liver). To minimize the number of comparisons, we are going to compare 1 tissue to a group of the other 3 tissues (e.g.  Human and Chimp heart versus non-heart). 
+
+### Interactions in all 3 species' hearts versus all other tissues
+
+```{r}
+# Reassign tissues to be heart versus non-heart
+
+tissue_group <- gsub("kidney", "Grouped", tissue) 
+tissue_group <- gsub("liver", "Grouped", tissue_group) 
+tissue_group <- gsub("lung", "Grouped", tissue_group) 
+
+## Make the contrast matrix and rename columns of the contrast matrix
+labels <- paste(species, tissue_group, sep=".")
+
+design <- model.matrix(~ 0 + labels + RIN)
+
+# Rename columns of the contrast matrix
+
+colnames(design) <- gsub("labelsChimp.Grouped", "Chimp.grouped", colnames(design))
+colnames(design) <- gsub("labelsChimp.heart", "Chimp.heart", colnames(design))
+
+colnames(design) <- gsub("labelsHuman.Grouped", "Human.grouped", colnames(design))
+colnames(design) <- gsub("labelsHuman.heart", "Human.heart", colnames(design))
+
+colnames(design) <- gsub("labelsRhesus.Grouped", "Rhesus.grouped", colnames(design))
+colnames(design) <- gsub("labelsRhesus.heart", "Rhesus.heart", colnames(design))
+
+
+# Look at the number of samples in each column 
+colSums(design)
+
+# Run linear model with new design matrix
+
+fit.cyclic.norm <- lmFit(cpm.voom.cyclic, design, plot = TRUE, block=samples$Individual, correlation=corfit$consensus)
+fit.cyclic.norm <- eBayes(fit.cyclic.norm)
+
+# In the contrast matrix, we have many comparisons for species and tissues individually
+# Note: baseline is chimp heart
+
+cm2 <- makeContrasts(HC_HG = (Human.heart - Chimp.heart) - (Human.grouped - Chimp.grouped), 
+                     HR_HG = (Human.heart - Rhesus.heart) - (Human.grouped - Rhesus.grouped),
+                     CR_HG = (Chimp.heart - Rhesus.heart) - (Chimp.grouped - Rhesus.grouped),
+                     levels = design)
+
+# Implement contrasts
+
+contrasts_interactions <- contrasts.fit(fit.cyclic.norm, cm2)
+fit1 <- eBayes(contrasts_interactions)
+
+# Pull interactions
+
+top3 <- list(HC_HG =topTable(fit1, coef=1, adjust="BH", number=Inf, sort.by="none"), 
+             HR_HG =topTable(fit1, coef=2, adjust="BH", number=Inf, sort.by="none"),  
+             CR_HG =topTable(fit1, coef=3, adjust="BH", number=Inf, sort.by="none"))
+
+# Determine the number of statistically signficant interactions
+
+HC_HG =topTable(fit1, coef=1, adjust="BH", number=Inf, sort.by="none")
+dim(HC_HG[which(HC_HG$adj.P.Val < FDR_level), ]) 
+
+HR_HG =topTable(fit1, coef=2, adjust="BH", number=Inf, sort.by="none")
+dim(HR_HG[which(HR_HG$adj.P.Val < FDR_level), ]) 
+
+CR_HG =topTable(fit1, coef=3, adjust="BH", number=Inf, sort.by="none")
+dim(CR_HG[which(CR_HG$adj.P.Val < FDR_level), ]) 
+
+```
+
+### Adaptive shrinkage on interactions in all 3 species' hearts versus all other tissues
+
+```{r}
+# Prepare the data for ASH
+tests <- colnames(fit1$coefficients)
+tests
+results <- vector(length = length(tests), mode = "list")
+names(results) <- tests
+
+# Get lfsr, lfdr, s value, q value, and a beta_est value. 
+for (test in tests) {
+  # Extract limma results
+  results[[test]] <- get_results(fit1, coef = test)
+  # Add mutliple testing correction with ASH
+  output_ash <- run_ash(fit1, coef = test)
+  results[[test]] <- cbind(results[[test]], sebetahat = output_ash$data$s, lfsr = output_ash$result$lfsr,
+                           lfdr = output_ash$result$lfdr, qvalue = output_ash$result$qvalue,
+                           svalue = output_ash$result$svalue, beta_est = output_ash$result$PosteriorMean, se_est =
+                             output_ash$result$PosteriorSD)
+}
+
+# Save results from analysis with limma and ash.
+#saveRDS(results, file.path(data_dir, "results-limma-voom-ash-interactions.rds"))
+
+heart_combined_interactions <- as.data.frame(cbind(results[["HC_HG"]]$svalue, 
+                               results[["HR_HG"]]$svalue, 
+                               results[["CR_HG"]]$svalue))
+
+dim(lung_combined_interactions)
+colnames(lung_combined_interactions) <- c("HC_LuG", "HR_LuG", "CR_LuG")
+```
+
+
+
+### Interactions in all 3 species' livers versus all other tissues
+
+```{r}
+# Reassign tissues to be heart versus non-heart
+
+tissue_group <- gsub("kidney", "Grouped", tissue) 
+tissue_group <- gsub("heart", "Grouped", tissue_group) 
+tissue_group <- gsub("lung", "Grouped", tissue_group) 
+
+## Make the contrast matrix and rename columns of the contrast matrix
+labels <- paste(species, tissue_group, sep=".")
+
+design <- model.matrix(~ 0 + labels + RIN)
+
+# Rename columns of the contrast matrix
+
+colnames(design) <- gsub("labelsChimp.Grouped", "Chimp.grouped", colnames(design))
+colnames(design) <- gsub("labelsChimp.liver", "Chimp.liver", colnames(design))
+
+colnames(design) <- gsub("labelsHuman.Grouped", "Human.grouped", colnames(design))
+colnames(design) <- gsub("labelsHuman.liver", "Human.liver", colnames(design))
+
+colnames(design) <- gsub("labelsRhesus.Grouped", "Rhesus.grouped", colnames(design))
+colnames(design) <- gsub("labelsRhesus.liver", "Rhesus.liver", colnames(design))
+
+
+# Look at the number of samples in each column 
+colSums(design)
+
+# Run linear model with new design matrix
+
+fit.cyclic.norm <- lmFit(cpm.voom.cyclic, design, plot = TRUE, block=samples$Individual, correlation=corfit$consensus)
+fit.cyclic.norm <- eBayes(fit.cyclic.norm)
+
+# In the contrast matrix, we have many comparisons for species and tissues individually
+# Note: baseline is chimp heart
+
+cm3 <- makeContrasts(HC_LiG = (Human.liver - Chimp.liver) - (Human.grouped - Chimp.grouped), 
+                     HR_LiG = (Human.liver - Rhesus.liver) - (Human.grouped - Rhesus.grouped),
+                     CR_LiG = (Chimp.liver - Rhesus.liver) - (Chimp.grouped - Rhesus.grouped),
+                     levels = design)
+
+# Implement contrasts
+
+contrasts_interactions <- contrasts.fit(fit.cyclic.norm, cm3)
+fit1 <- eBayes(contrasts_interactions)
+
+# Pull interactions
+
+top3 <- list(HC_LiG =topTable(fit1, coef=1, adjust="BH", number=Inf, sort.by="none"), 
+             HR_LiG =topTable(fit1, coef=2, adjust="BH", number=Inf, sort.by="none"),  
+             CR_LiG =topTable(fit1, coef=3, adjust="BH", number=Inf, sort.by="none"))
+
+# Determine the number of statistically signficant interactions
+
+HC_LiG =topTable(fit1, coef=1, adjust="BH", number=Inf, sort.by="none")
+dim(HC_LiG[which(HC_LiG$adj.P.Val < FDR_level), ]) 
+
+HR_LiG =topTable(fit1, coef=2, adjust="BH", number=Inf, sort.by="none")
+dim(HR_LiG[which(HR_LiG$adj.P.Val < FDR_level), ]) 
+
+CR_LiG =topTable(fit1, coef=3, adjust="BH", number=Inf, sort.by="none")
+dim(CR_LiG[which(CR_LiG$adj.P.Val < FDR_level), ]) 
+
+```
+
+### Adaptive shrinkage on interactions in all 3 species' livers versus all other tissues
+
+```{r}
+# Prepare the data for ASH
+tests <- colnames(fit1$coefficients)
+tests
+results <- vector(length = length(tests), mode = "list")
+names(results) <- tests
+
+# Get lfsr, lfdr, s value, q value, and a beta_est value. 
+for (test in tests) {
+  # Extract limma results
+  results[[test]] <- get_results(fit1, coef = test)
+  # Add mutliple testing correction with ASH
+  output_ash <- run_ash(fit1, coef = test)
+  results[[test]] <- cbind(results[[test]], sebetahat = output_ash$data$s, lfsr = output_ash$result$lfsr,
+                           lfdr = output_ash$result$lfdr, qvalue = output_ash$result$qvalue,
+                           svalue = output_ash$result$svalue, beta_est = output_ash$result$PosteriorMean, se_est =
+                             output_ash$result$PosteriorSD)
+}
+
+# Save results from analysis with limma and ash.
+#saveRDS(results, file.path(data_dir, "results-limma-voom-ash-interactions.rds"))
+
+liver_combined_interactions <- as.data.frame(cbind(results[["HC_LiG"]]$svalue, 
+                               results[["HR_LiG"]]$svalue, 
+                               results[["CR_LiG"]]$svalue))
+
+dim(liver_combined_interactions)
+colnames(liver_combined_interactions) <- c("HC_LiG", "HR_LiG", "CR_LiG")
+```
+
+
+### Interactions in all 3 species' lungs versus all other tissues
+
+```{r}
+# Reassign tissues to be heart versus non-heart
+
+tissue_group <- gsub("kidney", "Grouped", tissue) 
+tissue_group <- gsub("heart", "Grouped", tissue_group) 
+tissue_group <- gsub("liver", "Grouped", tissue_group) 
+
+## Make the contrast matrix and rename columns of the contrast matrix
+labels <- paste(species, tissue_group, sep=".")
+
+design <- model.matrix(~ 0 + labels + RIN)
+
+# Rename columns of the contrast matrix
+
+colnames(design) <- gsub("labelsChimp.Grouped", "Chimp.grouped", colnames(design))
+colnames(design) <- gsub("labelsChimp.lung", "Chimp.lung", colnames(design))
+
+colnames(design) <- gsub("labelsHuman.Grouped", "Human.grouped", colnames(design))
+colnames(design) <- gsub("labelsHuman.lung", "Human.lung", colnames(design))
+
+colnames(design) <- gsub("labelsRhesus.Grouped", "Rhesus.grouped", colnames(design))
+colnames(design) <- gsub("labelsRhesus.lung", "Rhesus.lung", colnames(design))
+
+
+# Look at the number of samples in each column 
+colSums(design)
+
+# Run linear model with new design matrix
+
+fit.cyclic.norm <- lmFit(cpm.voom.cyclic, design, plot = TRUE, block=samples$Individual, correlation=corfit$consensus)
+fit.cyclic.norm <- eBayes(fit.cyclic.norm)
+
+# In the contrast matrix, we have many comparisons for species and tissues individually
+# Note: baseline is chimp heart
+
+cm4 <- makeContrasts(HC_LuG = (Human.lung - Chimp.lung) - (Human.grouped - Chimp.grouped), 
+                     HR_LuG = (Human.lung - Rhesus.lung) - (Human.grouped - Rhesus.grouped),
+                     CR_LuG = (Chimp.lung - Rhesus.lung) - (Chimp.grouped - Rhesus.grouped),
+                     levels = design)
+
+# Implement contrasts
+
+contrasts_interactions <- contrasts.fit(fit.cyclic.norm, cm4)
+fit1 <- eBayes(contrasts_interactions)
+
+# Pull interactions
+
+top3 <- list(HC_LuG =topTable(fit1, coef=1, adjust="BH", number=Inf, sort.by="none"), 
+             HR_LuG =topTable(fit1, coef=2, adjust="BH", number=Inf, sort.by="none"),  
+             CR_LuG =topTable(fit1, coef=3, adjust="BH", number=Inf, sort.by="none"))
+
+# Determine the number of statistically signficant interactions
+
+HC_LuG =topTable(fit1, coef=1, adjust="BH", number=Inf, sort.by="none")
+dim(HC_LuG[which(HC_LuG$adj.P.Val < FDR_level), ]) 
+
+HR_LuG =topTable(fit1, coef=2, adjust="BH", number=Inf, sort.by="none")
+dim(HR_LuG[which(HR_LuG$adj.P.Val < FDR_level), ]) 
+
+CR_LuG =topTable(fit1, coef=3, adjust="BH", number=Inf, sort.by="none")
+dim(CR_LuG[which(CR_LuG$adj.P.Val < FDR_level), ]) 
+
+```
+
+### Adaptive shrinkage on interactions in all 3 species' lungs versus all other tissues
+
+```{r}
+# Prepare the data for ASH
+tests <- colnames(fit1$coefficients)
+tests
+results <- vector(length = length(tests), mode = "list")
+names(results) <- tests
+
+# Get lfsr, lfdr, s value, q value, and a beta_est value. 
+for (test in tests) {
+  # Extract limma results
+  results[[test]] <- get_results(fit1, coef = test)
+  # Add mutliple testing correction with ASH
+  output_ash <- run_ash(fit1, coef = test)
+  results[[test]] <- cbind(results[[test]], sebetahat = output_ash$data$s, lfsr = output_ash$result$lfsr,
+                           lfdr = output_ash$result$lfdr, qvalue = output_ash$result$qvalue,
+                           svalue = output_ash$result$svalue, beta_est = output_ash$result$PosteriorMean, se_est =
+                             output_ash$result$PosteriorSD)
+}
+
+# Save results from analysis with limma and ash.
+#saveRDS(results, file.path(data_dir, "results-limma-voom-ash-interactions.rds"))
+
+lung_combined_interactions <- as.data.frame(cbind(results[["HC_LuG"]]$svalue, 
+                               results[["HR_LuG"]]$svalue, 
+                               results[["CR_LuG"]]$svalue))
+
+dim(lung_combined_interactions)
+colnames(lung_combined_interactions) <- c("HC_LuG", "HR_LuG", "CR_LuG")
+
+check_lung_combined_interactions <- as.data.frame(cbind(results[["HC_LuG"]]$adj.P.Val, results[["HC_LuG"]]$svalue))
+colnames(check_lung_combined_interactions) <- c("BH-adj P value", "s value")
+dim(check_lung_combined_interactions[which(check_lung_combined_interactions[,1] < 0.01) ,])
+check_lung_combined_interactions[which(check_lung_combined_interactions[,1] < 0.01) ,]
+dim(check_lung_combined_interactions[which(check_lung_combined_interactions[,2] < 0.01) ,])
+```
+
+### Interactions in all 3 species' kidneys versus all other tissues
+
+```{r}
+# Reassign tissues to be heart versus non-heart
+
+tissue_group <- gsub("lung", "Grouped", tissue) 
+tissue_group <- gsub("heart", "Grouped", tissue_group) 
+tissue_group <- gsub("liver", "Grouped", tissue_group) 
+
+## Make the contrast matrix and rename columns of the contrast matrix
+labels <- paste(species, tissue_group, sep=".")
+
+design <- model.matrix(~ 0 + labels + RIN)
+
+# Rename columns of the contrast matrix
+
+colnames(design) <- gsub("labelsChimp.Grouped", "Chimp.grouped", colnames(design))
+colnames(design) <- gsub("labelsChimp.kidney", "Chimp.kidney", colnames(design))
+
+colnames(design) <- gsub("labelsHuman.Grouped", "Human.grouped", colnames(design))
+colnames(design) <- gsub("labelsHuman.kidney", "Human.kidney", colnames(design))
+
+colnames(design) <- gsub("labelsRhesus.Grouped", "Rhesus.grouped", colnames(design))
+colnames(design) <- gsub("labelsRhesus.kidney", "Rhesus.kidney", colnames(design))
+
+
+# Look at the number of samples in each column 
+colSums(design)
+
+# Run linear model with new design matrix
+
+fit.cyclic.norm <- lmFit(cpm.voom.cyclic, design, plot = TRUE, block=samples$Individual, correlation=corfit$consensus)
+fit.cyclic.norm <- eBayes(fit.cyclic.norm)
+
+# In the contrast matrix, we have many comparisons for species and tissues individually
+# Note: baseline is chimp heart
+
+cm5 <- makeContrasts(HC_KG = (Human.kidney - Chimp.kidney) - (Human.grouped - Chimp.grouped), 
+                     HR_KG = (Human.kidney - Rhesus.kidney) - (Human.grouped - Rhesus.grouped),
+                     CR_KG = (Chimp.kidney - Rhesus.kidney) - (Chimp.grouped - Rhesus.grouped),
+                     levels = design)
+
+# Implement contrasts
+
+contrasts_interactions <- contrasts.fit(fit.cyclic.norm, cm5)
+fit1 <- eBayes(contrasts_interactions)
+
+# Pull interactions
+
+top3 <- list(HC_KG =topTable(fit1, coef=1, adjust="BH", number=Inf, sort.by="none"), 
+             HR_KG =topTable(fit1, coef=2, adjust="BH", number=Inf, sort.by="none"),  
+             CR_KG =topTable(fit1, coef=3, adjust="BH", number=Inf, sort.by="none"))
+
+# Determine the number of statistically signficant interactions
+
+HC_KG =topTable(fit1, coef=1, adjust="BH", number=Inf, sort.by="none")
+dim(HC_KG[which(HC_KG$adj.P.Val < FDR_level), ]) 
+
+HR_KG =topTable(fit1, coef=2, adjust="BH", number=Inf, sort.by="none")
+dim(HR_KG[which(HR_KG$adj.P.Val < FDR_level), ]) 
+
+CR_KG =topTable(fit1, coef=3, adjust="BH", number=Inf, sort.by="none")
+dim(CR_KG[which(CR_KG$adj.P.Val < FDR_level), ]) 
+
+```
+
+### Tissue-specific interactions (FDR)
+
+```{r}
+# Set FDR level
+
+FDR_level <- 0.01
+
+# Interactions between 3 species hearts and other tissues
+
+intersect(intersect(intersect(intersect(intersect(intersect(intersect(intersect(intersect(intersect(intersect(rownames(HC_HG[which(HC_HG$adj.P.Val < FDR_level), ]), rownames(HR_HG[which(HR_HG$adj.P.Val < FDR_level), ])), rownames(CR_HG[which(CR_HG$adj.P.Val < FDR_level), ])), 
+                                                                                                                                                      rownames(HC_LiG[which(HC_LiG$adj.P.Val > FDR_level), ])), rownames(HR_LiG[which(HR_LiG$adj.P.Val > FDR_level), ])), rownames(CR_HG[which(CR_HG$adj.P.Val > FDR_level), ])), 
+                                                                                                                        
+            rownames(HC_LuG[which(HC_LuG$adj.P.Val > FDR_level), ])), rownames(HR_LuG[which(HR_LuG$adj.P.Val > FDR_level), ])), rownames(CR_LuG[which(CR_LuG$adj.P.Val > FDR_level), ])), 
+            
+            rownames(HC_KG[which(HC_KG$adj.P.Val > FDR_level), ])), rownames(HR_KG[which(HR_KG$adj.P.Val > FDR_level), ])), rownames(CR_KG[which(CR_KG$adj.P.Val > FDR_level), ]))
+
+# Interactions between 3 species livers and other tissues
+
+intersect(intersect(intersect(intersect(intersect(intersect(intersect(intersect(intersect(intersect(intersect(rownames(HC_HG[which(HC_HG$adj.P.Val > FDR_level), ]), rownames(HR_HG[which(HR_HG$adj.P.Val > FDR_level), ])), rownames(CR_HG[which(CR_HG$adj.P.Val > FDR_level), ])), 
+                                                                                                                                                      rownames(HC_LiG[which(HC_LiG$adj.P.Val < FDR_level), ])), rownames(HR_LiG[which(HR_LiG$adj.P.Val < FDR_level), ])), rownames(CR_HG[which(CR_HG$adj.P.Val < FDR_level), ])), 
+                                                                                                                        
+            rownames(HC_LuG[which(HC_LuG$adj.P.Val > FDR_level), ])), rownames(HR_LuG[which(HR_LuG$adj.P.Val > FDR_level), ])), rownames(CR_LuG[which(CR_LuG$adj.P.Val > FDR_level), ])), 
+            
+            rownames(HC_KG[which(HC_KG$adj.P.Val > FDR_level), ])), rownames(HR_KG[which(HR_KG$adj.P.Val > FDR_level), ])), rownames(CR_KG[which(CR_KG$adj.P.Val > FDR_level), ]))
+
+# Interactions between 3 species lungs and other tissues
+
+intersect(intersect(intersect(intersect(intersect(intersect(intersect(intersect(intersect(intersect(intersect(rownames(HC_HG[which(HC_HG$adj.P.Val > FDR_level), ]), rownames(HR_HG[which(HR_HG$adj.P.Val > FDR_level), ])), rownames(CR_HG[which(CR_HG$adj.P.Val > FDR_level), ])), 
+                                                                                                                                                      rownames(HC_LiG[which(HC_LiG$adj.P.Val > FDR_level), ])), rownames(HR_LiG[which(HR_LiG$adj.P.Val > FDR_level), ])), rownames(CR_HG[which(CR_HG$adj.P.Val > FDR_level), ])), 
+                                                                                                                        
+            rownames(HC_LuG[which(HC_LuG$adj.P.Val < FDR_level), ])), rownames(HR_LuG[which(HR_LuG$adj.P.Val < FDR_level), ])), rownames(CR_LuG[which(CR_LuG$adj.P.Val < FDR_level), ])), 
+            
+            rownames(HC_KG[which(HC_KG$adj.P.Val > FDR_level), ])), rownames(HR_KG[which(HR_KG$adj.P.Val > FDR_level), ])), rownames(CR_KG[which(CR_KG$adj.P.Val > FDR_level), ]))
+
+# Interactions between 3 species kidneus and other tissues
+
+intersect(intersect(intersect(intersect(intersect(intersect(intersect(intersect(intersect(intersect(intersect(rownames(HC_HG[which(HC_HG$adj.P.Val > FDR_level), ]), rownames(HR_HG[which(HR_HG$adj.P.Val > FDR_level), ])), rownames(CR_HG[which(CR_HG$adj.P.Val > FDR_level), ])), 
+                                                                                                                                                      rownames(HC_LiG[which(HC_LiG$adj.P.Val > FDR_level), ])), rownames(HR_LiG[which(HR_LiG$adj.P.Val > FDR_level), ])), rownames(CR_HG[which(CR_HG$adj.P.Val > FDR_level), ])), 
+                                                                                                                        
+            rownames(HC_LuG[which(HC_LuG$adj.P.Val > FDR_level), ])), rownames(HR_LuG[which(HR_LuG$adj.P.Val > FDR_level), ])), rownames(CR_LuG[which(CR_LuG$adj.P.Val > FDR_level), ])), 
+            
+            rownames(HC_KG[which(HC_KG$adj.P.Val < FDR_level), ])), rownames(HR_KG[which(HR_KG$adj.P.Val < FDR_level), ])), rownames(CR_KG[which(CR_KG$adj.P.Val < FDR_level), ]))
+
+
+# Interactions between 3 species hearts and other tissues (Human/Chimp versus Rhesus)
+
+intersect(intersect(intersect(intersect(intersect(intersect(intersect(intersect(intersect(intersect(intersect(rownames(HC_HG[which(HC_HG$adj.P.Val > FDR_level), ]), rownames(HR_HG[which(HR_HG$adj.P.Val < FDR_level), ])), rownames(CR_HG[which(CR_HG$adj.P.Val < FDR_level), ])), 
+                                                                                                                                                      rownames(HC_LiG[which(HC_LiG$adj.P.Val > FDR_level), ])), rownames(HR_LiG[which(HR_LiG$adj.P.Val > FDR_level), ])), rownames(CR_HG[which(CR_HG$adj.P.Val > FDR_level), ])), 
+                                                                                                                        
+            rownames(HC_LuG[which(HC_LuG$adj.P.Val > FDR_level), ])), rownames(HR_LuG[which(HR_LuG$adj.P.Val > FDR_level), ])), rownames(CR_LuG[which(CR_LuG$adj.P.Val > FDR_level), ])), 
+            
+            rownames(HC_KG[which(HC_KG$adj.P.Val > FDR_level), ])), rownames(HR_KG[which(HR_KG$adj.P.Val > FDR_level), ])), rownames(CR_KG[which(CR_KG$adj.P.Val > FDR_level), ]))
+
+# Interactions between 3 species livers and other tissues (Human/Chimp versus Rhesus)
+
+intersect(intersect(intersect(intersect(intersect(intersect(intersect(intersect(intersect(intersect(intersect(rownames(HC_HG[which(HC_HG$adj.P.Val > FDR_level), ]), rownames(HR_HG[which(HR_HG$adj.P.Val > FDR_level), ])), rownames(CR_HG[which(CR_HG$adj.P.Val > FDR_level), ])), 
+                                                                                                                                                      rownames(HC_LiG[which(HC_LiG$adj.P.Val > FDR_level), ])), rownames(HR_LiG[which(HR_LiG$adj.P.Val < FDR_level), ])), rownames(CR_HG[which(CR_HG$adj.P.Val < FDR_level), ])), 
+                                                                                                                        
+            rownames(HC_LuG[which(HC_LuG$adj.P.Val > FDR_level), ])), rownames(HR_LuG[which(HR_LuG$adj.P.Val > FDR_level), ])), rownames(CR_LuG[which(CR_LuG$adj.P.Val > FDR_level), ])), 
+            
+            rownames(HC_KG[which(HC_KG$adj.P.Val > FDR_level), ])), rownames(HR_KG[which(HR_KG$adj.P.Val > FDR_level), ])), rownames(CR_KG[which(CR_KG$adj.P.Val > FDR_level), ]))
+
+# Interactions between 3 species lungs and other tissues (Human/Chimp versus Rhesus)
+
+intersect(intersect(intersect(intersect(intersect(intersect(intersect(intersect(intersect(intersect(intersect(rownames(HC_HG[which(HC_HG$adj.P.Val > FDR_level), ]), rownames(HR_HG[which(HR_HG$adj.P.Val > FDR_level), ])), rownames(CR_HG[which(CR_HG$adj.P.Val > FDR_level), ])), 
+                                                                                                                                                      rownames(HC_LiG[which(HC_LiG$adj.P.Val > FDR_level), ])), rownames(HR_LiG[which(HR_LiG$adj.P.Val > FDR_level), ])), rownames(CR_HG[which(CR_HG$adj.P.Val > FDR_level), ])), 
+                                                                                                                        
+            rownames(HC_LuG[which(HC_LuG$adj.P.Val > FDR_level), ])), rownames(HR_LuG[which(HR_LuG$adj.P.Val < FDR_level), ])), rownames(CR_LuG[which(CR_LuG$adj.P.Val < FDR_level), ])), 
+            
+            rownames(HC_KG[which(HC_KG$adj.P.Val > FDR_level), ])), rownames(HR_KG[which(HR_KG$adj.P.Val > FDR_level), ])), rownames(CR_KG[which(CR_KG$adj.P.Val > FDR_level), ]))
+
+# Interactions between 3 species kidneys and other tissues
+
+intersect(intersect(intersect(intersect(intersect(intersect(intersect(intersect(intersect(intersect(intersect(rownames(HC_HG[which(HC_HG$adj.P.Val > FDR_level), ]), rownames(HR_HG[which(HR_HG$adj.P.Val > FDR_level), ])), rownames(CR_HG[which(CR_HG$adj.P.Val > FDR_level), ])), 
+                                                                                                                                                      rownames(HC_LiG[which(HC_LiG$adj.P.Val > FDR_level), ])), rownames(HR_LiG[which(HR_LiG$adj.P.Val > FDR_level), ])), rownames(CR_HG[which(CR_HG$adj.P.Val > FDR_level), ])), 
+                                                                                                                        
+            rownames(HC_LuG[which(HC_LuG$adj.P.Val > FDR_level), ])), rownames(HR_LuG[which(HR_LuG$adj.P.Val > FDR_level), ])), rownames(CR_LuG[which(CR_LuG$adj.P.Val > FDR_level), ])), 
+            
+            rownames(HC_KG[which(HC_KG$adj.P.Val > FDR_level), ])), rownames(HR_KG[which(HR_KG$adj.P.Val < FDR_level), ])), rownames(CR_KG[which(CR_KG$adj.P.Val < FDR_level), ]))
+
+```
+
+
+### Adaptive shrinkage on interactions in all 3 species' kidneys versus all other tissues
+
+```{r}
+# Prepare the data for ASH
+tests <- colnames(fit1$coefficients)
+tests
+results <- vector(length = length(tests), mode = "list")
+names(results) <- tests
+
+# Get lfsr, lfdr, s value, q value, and a beta_est value. 
+for (test in tests) {
+  # Extract limma results
+  results[[test]] <- get_results(fit1, coef = test)
+  # Add mutliple testing correction with ASH
+  output_ash <- run_ash(fit1, coef = test)
+  results[[test]] <- cbind(results[[test]], sebetahat = output_ash$data$s, lfsr = output_ash$result$lfsr,
+                           lfdr = output_ash$result$lfdr, qvalue = output_ash$result$qvalue,
+                           svalue = output_ash$result$svalue, beta_est = output_ash$result$PosteriorMean, se_est =
+                             output_ash$result$PosteriorSD)
+}
+
+# Save results from analysis with limma and ash.
+#saveRDS(results, file.path(data_dir, "results-limma-voom-ash-interactions.rds"))
+
+kidney_combined_interactions <- as.data.frame(cbind(results[["HC_KG"]]$svalue, 
+                               results[["HR_KG"]]$svalue, 
+                               results[["CR_KG"]]$svalue))
+
+dim(kidney_combined_interactions)
+colnames(kidney_combined_interactions) <- c("HC_KG", "HR_KG", "CR_KG")
+```
+
+### Number of interactions using FSR
+
+```{r}
+# Heart
+# Human versus Chimp
+
+dim(heart_combined_interactions[which(heart_combined_interactions[,1] < FSR_level), ]) 
+
+# Human versus Rhesus
+dim(heart_combined_interactions[which(heart_combined_interactions[,2] < FSR_level), ]) 
+
+# Chimp versus Rhesus
+dim(heart_combined_interactions[which(heart_combined_interactions[,3] < FSR_level), ]) 
+
+# Liver
+# Human versus Chimp
+
+dim(liver_combined_interactions[which(liver_combined_interactions[,1] < FSR_level), ]) 
+
+# Human versus Rhesus
+dim(liver_combined_interactions[which(liver_combined_interactions[,2] < FSR_level), ]) 
+
+# Chimp versus Rhesus
+dim(liver_combined_interactions[which(liver_combined_interactions[,3] < FSR_level), ]) 
+
+# Lung
+# Human versus Chimp
+
+dim(lung_combined_interactions[which(lung_combined_interactions[,1] < FSR_level), ]) 
+
+# Human versus Rhesus
+dim(lung_combined_interactions[which(lung_combined_interactions[,2] < FSR_level), ]) 
+
+# Chimp versus Rhesus
+dim(lung_combined_interactions[which(lung_combined_interactions[,3] < FSR_level), ]) 
+
+#  Kidney
+# Human versus Chimp
+
+dim(kidney_combined_interactions[which(kidney_combined_interactions[,1] < FSR_level), ]) 
+
+# Human versus Rhesus
+dim(kidney_combined_interactions[which(kidney_combined_interactions[,2] < FSR_level), ]) 
+
+# Chimp versus Rhesus
+dim(kidney_combined_interactions[which(kidney_combined_interactions[,3] < FSR_level), ]) 
+
+```
+
+
+```{r}
+# Combine the svalue from interactions
+three_species_all_tissue_interactions <- cbind(heart_combined_interactions, liver_combined_interactions, lung_combined_interactions, kidney_combined_interactions)
+
+rownames(three_species_all_tissue_interactions) <- rownames(cpm.voom.cyclic$E)
+dim(three_species_all_tissue_interactions)
+```
+
+
+
+```{r}
+# Set FDR
+
+FDR_level <- 0.01
+FSR_level <- 0.01
+
+# Interactions between 3 species hearts and other tissues
+
+nrow(three_species_all_tissue_interactions[which(three_species_all_tissue_interactions[,1] < FSR_level & three_species_all_tissue_interactions[,2] < FSR_level & three_species_all_tissue_interactions[,3] < FSR_level & three_species_all_tissue_interactions[,4] > FSR_level & three_species_all_tissue_interactions[,5] > FSR_level & three_species_all_tissue_interactions[,6] > FSR_level & three_species_all_tissue_interactions[,7] > FSR_level & three_species_all_tissue_interactions[,8] > FSR_level & three_species_all_tissue_interactions[,9] > FSR_level & three_species_all_tissue_interactions[,10] > FSR_level & three_species_all_tissue_interactions[,11] > FSR_level & three_species_all_tissue_interactions[,12] > FSR_level), ])
+
+exp <- t(as.data.frame(cpm_12184[grepl("ENSG00000104671", rownames(cpm_12184)), ]))
+make_exp_df <- as.data.frame(cbind(exp, species, tissue))
+make_exp_df$species <- as.factor(make_exp_df$species)
+levels(make_exp_df$species) <- c("Chimpanzee", "Human", "Rhesus")
+colnames(make_exp_df) <- c("CPM", "Species", "Tissue")
+ggplot(make_exp_df, aes(x=as.factor(Tissue), y=CPM, fill=as.factor(Tissue))) + geom_boxplot() + facet_wrap(~Species) + xlab("Tissue") + ylab("Normalized Expression") + scale_x_discrete(labels=c("Heart","Kidney","Liver", "Lung")) + bjp + theme(legend.position="none")
+
+# Interactions between 3 species livers and other tissues
+
+nrow(three_species_all_tissue_interactions[which(three_species_all_tissue_interactions[,1] > FSR_level & three_species_all_tissue_interactions[,2] > FSR_level & three_species_all_tissue_interactions[,3] > FSR_level & three_species_all_tissue_interactions[,4] < FSR_level & three_species_all_tissue_interactions[,5] < FSR_level & three_species_all_tissue_interactions[,6] < FSR_level & three_species_all_tissue_interactions[,7] > FSR_level & three_species_all_tissue_interactions[,8] > FSR_level & three_species_all_tissue_interactions[,9] > FSR_level & three_species_all_tissue_interactions[,10] > FSR_level & three_species_all_tissue_interactions[,11] > FSR_level & three_species_all_tissue_interactions[,12] > FSR_level), ])
+
+# Interactions between 3 species lungs and other tissues
+
+
+nrow(three_species_all_tissue_interactions[which(three_species_all_tissue_interactions[,1] > FSR_level & three_species_all_tissue_interactions[,2] > FSR_level & three_species_all_tissue_interactions[,3] > FSR_level & three_species_all_tissue_interactions[,4] > FSR_level & three_species_all_tissue_interactions[,5] > FSR_level & three_species_all_tissue_interactions[,6] > FSR_level & three_species_all_tissue_interactions[,7] < FSR_level & three_species_all_tissue_interactions[,8] < FSR_level & three_species_all_tissue_interactions[,9] < FSR_level & three_species_all_tissue_interactions[,10] > FSR_level & three_species_all_tissue_interactions[,11] > FSR_level & three_species_all_tissue_interactions[,12] > FSR_level), ])
+
+
+# Interactions between 3 species kidneys and other tissues
+
+
+nrow(three_species_all_tissue_interactions[which(three_species_all_tissue_interactions[,1] > FSR_level & three_species_all_tissue_interactions[,2] > FSR_level & three_species_all_tissue_interactions[,3] > FSR_level & three_species_all_tissue_interactions[,4] > FSR_level & three_species_all_tissue_interactions[,5] > FSR_level & three_species_all_tissue_interactions[,6] > FSR_level & three_species_all_tissue_interactions[,7] > FSR_level & three_species_all_tissue_interactions[,8] > FSR_level & three_species_all_tissue_interactions[,9] > FSR_level & three_species_all_tissue_interactions[,10] < FSR_level & three_species_all_tissue_interactions[,11] < FSR_level & three_species_all_tissue_interactions[,12] < FSR_level), ])
+
+# Interactions between 3 species hearts and other tissues (Human/Chimp versus Rhesus)
+
+nrow(three_species_all_tissue_interactions[which(three_species_all_tissue_interactions[,1] > FSR_level & three_species_all_tissue_interactions[,2] < FSR_level & three_species_all_tissue_interactions[,3] < FSR_level & three_species_all_tissue_interactions[,4] > FSR_level & three_species_all_tissue_interactions[,5] > FSR_level & three_species_all_tissue_interactions[,6] > FSR_level & three_species_all_tissue_interactions[,7] > FSR_level & three_species_all_tissue_interactions[,8] > FSR_level & three_species_all_tissue_interactions[,9] > FSR_level & three_species_all_tissue_interactions[,10] > FSR_level & three_species_all_tissue_interactions[,11] > FSR_level & three_species_all_tissue_interactions[,12] > FSR_level), ])
+
+exp <- t(as.data.frame(cpm_12184[grepl("ENSG00000004487", rownames(cpm_12184)), ]))
+make_exp_df <- as.data.frame(cbind(exp, species, tissue))
+make_exp_df$species <- as.factor(make_exp_df$species)
+levels(make_exp_df$species) <- c("Chimpanzee", "Human", "Rhesus")
+colnames(make_exp_df) <- c("CPM", "Species", "Tissue")
+ggplot(make_exp_df, aes(x=as.factor(Tissue), y=CPM, fill=as.factor(Tissue))) + geom_boxplot() + facet_wrap(~Species) + xlab("Tissue") + ylab("Normalized Expression") + scale_x_discrete(labels=c("Heart","Kidney","Liver", "Lung")) + bjp + theme(legend.position="none")
+
+# Interactions between 3 species livers and other tissues (Human/Chimp versus Rhesus)
+
+nrow(three_species_all_tissue_interactions[which(three_species_all_tissue_interactions[,1] > FSR_level & three_species_all_tissue_interactions[,2] > FSR_level & three_species_all_tissue_interactions[,3] > FSR_level & three_species_all_tissue_interactions[,4] > FSR_level & three_species_all_tissue_interactions[,5] < FSR_level & three_species_all_tissue_interactions[,6] < FSR_level & three_species_all_tissue_interactions[,7] > FSR_level & three_species_all_tissue_interactions[,8] > FSR_level & three_species_all_tissue_interactions[,9] > FSR_level & three_species_all_tissue_interactions[,10] > FSR_level & three_species_all_tissue_interactions[,11] > FSR_level & three_species_all_tissue_interactions[,12] > FSR_level), ])
+
+# Interactions between 3 species lungs and other tissues (Human/Chimp versus Rhesus)
+
+nrow(three_species_all_tissue_interactions[which(three_species_all_tissue_interactions[,1] > FSR_level & three_species_all_tissue_interactions[,2] > FSR_level & three_species_all_tissue_interactions[,3] > FSR_level & three_species_all_tissue_interactions[,4] > FSR_level & three_species_all_tissue_interactions[,5] > FSR_level & three_species_all_tissue_interactions[,6] > FSR_level & three_species_all_tissue_interactions[,7] > FSR_level & three_species_all_tissue_interactions[,8] < FSR_level & three_species_all_tissue_interactions[,9] < FSR_level & three_species_all_tissue_interactions[,10] > FSR_level & three_species_all_tissue_interactions[,11] > FSR_level & three_species_all_tissue_interactions[,12] > FSR_level), ])
+
+
+# Interactions between 3 species kidneys and other tissues (Human/Chimp versus Rhesus)
+
+nrow(three_species_all_tissue_interactions[which(three_species_all_tissue_interactions[,1] > FSR_level & three_species_all_tissue_interactions[,2] > FSR_level & three_species_all_tissue_interactions[,3] > FSR_level & three_species_all_tissue_interactions[,4] > FSR_level & three_species_all_tissue_interactions[,5] > FSR_level & three_species_all_tissue_interactions[,6] > FSR_level & three_species_all_tissue_interactions[,7] > FSR_level & three_species_all_tissue_interactions[,8] > FSR_level & three_species_all_tissue_interactions[,9] > FSR_level & three_species_all_tissue_interactions[,10] > FSR_level & three_species_all_tissue_interactions[,11] < FSR_level & three_species_all_tissue_interactions[,12] < FSR_level), ])
+
+```
+
+## Combining humans and chimps to have a Great Ape versus Rhesus tissues set of interactions
+
+### Hearts
+
+```{r}
+# Reassign species to be GA versus not GA
+
+GA_species <- gsub("Chimp", "GA", species) 
+GA_species <- gsub("Human", "GA", GA_species) 
+
+# Reassign tissues to be heart versus non-heart
+
+tissue_group <- gsub("kidney", "Grouped", tissue) 
+tissue_group <- gsub("liver", "Grouped", tissue_group) 
+tissue_group <- gsub("lung", "Grouped", tissue_group) 
+
+
+## Make the contrast matrix and rename columns of the contrast matrix
+labels <- paste(GA_species, tissue_group, sep=".")
+
+design <- model.matrix(~ 0 + labels + RIN)
+
+# Rename columns of the contrast matrix
+
+colnames(design) <- gsub("labelsGA.heart", "GA.heart", colnames(design))
+colnames(design) <- gsub("labelsGA.Grouped", "GA.grouped", colnames(design))
+colnames(design) <- gsub("labelsRhesus.Grouped", "Rhesus.grouped", colnames(design))
+colnames(design) <- gsub("labelsRhesus.heart", "Rhesus.heart", colnames(design))
+
+# Look at the number of samples in each column 
+colSums(design)
+
+# Run linear model with new design matrix
+
+fit.cyclic.norm <- lmFit(cpm.voom.cyclic, design, plot = TRUE, block=samples$Individual, correlation=corfit$consensus)
+fit.cyclic.norm <- eBayes(fit.cyclic.norm)
+
+# In the contrast matrix, we have many comparisons for species and tissues individually
+# Note: baseline is chimp heart
+
+cm6 <- makeContrasts(GA_HG = (GA.heart - Rhesus.heart) - (GA.grouped - Rhesus.grouped),
+                     levels = design)
+
+# Implement contrasts
+
+contrasts_interactions <- contrasts.fit(fit.cyclic.norm, cm6)
+fit1 <- eBayes(contrasts_interactions)
+
+# Determine the number of statistically signficant interactions
+
+GA_HG =topTable(fit1, coef=1, adjust="BH", number=Inf, sort.by="none")
+dim(GA_HG[which(GA_HG$adj.P.Val < FDR_level), ]) 
+
+```
+
+
+```{r}
+# Prepare the data for ASH
+tests <- colnames(fit1$coefficients)
+results <- vector(length = length(tests), mode = "list")
+names(results) <- tests
+
+# Get lfsr, lfdr, s value, q value, and a beta_est value. 
+for (test in tests) {
+  # Extract limma results
+  results[[test]] <- get_results(fit1, coef = test)
+  # Add mutliple testing correction with ASH
+  output_ash <- run_ash(fit1, coef = test)
+  results[[test]] <- cbind(results[[test]], sebetahat = output_ash$data$s, lfsr = output_ash$result$lfsr,
+                           lfdr = output_ash$result$lfdr, qvalue = output_ash$result$qvalue,
+                           svalue = output_ash$result$svalue, beta_est = output_ash$result$PosteriorMean, se_est =
+                             output_ash$result$PosteriorSD)
+}
+
+GA_HG_svalue <- results[[test]]
+nrow(GA_HG_svalue[which(GA_HG_svalue$svalue < FSR_level),])
+```
+
+
+### Livers
+
+```{r}
+# Reassign species to be GA versus not GA
+
+GA_species <- gsub("Chimp", "GA", species) 
+GA_species <- gsub("Human", "GA", GA_species) 
+
+# Reassign tissues to be heart versus non-heart
+
+tissue_group <- gsub("kidney", "Grouped", tissue) 
+tissue_group <- gsub("heart", "Grouped", tissue_group) 
+tissue_group <- gsub("lung", "Grouped", tissue_group) 
+
+
+## Make the contrast matrix and rename columns of the contrast matrix
+labels <- paste(GA_species, tissue_group, sep=".")
+
+design <- model.matrix(~ 0 + labels + RIN)
+
+# Rename columns of the contrast matrix
+
+colnames(design) <- gsub("labelsGA.liver", "GA.liver", colnames(design))
+colnames(design) <- gsub("labelsGA.Grouped", "GA.grouped", colnames(design))
+colnames(design) <- gsub("labelsRhesus.Grouped", "Rhesus.grouped", colnames(design))
+colnames(design) <- gsub("labelsRhesus.liver", "Rhesus.liver", colnames(design))
+
+# Look at the number of samples in each column 
+colSums(design)
+
+# Run linear model with new design matrix
+
+fit.cyclic.norm <- lmFit(cpm.voom.cyclic, design, plot = TRUE, block=samples$Individual, correlation=corfit$consensus)
+fit.cyclic.norm <- eBayes(fit.cyclic.norm)
+
+# In the contrast matrix, we have many comparisons for species and tissues individually
+# Note: baseline is chimp heart
+
+cm7 <- makeContrasts(GA_LiG = (GA.liver - Rhesus.liver) - (GA.grouped - Rhesus.grouped),
+                     levels = design)
+
+# Implement contrasts
+
+contrasts_interactions <- contrasts.fit(fit.cyclic.norm, cm7)
+fit1 <- eBayes(contrasts_interactions)
+
+# Determine the number of statistically signficant interactions
+
+GA_LiG =topTable(fit1, coef=1, adjust="BH", number=Inf, sort.by="none")
+dim(GA_LiG[which(GA_LiG$adj.P.Val < FDR_level), ]) 
+
+```
+
+
+```{r}
+# Prepare the data for ASH
+tests <- colnames(fit1$coefficients)
+results <- vector(length = length(tests), mode = "list")
+names(results) <- tests
+
+# Get lfsr, lfdr, s value, q value, and a beta_est value. 
+for (test in tests) {
+  # Extract limma results
+  results[[test]] <- get_results(fit1, coef = test)
+  # Add mutliple testing correction with ASH
+  output_ash <- run_ash(fit1, coef = test)
+  results[[test]] <- cbind(results[[test]], sebetahat = output_ash$data$s, lfsr = output_ash$result$lfsr,
+                           lfdr = output_ash$result$lfdr, qvalue = output_ash$result$qvalue,
+                           svalue = output_ash$result$svalue, beta_est = output_ash$result$PosteriorMean, se_est =
+                             output_ash$result$PosteriorSD)
+}
+
+GA_LiG_svalue <- results[[test]]
+nrow(GA_LiG_svalue[which(GA_LiG_svalue$svalue < FSR_level),])
+```
+
+
+### Lungs
+
+```{r}
+# Reassign species to be GA versus not GA
+
+GA_species <- gsub("Chimp", "GA", species) 
+GA_species <- gsub("Human", "GA", GA_species) 
+
+# Reassign tissues to be heart versus non-heart
+
+tissue_group <- gsub("kidney", "Grouped", tissue) 
+tissue_group <- gsub("heart", "Grouped", tissue_group) 
+tissue_group <- gsub("liver", "Grouped", tissue_group) 
+
+
+## Make the contrast matrix and rename columns of the contrast matrix
+labels <- paste(GA_species, tissue_group, sep=".")
+
+design <- model.matrix(~ 0 + labels + RIN)
+
+# Rename columns of the contrast matrix
+
+colnames(design) <- gsub("labelsGA.lung", "GA.lung", colnames(design))
+colnames(design) <- gsub("labelsGA.Grouped", "GA.grouped", colnames(design))
+colnames(design) <- gsub("labelsRhesus.Grouped", "Rhesus.grouped", colnames(design))
+colnames(design) <- gsub("labelsRhesus.lung", "Rhesus.lung", colnames(design))
+
+# Look at the number of samples in each column 
+colSums(design)
+
+# Run linear model with new design matrix
+
+fit.cyclic.norm <- lmFit(cpm.voom.cyclic, design, plot = TRUE, block=samples$Individual, correlation=corfit$consensus)
+fit.cyclic.norm <- eBayes(fit.cyclic.norm)
+
+# In the contrast matrix, we have many comparisons for species and tissues individually
+# Note: baseline is chimp heart
+
+cm8 <- makeContrasts(GA_LuG = (GA.lung - Rhesus.lung) - (GA.grouped - Rhesus.grouped),
+                     levels = design)
+
+# Implement contrasts
+
+contrasts_interactions <- contrasts.fit(fit.cyclic.norm, cm8)
+fit1 <- eBayes(contrasts_interactions)
+
+# Determine the number of statistically signficant interactions
+
+GA_LuG =topTable(fit1, coef=1, adjust="BH", number=Inf, sort.by="none")
+dim(GA_LuG[which(GA_LuG$adj.P.Val < FDR_level), ]) 
+
+```
+
+
+```{r}
+# Prepare the data for ASH
+tests <- colnames(fit1$coefficients)
+results <- vector(length = length(tests), mode = "list")
+names(results) <- tests
+
+# Get lfsr, lfdr, s value, q value, and a beta_est value. 
+for (test in tests) {
+  # Extract limma results
+  results[[test]] <- get_results(fit1, coef = test)
+  # Add mutliple testing correction with ASH
+  output_ash <- run_ash(fit1, coef = test)
+  results[[test]] <- cbind(results[[test]], sebetahat = output_ash$data$s, lfsr = output_ash$result$lfsr,
+                           lfdr = output_ash$result$lfdr, qvalue = output_ash$result$qvalue,
+                           svalue = output_ash$result$svalue, beta_est = output_ash$result$PosteriorMean, se_est =
+                             output_ash$result$PosteriorSD)
+}
+
+GA_LuG_svalue <- results[[test]]
+nrow(GA_LuG_svalue[which(GA_LuG_svalue$svalue < FSR_level),])
+```
+
+### Kidneys
+
+```{r}
+# Reassign species to be GA versus not GA
+
+GA_species <- gsub("Chimp", "GA", species) 
+GA_species <- gsub("Human", "GA", GA_species) 
+
+# Reassign tissues to be heart versus non-heart
+
+tissue_group <- gsub("lung", "Grouped", tissue) 
+tissue_group <- gsub("heart", "Grouped", tissue_group) 
+tissue_group <- gsub("liver", "Grouped", tissue_group) 
+
+
+## Make the contrast matrix and rename columns of the contrast matrix
+labels <- paste(GA_species, tissue_group, sep=".")
+
+design <- model.matrix(~ 0 + labels + RIN)
+
+# Rename columns of the contrast matrix
+
+colnames(design) <- gsub("labelsGA.kidney", "GA.kidney", colnames(design))
+colnames(design) <- gsub("labelsGA.Grouped", "GA.grouped", colnames(design))
+colnames(design) <- gsub("labelsRhesus.Grouped", "Rhesus.grouped", colnames(design))
+colnames(design) <- gsub("labelsRhesus.kidney", "Rhesus.kidney", colnames(design))
+
+# Look at the number of samples in each column 
+colSums(design)
+
+# Run linear model with new design matrix
+
+fit.cyclic.norm <- lmFit(cpm.voom.cyclic, design, plot = TRUE, block=samples$Individual, correlation=corfit$consensus)
+fit.cyclic.norm <- eBayes(fit.cyclic.norm)
+
+# In the contrast matrix, we have many comparisons for species and tissues individually
+# Note: baseline is chimp heart
+
+cm9 <- makeContrasts(GA_LuG = (GA.kidney - Rhesus.kidney) - (GA.grouped - Rhesus.grouped),
+                     levels = design)
+
+# Implement contrasts
+
+contrasts_interactions <- contrasts.fit(fit.cyclic.norm, cm9)
+fit1 <- eBayes(contrasts_interactions)
+
+# Determine the number of statistically signficant interactions
+
+GA_KG =topTable(fit1, coef=1, adjust="BH", number=Inf, sort.by="none")
+dim(GA_KG[which(GA_KG$adj.P.Val < FDR_level), ]) 
+
+```
+
+```{r}
+# Prepare the data for ASH
+tests <- colnames(fit1$coefficients)
+results <- vector(length = length(tests), mode = "list")
+names(results) <- tests
+
+# Get lfsr, lfdr, s value, q value, and a beta_est value. 
+for (test in tests) {
+  # Extract limma results
+  results[[test]] <- get_results(fit1, coef = test)
+  # Add mutliple testing correction with ASH
+  output_ash <- run_ash(fit1, coef = test)
+  results[[test]] <- cbind(results[[test]], sebetahat = output_ash$data$s, lfsr = output_ash$result$lfsr,
+                           lfdr = output_ash$result$lfdr, qvalue = output_ash$result$qvalue,
+                           svalue = output_ash$result$svalue, beta_est = output_ash$result$PosteriorMean, se_est =
+                             output_ash$result$PosteriorSD)
+}
+
+GA_KG_svalue <- results[[test]]
+
+nrow(GA_KG_svalue[which(GA_KG_svalue$svalue < FSR_level),])
+```
+
+```{r}
+# Find tissue specific
+
+# bind s values together
+
+GA_svalue <- cbind(GA_HG_svalue$svalue, GA_LiG_svalue$svalue, GA_LuG_svalue$svalue, GA_KG_svalue$svalue)
+
+# Heart tissue specific
+nrow(GA_svalue[which(GA_svalue[,1] < FSR_level & GA_svalue[,2] > FSR_level & GA_svalue[,3] > FSR_level & GA_svalue[,4] > FSR_level), ])
+
+# Liver tissue specific
+nrow(GA_svalue[which(GA_svalue[,1] > FSR_level & GA_svalue[,2] < FSR_level & GA_svalue[,3] > FSR_level & GA_svalue[,4] > FSR_level), ])
+
+# Lung tissue specific
+nrow(GA_svalue[which(GA_svalue[,1] > FSR_level & GA_svalue[,2] > FSR_level & GA_svalue[,3] < FSR_level & GA_svalue[,4] > FSR_level), ])
+
+# Kidney tissue specific
+nrow(GA_svalue[which(GA_svalue[,1] > FSR_level & GA_svalue[,2] > FSR_level & GA_svalue[,3] > FSR_level & GA_svalue[,4] < FSR_level), ])
+
+```
+
+### Great Ape Tissue Specific (using FDR)
+
+```{r}
+# Set FDR level
+
+FDR_level <- 0.01
+
+GA_BHpvalue <- cbind(GA_HG[,6], GA_LiG[,6], GA_LuG[,6], GA_KG[,6])
+
+# Interactions between GA hearts and other tissues
+
+nrow(GA_BHpvalue[which(GA_BHpvalue[,1] < FDR_level & GA_BHpvalue[,2] > FDR_level & GA_BHpvalue[,3] > FDR_level & GA_BHpvalue[,4] > FDR_level), ])
+
+
+# Interactions between GA livers and other tissues
+
+nrow(GA_BHpvalue[which(GA_BHpvalue[,1] > FDR_level & GA_BHpvalue[,2] < FDR_level & GA_BHpvalue[,3] > FDR_level & GA_BHpvalue[,4] > FDR_level), ])
+
+# Interactions between GA lungs and other tissues
+
+nrow(GA_BHpvalue[which(GA_BHpvalue[,1] > FDR_level & GA_BHpvalue[,2] > FDR_level & GA_BHpvalue[,3] < FDR_level & GA_BHpvalue[,4] > FDR_level), ])
+
+# Interactions between GA kidneys and other tissues
+
+nrow(GA_BHpvalue[which(GA_BHpvalue[,1] > FDR_level & GA_BHpvalue[,2] > FDR_level & GA_BHpvalue[,3] > FDR_level & GA_BHpvalue[,4] < FDR_level), ])
+
+```
+
+
+
+
+## Combining chimps and rhesus to have a human versus non-human tissues set of interactions
+
+### Hearts
+
+```{r}
+# Reassign species to be human versus non-human (GA)
+
+GA_species <- gsub("Chimp", "GA", species) 
+GA_species <- gsub("Rhesus", "GA", GA_species) 
+
+# Reassign tissues to be heart versus non-heart
+
+tissue_group <- gsub("kidney", "Grouped", tissue) 
+tissue_group <- gsub("liver", "Grouped", tissue_group) 
+tissue_group <- gsub("lung", "Grouped", tissue_group) 
+
+
+## Make the contrast matrix and rename columns of the contrast matrix
+labels <- paste(GA_species, tissue_group, sep=".")
+
+design <- model.matrix(~ 0 + labels + RIN)
+
+# Rename columns of the contrast matrix
+
+colnames(design) <- gsub("labelsGA.heart", "GA.heart", colnames(design))
+colnames(design) <- gsub("labelsGA.Grouped", "GA.grouped", colnames(design))
+colnames(design) <- gsub("labelsHuman.Grouped", "Human.grouped", colnames(design))
+colnames(design) <- gsub("labelsHuman.heart", "Human.heart", colnames(design))
+
+# Look at the number of samples in each column 
+colSums(design)
+
+# Run linear model with new design matrix
+
+fit.cyclic.norm <- lmFit(cpm.voom.cyclic, design, plot = TRUE, block=samples$Individual, correlation=corfit$consensus)
+fit.cyclic.norm <- eBayes(fit.cyclic.norm)
+
+# In the contrast matrix, we have many comparisons for species and tissues individually
+# Note: baseline is chimp heart
+
+cm10 <- makeContrasts(NH_HG = (GA.heart - Human.heart) - (GA.grouped - Human.grouped),
+                     levels = design)
+
+# Implement contrasts
+
+contrasts_interactions <- contrasts.fit(fit.cyclic.norm, cm10)
+fit1 <- eBayes(contrasts_interactions)
+
+# Determine the number of statistically signficant interactions
+
+NH_HG =topTable(fit1, coef=1, adjust="BH", number=Inf, sort.by="none")
+dim(NH_HG[which(NH_HG$adj.P.Val < FDR_level), ]) 
+
+```
+
+
+```{r}
+# Prepare the data for ASH
+tests <- colnames(fit1$coefficients)
+results <- vector(length = length(tests), mode = "list")
+names(results) <- tests
+
+# Get lfsr, lfdr, s value, q value, and a beta_est value. 
+for (test in tests) {
+  # Extract limma results
+  results[[test]] <- get_results(fit1, coef = test)
+  # Add mutliple testing correction with ASH
+  output_ash <- run_ash(fit1, coef = test)
+  results[[test]] <- cbind(results[[test]], sebetahat = output_ash$data$s, lfsr = output_ash$result$lfsr,
+                           lfdr = output_ash$result$lfdr, qvalue = output_ash$result$qvalue,
+                           svalue = output_ash$result$svalue, beta_est = output_ash$result$PosteriorMean, se_est =
+                             output_ash$result$PosteriorSD)
+}
+
+NH_HG_svalue <- results[[test]]
+nrow(NH_HG_svalue[which(NH_HG_svalue$svalue < FSR_level),])
+```
+
+
+### Livers
+
+```{r}
+# Reassign species to be GA versus not GA
+
+GA_species <- gsub("Chimp", "GA", species) 
+GA_species <- gsub("Rhesus", "GA", GA_species) 
+
+# Reassign tissues to be heart versus non-heart
+
+tissue_group <- gsub("kidney", "Grouped", tissue) 
+tissue_group <- gsub("heart", "Grouped", tissue_group) 
+tissue_group <- gsub("lung", "Grouped", tissue_group) 
+
+
+## Make the contrast matrix and rename columns of the contrast matrix
+labels <- paste(GA_species, tissue_group, sep=".")
+
+design <- model.matrix(~ 0 + labels + RIN)
+
+# Rename columns of the contrast matrix
+
+colnames(design) <- gsub("labelsGA.liver", "GA.liver", colnames(design))
+colnames(design) <- gsub("labelsGA.Grouped", "GA.grouped", colnames(design))
+colnames(design) <- gsub("labelsHuman.Grouped", "Human.grouped", colnames(design))
+colnames(design) <- gsub("labelsHuman.liver", "Human.liver", colnames(design))
+
+# Look at the number of samples in each column 
+colSums(design)
+
+# Run linear model with new design matrix
+
+fit.cyclic.norm <- lmFit(cpm.voom.cyclic, design, plot = TRUE, block=samples$Individual, correlation=corfit$consensus)
+fit.cyclic.norm <- eBayes(fit.cyclic.norm)
+
+# In the contrast matrix, we have many comparisons for species and tissues individually
+# Note: baseline is chimp heart
+
+cm11 <- makeContrasts(NH_LiG = (GA.liver - Human.liver) - (GA.grouped - Human.grouped),
+                     levels = design)
+
+# Implement contrasts
+
+contrasts_interactions <- contrasts.fit(fit.cyclic.norm, cm11)
+fit1 <- eBayes(contrasts_interactions)
+
+# Determine the number of statistically signficant interactions
+
+NH_LiG =topTable(fit1, coef=1, adjust="BH", number=Inf, sort.by="none")
+dim(NH_LiG[which(NH_LiG$adj.P.Val < FDR_level), ]) 
+
+```
+
+
+```{r}
+# Prepare the data for ASH
+tests <- colnames(fit1$coefficients)
+results <- vector(length = length(tests), mode = "list")
+names(results) <- tests
+
+# Get lfsr, lfdr, s value, q value, and a beta_est value. 
+for (test in tests) {
+  # Extract limma results
+  results[[test]] <- get_results(fit1, coef = test)
+  # Add mutliple testing correction with ASH
+  output_ash <- run_ash(fit1, coef = test)
+  results[[test]] <- cbind(results[[test]], sebetahat = output_ash$data$s, lfsr = output_ash$result$lfsr,
+                           lfdr = output_ash$result$lfdr, qvalue = output_ash$result$qvalue,
+                           svalue = output_ash$result$svalue, beta_est = output_ash$result$PosteriorMean, se_est =
+                             output_ash$result$PosteriorSD)
+}
+
+NH_LiG_svalue <- results[[test]]
+nrow(NH_LiG_svalue[which(NH_LiG_svalue$svalue < FSR_level),])
+```
+
+
+### Lungs
+
+```{r}
+# Reassign species to be GA versus not GA
+
+GA_species <- gsub("Chimp", "GA", species) 
+GA_species <- gsub("Rhesus", "GA", GA_species) 
+
+# Reassign tissues to be heart versus non-heart
+
+tissue_group <- gsub("kidney", "Grouped", tissue) 
+tissue_group <- gsub("heart", "Grouped", tissue_group) 
+tissue_group <- gsub("liver", "Grouped", tissue_group) 
+
+
+## Make the contrast matrix and rename columns of the contrast matrix
+labels <- paste(GA_species, tissue_group, sep=".")
+
+design <- model.matrix(~ 0 + labels + RIN)
+
+# Rename columns of the contrast matrix
+
+colnames(design) <- gsub("labelsGA.lung", "GA.lung", colnames(design))
+colnames(design) <- gsub("labelsGA.Grouped", "GA.grouped", colnames(design))
+colnames(design) <- gsub("labelsHuman.Grouped", "Human.grouped", colnames(design))
+colnames(design) <- gsub("labelsHuman.lung", "Human.lung", colnames(design))
+
+# Look at the number of samples in each column 
+colSums(design)
+
+# Run linear model with new design matrix
+
+fit.cyclic.norm <- lmFit(cpm.voom.cyclic, design, plot = TRUE, block=samples$Individual, correlation=corfit$consensus)
+fit.cyclic.norm <- eBayes(fit.cyclic.norm)
+
+# In the contrast matrix, we have many comparisons for species and tissues individually
+# Note: baseline is chimp heart
+
+cm12 <- makeContrasts(NH_LuG = (GA.lung - Human.lung) - (GA.grouped - Human.grouped),
+                     levels = design)
+
+# Implement contrasts
+
+contrasts_interactions <- contrasts.fit(fit.cyclic.norm, cm12)
+fit1 <- eBayes(contrasts_interactions)
+
+# Determine the number of statistically signficant interactions
+
+NH_LuG =topTable(fit1, coef=1, adjust="BH", number=Inf, sort.by="none")
+dim(NH_LuG[which(NH_LuG$adj.P.Val < FDR_level), ]) 
+
+```
+
+
+```{r}
+# Prepare the data for ASH
+tests <- colnames(fit1$coefficients)
+results <- vector(length = length(tests), mode = "list")
+names(results) <- tests
+
+# Get lfsr, lfdr, s value, q value, and a beta_est value. 
+for (test in tests) {
+  # Extract limma results
+  results[[test]] <- get_results(fit1, coef = test)
+  # Add mutliple testing correction with ASH
+  output_ash <- run_ash(fit1, coef = test)
+  results[[test]] <- cbind(results[[test]], sebetahat = output_ash$data$s, lfsr = output_ash$result$lfsr,
+                           lfdr = output_ash$result$lfdr, qvalue = output_ash$result$qvalue,
+                           svalue = output_ash$result$svalue, beta_est = output_ash$result$PosteriorMean, se_est =
+                             output_ash$result$PosteriorSD)
+}
+
+NH_LuG_svalue <- results[[test]]
+nrow(NH_LuG_svalue[which(NH_LuG_svalue$svalue < FSR_level),])
+```
+
+### Kidneys
+
+```{r}
+# Reassign species to be GA versus not GA
+
+GA_species <- gsub("Chimp", "GA", species) 
+GA_species <- gsub("Rhesus", "GA", GA_species) 
+
+# Reassign tissues to be heart versus non-heart
+
+tissue_group <- gsub("lung", "Grouped", tissue) 
+tissue_group <- gsub("heart", "Grouped", tissue_group) 
+tissue_group <- gsub("liver", "Grouped", tissue_group) 
+
+
+## Make the contrast matrix and rename columns of the contrast matrix
+labels <- paste(GA_species, tissue_group, sep=".")
+
+design <- model.matrix(~ 0 + labels + RIN)
+
+# Rename columns of the contrast matrix
+
+colnames(design) <- gsub("labelsGA.kidney", "GA.kidney", colnames(design))
+colnames(design) <- gsub("labelsGA.Grouped", "GA.grouped", colnames(design))
+colnames(design) <- gsub("labelsHuman.Grouped", "Human.grouped", colnames(design))
+colnames(design) <- gsub("labelsHuman.kidney", "Human.kidney", colnames(design))
+
+# Look at the number of samples in each column 
+colSums(design)
+
+# Run linear model with new design matrix
+
+fit.cyclic.norm <- lmFit(cpm.voom.cyclic, design, plot = TRUE, block=samples$Individual, correlation=corfit$consensus)
+fit.cyclic.norm <- eBayes(fit.cyclic.norm)
+
+# In the contrast matrix, we have many comparisons for species and tissues individually
+# Note: baseline is chimp heart
+
+cm13 <- makeContrasts(NH_LuG = (GA.kidney - Human.kidney) - (GA.grouped - Human.grouped),
+                     levels = design)
+
+# Implement contrasts
+
+contrasts_interactions <- contrasts.fit(fit.cyclic.norm, cm13)
+fit1 <- eBayes(contrasts_interactions)
+
+# Determine the number of statistically signficant interactions
+
+NH_KG =topTable(fit1, coef=1, adjust="BH", number=Inf, sort.by="none")
+dim(NH_KG[which(NH_KG$adj.P.Val < FDR_level), ]) 
+
+```
+
+```{r}
+# Prepare the data for ASH
+tests <- colnames(fit1$coefficients)
+results <- vector(length = length(tests), mode = "list")
+names(results) <- tests
+
+# Get lfsr, lfdr, s value, q value, and a beta_est value. 
+for (test in tests) {
+  # Extract limma results
+  results[[test]] <- get_results(fit1, coef = test)
+  # Add mutliple testing correction with ASH
+  output_ash <- run_ash(fit1, coef = test)
+  results[[test]] <- cbind(results[[test]], sebetahat = output_ash$data$s, lfsr = output_ash$result$lfsr,
+                           lfdr = output_ash$result$lfdr, qvalue = output_ash$result$qvalue,
+                           svalue = output_ash$result$svalue, beta_est = output_ash$result$PosteriorMean, se_est =
+                             output_ash$result$PosteriorSD)
+}
+
+NH_KG_svalue <- results[[test]]
+
+nrow(NH_KG_svalue[which(NH_KG_svalue$svalue < FSR_level),])
+```
+
+### Human/Non-Human Tissue Specific (using FDR)
+
+```{r}
+# Set FDR level
+
+FDR_level <- 0.01
+
+GA_BHpvalue <- cbind(NH_HG[,6], NH_LiG[,6], NH_LuG[,6], NH_KG[,6])
+
+# Interactions between GA hearts and other tissues
+
+nrow(GA_BHpvalue[which(GA_BHpvalue[,1] < FSR_level & GA_BHpvalue[,2] > FSR_level & GA_BHpvalue[,3] > FSR_level & GA_BHpvalue[,4] > FSR_level), ])
+
+
+# Interactions between GA livers and other tissues
+
+nrow(GA_BHpvalue[which(GA_BHpvalue[,1] > FSR_level & GA_BHpvalue[,2] < FSR_level & GA_BHpvalue[,3] > FSR_level & GA_BHpvalue[,4] > FSR_level), ])
+
+# Interactions between GA lungs and other tissues
+
+nrow(GA_BHpvalue[which(GA_BHpvalue[,1] > FSR_level & GA_BHpvalue[,2] > FSR_level & GA_BHpvalue[,3] < FSR_level & GA_BHpvalue[,4] > FSR_level), ])
+
+# Interactions between GA kidneys and other tissues
+
+nrow(GA_BHpvalue[which(GA_BHpvalue[,1] > FSR_level & GA_BHpvalue[,2] > FSR_level & GA_BHpvalue[,3] > FSR_level & GA_BHpvalue[,4] < FSR_level), ])
+
+```
+
+
+
+```{r}
+# Find tissue specific
+
+# bind s values together
+
+NH_svalue <- cbind(NH_HG_svalue$svalue, NH_LiG_svalue$svalue, NH_LuG_svalue$svalue, NH_KG_svalue$svalue)
+
+# Heart tissue specific
+nrow(NH_svalue[which(NH_svalue[,1] < FSR_level & NH_svalue[,2] > FSR_level & NH_svalue[,3] > FSR_level & NH_svalue[,4] > FSR_level), ])
+
+# Liver tissue specific
+nrow(NH_svalue[which(NH_svalue[,1] > FSR_level & NH_svalue[,2] < FSR_level & NH_svalue[,3] > FSR_level & NH_svalue[,4] > FSR_level), ])
+
+# Lung tissue specific
+nrow(NH_svalue[which(NH_svalue[,1] > FSR_level & NH_svalue[,2] > FSR_level & NH_svalue[,3] < FSR_level & NH_svalue[,4] > FSR_level), ])
+
+# Kidney tissue specific
+nrow(NH_svalue[which(NH_svalue[,1] > FSR_level & NH_svalue[,2] > FSR_level & NH_svalue[,3] > FSR_level & NH_svalue[,4] < FSR_level), ])
+
+```

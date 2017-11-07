@@ -1,0 +1,515 @@
+---
+title: "Human_chimp_variance_values"
+author: "Lauren Blake"
+date: "October 25, 2017"
+output: html_document
+---
+
+This script evaluates the variance of gene expression between the tissues within a species. 
+
+```{r}
+# Load libraries/data
+
+library("edgeR")
+library("limma")
+library("plyr")
+library("ggplot2")
+
+cpm.voom.cyclic <- readRDS("../data/human_chimp_orth_cpm_voom_cyclic.rds")
+exp_methyl <- read.table("../data/human_chimp_orth_exp_methyl_7725_hum.txt", header = T, stringsAsFactors = F)
+samples <- read.table("../data/human_chimp_orth_new_sample_info.txt", header = T,  stringsAsFactors = F)
+
+# Get sample info
+species <- as.data.frame(samples[,4])
+tissue <- as.data.frame(samples[,5])
+RIN <- as.data.frame(samples[,6])
+```
+
+# Check the variances  
+
+## Human versus chimp for each tissue
+
+```{r}
+# Human heart versus chimp heart
+exp_methyl_chimp_heart <- c(1, 5, 9, 13)
+exp_methyl_human_heart <- c(20, 24, 28)
+var_exp_methyl_chimp_heart <- apply(cpm.voom.cyclic$E[,exp_methyl_chimp_heart], 1, var)
+summary(var_exp_methyl_chimp_heart)
+
+large_var <- cpm.voom.cyclic$E[which(var_exp_methyl_chimp_heart > 1), exp_methyl_chimp_heart]
+length(large_var)
+var_exp_methyl_human_heart <- apply(cpm.voom.cyclic$E[,exp_methyl_human_heart], 1, var)
+summary(var_exp_methyl_human_heart)
+large_var <- cpm.voom.cyclic$E[which(var_exp_methyl_human_heart > 1), exp_methyl_human_heart]
+length(large_var)
+plot(var_exp_methyl_chimp_heart, var_exp_methyl_human_heart)
+
+# Human kidney versus chimp kidney
+exp_methyl_chimp_heart <- c(2, 6, 10, 14)
+exp_methyl_human_heart <- c( 17, 21, 25, 29)
+var_exp_methyl_chimp_heart <- apply(cpm.voom.cyclic$E[,exp_methyl_chimp_heart], 1, var)
+large_var <- cpm.voom.cyclic$E[which(var_exp_methyl_chimp_heart > 1), exp_methyl_chimp_heart]
+length(large_var)
+summary(var_exp_methyl_chimp_heart)
+var_exp_methyl_human_heart <- apply(cpm.voom.cyclic$E[,exp_methyl_human_heart], 1, var)
+summary(var_exp_methyl_human_heart)
+large_var <- cpm.voom.cyclic$E[which(var_exp_methyl_human_heart > 1), exp_methyl_human_heart]
+length(large_var)
+plot(var_exp_methyl_chimp_heart, var_exp_methyl_human_heart, xlim = c(0, 15), xlab = "Chimp Kidney", ylab = "Human Kidney", main = "Variance of gene expression (10,304 genes)")
+
+# Human liver versus chimp liver
+
+exp_methyl_chimp_heart <- c(3, 7, 11, 15)
+exp_methyl_human_heart <- c(18, 22, 26, 30)
+var_exp_methyl_chimp_heart <- apply(cpm.voom.cyclic$E[,exp_methyl_chimp_heart], 1, var)
+summary(var_exp_methyl_chimp_heart)
+var_exp_methyl_human_heart <- apply(cpm.voom.cyclic$E[,exp_methyl_human_heart], 1, var)
+summary(var_exp_methyl_human_heart)
+plot(var_exp_methyl_chimp_heart, var_exp_methyl_human_heart)
+
+# Human lung versus chimp lung
+
+exp_methyl_chimp_heart <- c(4, 8, 12, 16)
+exp_methyl_human_heart <- c(19, 23, 27, 31)
+var_exp_methyl_chimp_heart <- apply(cpm.voom.cyclic$E[,exp_methyl_chimp_heart], 1, var)
+summary(var_exp_methyl_chimp_heart)
+var_exp_methyl_human_heart <- apply(cpm.voom.cyclic$E[,exp_methyl_human_heart], 1, var)
+summary(var_exp_methyl_human_heart)
+plot(var_exp_methyl_chimp_heart, var_exp_methyl_human_heart)
+
+```
+
+## Human versus chimp for each tissue (that we have methylation values for)
+
+```{r}
+# Pul expression values that we have accompanying methylation values for
+
+exp_methyl_exp_only <- exp_methyl[,2:48]
+
+# Human heart versus chimp heart
+exp_methyl_chimp_heart <- c(1, 5, 9, 13)
+exp_methyl_human_heart <- c(20, 24, 28)
+
+mean_exp_methyl_chimp_heart <- apply(exp_methyl_exp_only[,exp_methyl_chimp_heart], 1, mean)
+mean_exp_methyl_human_heart <- apply(exp_methyl_exp_only[,exp_methyl_human_heart], 1, mean)
+plot(mean_exp_methyl_chimp_heart, mean_exp_methyl_human_heart, xlim = c(0, 25), ylim = c(0,25), xlab = "Chimp Heart", ylab = "Human Heart", main = "Avg. of normalized gene expression levels (7,725 genes)")
+abline(0, 1, col = "red")
+
+t.test(mean_exp_methyl_chimp_heart, mean_exp_methyl_human_heart)
+
+var_exp_methyl_chimp_heart <- apply(exp_methyl_exp_only[,exp_methyl_chimp_heart], 1, var)
+summary(var_exp_methyl_chimp_heart)
+
+summary(var_exp_methyl_chimp_heart > 1)
+
+var_exp_methyl_human_heart <- apply(exp_methyl_exp_only[,exp_methyl_human_heart], 1, var)
+summary(var_exp_methyl_human_heart)
+summary(var_exp_methyl_human_heart > 1)
+t.test(var_exp_methyl_chimp_heart, var_exp_methyl_human_heart)
+
+plot(var_exp_methyl_chimp_heart, var_exp_methyl_human_heart, xlim = c(0, 25), ylim = c(0,25), xlab = "Chimp Heart", ylab = "Human Heart", main = "Variance of normalized gene expression levels (7,725 genes)")
+abline(0, 1, col = "red")
+
+# Find the ones with high variances
+
+which(var_exp_methyl_human_heart > 15)
+exp_methyl_exp_only[2235,exp_methyl_human_heart]
+exp_methyl_exp_only[2463,exp_methyl_human_heart]
+exp_methyl_exp_only[6871,exp_methyl_human_heart]
+exp_methyl_exp_only[6877,exp_methyl_human_heart]
+
+find_var <- c(3.172838, -4.521215, 2.83154)
+var(find_var)
+
+# The 
+
+# Human kidney versus chimp kidney
+exp_methyl_chimp_heart <- c(2, 6, 10, 14)
+exp_methyl_human_heart <- c( 17, 21, 25, 29)
+var_exp_methyl_chimp_heart <- apply(cpm.voom.cyclic$E[,exp_methyl_chimp_heart], 1, var)
+large_var <- cpm.voom.cyclic$E[which(var_exp_methyl_chimp_heart > 1), exp_methyl_chimp_heart]
+length(large_var)
+summary(var_exp_methyl_chimp_heart)
+var_exp_methyl_human_heart <- apply(cpm.voom.cyclic$E[,exp_methyl_human_heart], 1, var)
+summary(var_exp_methyl_human_heart)
+large_var <- cpm.voom.cyclic$E[which(var_exp_methyl_human_heart > 1), exp_methyl_human_heart]
+length(large_var)
+plot(var_exp_methyl_chimp_heart, var_exp_methyl_human_heart, xlim = c(0, 15), xlab = "Chimp Kidney", ylab = "Human Kidney", main = "Variance of gene expression (10,304 genes)")
+
+# Human liver versus chimp liver
+
+exp_methyl_chimp_heart <- c(3, 7, 11, 15)
+exp_methyl_human_heart <- c(18, 22, 26, 30)
+var_exp_methyl_chimp_heart <- apply(cpm.voom.cyclic$E[,exp_methyl_chimp_heart], 1, var)
+summary(var_exp_methyl_chimp_heart)
+var_exp_methyl_human_heart <- apply(cpm.voom.cyclic$E[,exp_methyl_human_heart], 1, var)
+summary(var_exp_methyl_human_heart)
+plot(var_exp_methyl_chimp_heart, var_exp_methyl_human_heart)
+
+# Human lung versus chimp lung
+
+exp_methyl_chimp_heart <- c(4, 8, 12, 16)
+exp_methyl_human_heart <- c(19, 23, 27, 31)
+var_exp_methyl_chimp_heart <- apply(cpm.voom.cyclic$E[,exp_methyl_chimp_heart], 1, var)
+summary(var_exp_methyl_chimp_heart)
+var_exp_methyl_human_heart <- apply(cpm.voom.cyclic$E[,exp_methyl_human_heart], 1, var)
+summary(var_exp_methyl_human_heart)
+plot(var_exp_methyl_chimp_heart, var_exp_methyl_human_heart)
+
+```
+
+
+
+
+
+
+## Human Heart versus Kidney at FDR 5%
+
+```{r}
+# First, pick out the genes that are DE (you run the entire analysis only on genes that are DE)
+tissue <- as.data.frame(samples[,5])
+chimp_human_heart <- c(17, 20, 21, 24, 25, 28, 29)
+#FDR_level <- 0.05
+tissue <- tissue[chimp_human_heart,]
+tissue_no_extra <- droplevels.factor(tissue, "liver")
+
+
+design <- model.matrix(~ as.factor(tissue_no_extra) + RIN[chimp_human_heart,])
+fit_all <- lmFit(cpm.voom.cyclic[,chimp_human_heart], design)
+fit_all <- eBayes(fit_all)
+HvC_Heart_fit_all = topTable(fit_all, coef=2, adjust="BH", number=Inf, sort.by="none")
+human_chimp_heart <-   rownames(fit_all) %in% rownames(exp_methyl) 
+human_chimp_heart <- as.data.frame(human_chimp_heart)
+counts_genes_in <- cbind(fit_all, human_chimp_heart)
+counts_genes_in_cutoff <- subset(counts_genes_in, human_chimp_heart == "TRUE")
+counts_genes_in_cutoff <- counts_genes_in_cutoff[,1:23]  
+
+human_heart_lung_beta_fitall <- counts_genes_in_cutoff[,2]
+human_heart_lung_sigma_fitall <- counts_genes_in_cutoff[,5]*counts_genes_in_cutoff[,7]
+human_heart_lung_t_fitall <- counts_genes_in_cutoff[,13]
+
+HvC_Heart_fit_all = topTable(fit_all, coef=2, adjust="BH", number=Inf, sort.by="none")
+human_chimp_heart <-   rownames(HvC_Heart_fit_all) %in% rownames(exp_methyl) 
+human_chimp_heart <- as.data.frame(human_chimp_heart)
+counts_genes_in <- cbind(HvC_Heart_fit_all, human_chimp_heart)
+counts_genes_in_cutoff <- subset(counts_genes_in, human_chimp_heart == "TRUE")
+human_heart_lung_FDR_fitall <- counts_genes_in_cutoff[,6]  
+
+HvC_Heart_fit_all_5perc <- HvC_Heart_fit_all[which(HvC_Heart_fit_all$adj.P.Val < FDR_level), ]
+human_chimp_heart <-  rownames(exp_methyl) %in% HvC_Heart_fit_all_5perc$genes
+human_chimp_heart <- as.data.frame(human_chimp_heart)
+counts_genes_in <- cbind(exp_methyl, human_chimp_heart)
+counts_genes_in_cutoff <- subset(counts_genes_in, human_chimp_heart == "TRUE")
+counts_genes_in_cutoff <- counts_genes_in_cutoff[,1:79]  
+expression_values_only <- counts_genes_in_cutoff[,2:32]
+methylation_values_only <- counts_genes_in_cutoff[,49:79]
+human_heart_lung_gene_fit1 <- rownames(expression_values_only)
+
+
+## Obtain corrected data (regression for scenario 2) by regressing out RIN on a gene-by-gene basis
+resid_methyl <- array(0, dim = c(nrow(expression_values_only), length(chimp_human_heart))) 
+expression_values <- as.data.frame(expression_values_only)
+methylation_values <- as.data.frame(methylation_values_only)
+for (i in 1:nrow(expression_values_only)){
+  resid_methyl[i,] <- lm(t(expression_values_only[i,chimp_human_heart]) ~ t(methylation_values_only[i,chimp_human_heart]))$resid
+}
+rownames(resid_methyl) <- rownames(expression_values_only)
+
+# Scenario 1
+
+fit1 <- lmFit(expression_values_only[, chimp_human_heart], design)
+fit1 <- eBayes(fit1)
+HvC_Heart_fit1 = topTable(fit1, coef=2, adjust="BH", number=Inf, sort.by="none")
+human_heart_lung_FDR_fit1 <- HvC_Heart_fit1$adj.P.Val 
+
+
+
+human_heart_lung_beta_fitall <- fit1$coef[,2]
+human_heart_lung_sigma_fitall <- fit1$stdev.unscaled[,2]*fit1$sigma
+human_heart_lung_t_fitall <- fit1$t[,2]
+
+
+# Scenario 2
+
+fit2 <- lmFit(resid_methyl, design)
+fit2 <- eBayes(fit2)
+HvC_Heart_fit2 = topTable(fit2, coef=2, adjust="BH", number=Inf, sort.by="none")
+
+# Bind DE from fit1 and DE from fit2 together
+
+HvC_Heart_fits12 <- as.data.frame(cbind(rownames(HvC_Heart_fit1), HvC_Heart_fit1$adj.P.Val, HvC_Heart_fit2$adj.P.Val), stringsAsFactors = FALSE)
+HvC_Heart_fits12[,2] <- as.numeric(HvC_Heart_fits12[,2])
+HvC_Heart_fits12[,3] <- as.numeric(HvC_Heart_fits12[,3])
+colnames(HvC_Heart_fits12) <- c("genes", "fit1_FDR", "fit2_FDR")
+
+DE_both <- HvC_Heart_fits12[which(HvC_Heart_fits12$fit1_FDR < FDR_level &  HvC_Heart_fits12$fit2_FDR < FDR_level),]
+nrow(DE_both)
+
+DE_before <- HvC_Heart_fits12[which(HvC_Heart_fits12$fit1_FDR < FDR_level &  HvC_Heart_fits12$fit2_FDR > FDR_level),]
+nrow(DE_before)
+
+DE_after <- HvC_Heart_fits12[which(HvC_Heart_fits12$fit1_FDR > FDR_level &  HvC_Heart_fits12$fit2_FDR < FDR_level),]
+nrow(DE_after)
+
+
+```
+
+## Chimp Heart versus Lung at FDR 5%
+
+```{r}
+# First, pick out the genes that are DE (you run the entire analysis only on genes that are DE)
+chimp_human_heart <-  c(1, 2, 5, 6, 9, 10, 13, 14)
+FDR_level <- 0.05
+tissue <- as.data.frame(samples[,5])
+tissue <- tissue[chimp_human_heart,]
+tissue_no_extra <- droplevels.factor(tissue, "liver")
+
+
+design <- model.matrix(~ as.factor(tissue_no_extra) + RIN[chimp_human_heart,])
+fit_all <- lmFit(cpm.voom.cyclic[,chimp_human_heart], design)
+fit_all <- eBayes(fit_all)
+
+HvC_Heart_fit_all = topTable(fit_all, coef=2, adjust="BH", number=Inf, sort.by="none")
+human_chimp_heart <-   rownames(fit_all) %in% rownames(exp_methyl) 
+human_chimp_heart <- as.data.frame(human_chimp_heart)
+counts_genes_in <- cbind(fit_all, human_chimp_heart)
+counts_genes_in_cutoff <- subset(counts_genes_in, human_chimp_heart == "TRUE")
+counts_genes_in_cutoff <- counts_genes_in_cutoff[,1:23]  
+
+chimp_heart_lung_beta_fitall <- counts_genes_in_cutoff[,2]
+chimp_heart_lung_sigma_fitall <- counts_genes_in_cutoff[,5]*counts_genes_in_cutoff[,7]
+chimp_heart_lung_t_fitall <- counts_genes_in_cutoff[,13]
+
+HvC_Heart_fit_all = topTable(fit_all, coef=2, adjust="BH", number=Inf, sort.by="none")
+human_chimp_heart <-   rownames(HvC_Heart_fit_all) %in% rownames(exp_methyl) 
+human_chimp_heart <- as.data.frame(human_chimp_heart)
+counts_genes_in <- cbind(HvC_Heart_fit_all, human_chimp_heart)
+counts_genes_in_cutoff <- subset(counts_genes_in, human_chimp_heart == "TRUE")
+chimp_heart_lung_FDR_fitall <- counts_genes_in_cutoff[,6]  
+
+
+
+
+
+
+
+plot(chimp_heart_lung_beta_fitall, human_heart_lung_beta_fitall)
+
+# Coloring
+
+FDR_bind <- cbind(chimp_heart_lung_FDR_fitall, human_heart_lung_FDR_fitall)
+FDR_bind_check <- FDR_bind
+FDR_bind_check[ FDR_bind[,1] > FDR_level & FDR_bind[,2] > FDR_level] <- "black"
+FDR_bind_check[ FDR_bind[,1] > FDR_level & FDR_bind[,2] < FDR_level] <- "red"
+FDR_bind_check[ FDR_bind[,1] < FDR_level & FDR_bind[,2] > FDR_level] <- "blue"
+FDR_bind_check[ FDR_bind[,1] < FDR_level & FDR_bind[,2] < FDR_level] <- "gray"
+
+# Plot 
+plot(chimp_heart_lung_beta_fitall, human_heart_lung_beta_fitall, xlab = "Chimp Heart-Kidney", ylab = "Human Heart-Kidney", main = "Betas for human heart versus kidney (7725 genes)")
+abline(0, 1, col = "red")
+
+plot(chimp_heart_lung_beta_fitall, human_heart_lung_beta_fitall, xlab = "Chimp Heart-Kidney", ylab = "Human Heart-Kidney", main = "Betas for human heart versus kidney (7725 genes)", col = FDR_bind_check)
+
+plot(chimp_heart_lung_beta_fitall, human_heart_lung_beta_fitall, col = FDR_bind_check)
+cor(chimp_heart_lung_beta_fitall, human_heart_lung_beta_fitall)
+t.test(chimp_heart_lung_beta_fitall, human_heart_lung_beta_fitall) 
+var.test(chimp_heart_lung_beta_fitall, human_heart_lung_beta_fitall) 
+
+
+plot(chimp_heart_lung_sigma_fitall, human_heart_lung_sigma_fitall, xlim = c(0,4), ylim = c(0,4), xlab = "Chimp Heart-Kidney", ylab = "Human Heart-Kidney", main = "Var. for human heart versus kidney (7725 genes)")
+abline(0, 1, col = "red")
+
+plot(chimp_heart_lung_sigma_fitall, human_heart_lung_sigma_fitall, col = FDR_bind_check)
+cor(chimp_heart_lung_sigma_fitall, human_heart_lung_sigma_fitall)
+t.test(chimp_heart_lung_sigma_fitall, human_heart_lung_sigma_fitall)
+var.test(chimp_heart_lung_sigma_fitall, human_heart_lung_sigma_fitall) 
+
+plot(chimp_heart_lung_t_fitall, human_heart_lung_t_fitall, xlim = c(0,50), ylim = c(0,50), xlab = "Chimp Heart-Kidney", ylab = "Human Heart-Kidney", main = "T statistics for human heart versus kidney (7725 genes)")
+abline(0, 1, col = "red")
+
+plot(chimp_heart_lung_FDR_fitall, human_heart_lung_FDR_fitall, xlim = c(0,1), ylim = c(0,1), xlab = "Chimp Heart-Kidney", ylab = "Human Heart-Kidney", main = "FDR-adj. p val for human heart versus lung (7725 genes)")
+abline(0, 1, col = "red")
+
+
+
+# How would changing the P value cutoff change the number of DE genes
+
+summary(FDR_bind[,1] > FDR_level & FDR_bind[,2] > 0.10)
+summary(FDR_bind[,1] > FDR_level & FDR_bind[,2] < 0.10)
+summary(FDR_bind[,1] < FDR_level & FDR_bind[,2] > 0.10)
+summary(FDR_bind[,1] < FDR_level & FDR_bind[,2] < 0.10)
+
+
+summary(FDR_bind[,1] > FDR_level & FDR_bind[,2] > 0.05)
+summary(FDR_bind[,1] > FDR_level & FDR_bind[,2] < 0.05)
+summary(FDR_bind[,1] < FDR_level & FDR_bind[,2] > 0.05)
+summary(FDR_bind[,1] < FDR_level & FDR_bind[,2] < 0.05)
+
+# What about just the DE genes?
+
+make_DE <- as.data.frame(cbind(chimp_heart_lung_beta_fitall, human_heart_lung_beta_fitall, FDR_bind_check[,1]), stringsAsFactors = FALSE)
+make_DE[,1] <- as.numeric(make_DE[,1]) 
+make_DE[,2] <- as.numeric(make_DE[,2]) 
+make_DE_only <- make_DE[which(make_DE[,3] != "black"), ]
+t.test(make_DE_only[,1], make_DE_only[,2]) 
+
+plot(make_DE_only[,1], make_DE_only[,2], col = make_DE_only[,3])
+
+make_DE <- as.data.frame(cbind(chimp_heart_lung_sigma_fitall, human_heart_lung_sigma_fitall, FDR_bind_check[,1]), stringsAsFactors = FALSE)
+make_DE[,1] <- as.numeric(make_DE[,1]) 
+make_DE[,2] <- as.numeric(make_DE[,2]) 
+make_DE_only <- make_DE[which(make_DE[,3] != "black"), ]
+t.test(make_DE_only[,1], make_DE_only[,2]) 
+plot(make_DE_only[,1], make_DE_only[,2], col = make_DE_only[,3])
+
+
+
+
+## What if you condition on the variance?
+
+make_DE <- as.data.frame(cbind(chimp_heart_lung_sigma_fitall, human_heart_lung_sigma_fitall, FDR_bind_check[,1]), stringsAsFactors = FALSE)
+make_DE[,1] <- as.numeric(make_DE[,1]) 
+make_DE[,2] <- as.numeric(make_DE[,2]) 
+make_DE_only <- make_DE[which(chimp_heart_lung_sigma_fitall < 0.25 & human_heart_lung_sigma_fitall < 0.5), ]
+make_DE_only <- make_DE_only[which(make_DE_only[,3] != "black"), ]
+t.test(make_DE_only[,1], make_DE_only[,2]) 
+plot(make_DE_only[,1], make_DE_only[,2], col = make_DE_only[,3])
+
+# What if you condition based on beta? 
+
+beta_level <- 1.5
+beta_and_FDR <- as.data.frame(cbind(chimp_heart_lung_beta_fitall, human_heart_lung_beta_fitall, FDR_bind))
+
+beta_and_FDR_sort <- beta_and_FDR[which(abs(beta_and_FDR[,1]) > beta_level & abs(beta_and_FDR[,2]) > beta_level), ]
+summary(beta_and_FDR_sort)
+
+# Experimenting with t? 
+
+t_level <- 1.5
+t_and_FDR <- as.data.frame(cbind(chimp_heart_lung_t_fitall, human_heart_lung_t_fitall, FDR_bind))
+
+t_and_FDR_sort <- beta_and_FDR[which(abs(t_and_FDR[,1]) > t_level & abs(t_and_FDR[,2]) > t_level), ]
+summary(t_and_FDR_sort)
+
+# Explore- what is the overlap between the top 1000 most significant genes in humans and top 1000 most significant in chimps?
+FDR_bind <- as.data.frame(FDR_bind)
+rownames(FDR_bind) <- rownames(HvC_Heart_fit_all)
+order_humans <- FDR_bind[order(FDR_bind$human_heart_lung_FDR_fitall), ]
+top1000_humans <- order_humans[1:1000,]
+order_chimps <- FDR_bind[order(FDR_bind$chimp_heart_lung_FDR_fitall), ]
+top1000_chimps <- order_chimps[1:1000,]
+intersect(rownames(top1000_humans), rownames(top1000_chimps)) # 484 overlap
+
+# Top 1000 genes in humans
+
+top1000_humans <- FDR_bind[order(FDR_bind$human_heart_lung_FDR_fitall), ]
+cor(top1000_humans[1:1000,1], top1000_humans[1:1000,2])
+plot(top1000_humans[1:1000,1], top1000_humans[1:1000,2])
+
+# Top 1000 genes in chimps
+
+FDR_bind <- as.data.frame(FDR_bind)
+top1000_chimps <- FDR_bind[order(FDR_bind$chimp_heart_lung_FDR_fitall), ]
+plot(top1000_chimps[1:1000,1], top1000_chimps[1:1000,2])
+
+
+
+
+
+chimp_human_heart <-  c(1, 2, 5, 6, 9, 10, 13, 14)
+#FDR_level <- 0.05
+tissue <- as.data.frame(samples[,5])
+tissue <- tissue[chimp_human_heart,]
+tissue_no_extra <- droplevels.factor(tissue, "liver")
+
+
+design <- model.matrix(~ as.factor(tissue_no_extra) + RIN[chimp_human_heart,])
+fit_all <- lmFit(cpm.voom.cyclic[,chimp_human_heart], design)
+fit_all <- eBayes(fit_all)
+
+HvC_Heart_fitall = topTable(fit_all, coef=2, adjust="BH", number=Inf, sort.by="none")
+
+HvC_Heart_fit_all_5perc <- HvC_Heart_fit_all[which(HvC_Heart_fitall$adj.P.Val < FDR_level), ]
+human_chimp_heart <-  rownames(exp_methyl) %in% HvC_Heart_fit_all_5perc$genes
+human_chimp_heart <- as.data.frame(human_chimp_heart)
+counts_genes_in <- cbind(exp_methyl, human_chimp_heart)
+counts_genes_in_cutoff <- subset(counts_genes_in, human_chimp_heart == "TRUE")
+counts_genes_in_cutoff <- counts_genes_in_cutoff[,1:79]  
+expression_values_only <- counts_genes_in_cutoff[,2:32]
+methylation_values_only <- counts_genes_in_cutoff[,49:79]
+chimp_heart_lung_gene_fit1 <- rownames(expression_values_only)
+
+## Obtain corrected data (regression for scenario 2) by regressing out RIN on a gene-by-gene basis
+resid_methyl <- array(0, dim = c(nrow(expression_values_only), length(chimp_human_heart))) 
+expression_values <- as.data.frame(expression_values_only)
+methylation_values <- as.data.frame(methylation_values_only)
+for (i in 1:nrow(expression_values_only)){
+  resid_methyl[i,] <- lm(t(expression_values_only[i,chimp_human_heart]) ~ t(methylation_values_only[i,chimp_human_heart]))$resid
+}
+rownames(resid_methyl) <- rownames(expression_values_only)
+
+# Scenario 1
+
+fit1 <- lmFit(expression_values_only[, chimp_human_heart], design)
+fit1 <- eBayes(fit1)
+
+HvC_Heart_fit1 = topTable(fit1, coef=2, adjust="BH", number=Inf, sort.by="none")
+chimp_heart_lung_FDR_fit1 <- HvC_Heart_fit1$adj.P.Val 
+
+chimp_heart_lung_beta_fitall <- fit1$coef[,2]
+chimp_heart_lung_sigma_fitall <- fit1$stdev.unscaled[,2]*fit1$sigma
+chimp_heart_lung_t_fitall <- fit1$t[,2]
+
+
+
+# Plot 
+plot(chimp_heart_lung_beta_fitall, human_heart_lung_beta_fitall, xlab = "Chimp Heart-Kidney", ylab = "Human Heart-Kidney", main = "Betas for human heart versus kidney (7725 genes)")
+abline(0, 1, col = "red")
+
+plot(chimp_heart_lung_sigma_fitall, human_heart_lung_sigma_fitall, xlim = c(0,4), ylim = c(0,4), xlab = "Chimp Heart-Kidney", ylab = "Human Heart-Kidney", main = "Var. for human heart versus kidney (7725 genes)")
+abline(0, 1, col = "red")
+
+plot(chimp_heart_lung_t_fitall, human_heart_lung_t_fitall, xlim = c(0,50), ylim = c(0,50), xlab = "Chimp Heart-Kidney", ylab = "Human Heart-Kidney", main = "T statistics for human heart versus kidney (7725 genes)")
+abline(0, 1, col = "red")
+
+# Compare the overlaps
+
+
+
+# Compare between humans and chimps
+summary(chimp_heart_lung_beta_fit1)
+summary(human_heart_lung_beta_fit1)
+
+summary(chimp_heart_lung_sigma_fit1)
+summary(human_heart_lung_sigma_fit1)
+
+ks.test(chimp_heart_lung_beta_fit1, human_heart_lung_beta_fit1)
+ks.test(chimp_heart_lung_sigma_fit1, human_heart_lung_sigma_fit1)
+
+
+
+# Scenario 2
+
+fit2 <- lmFit(resid_methyl, design)
+fit2 <- eBayes(fit2)
+HvC_Heart_fit2 = topTable(fit2, coef=2, adjust="BH", number=Inf, sort.by="none")
+
+# Bind DE from fit1 and DE from fit2 together
+
+HvC_Heart_fits12 <- as.data.frame(cbind(rownames(HvC_Heart_fit1), HvC_Heart_fit1$adj.P.Val, HvC_Heart_fit2$adj.P.Val), stringsAsFactors = FALSE)
+HvC_Heart_fits12[,2] <- as.numeric(HvC_Heart_fits12[,2])
+HvC_Heart_fits12[,3] <- as.numeric(HvC_Heart_fits12[,3])
+colnames(HvC_Heart_fits12) <- c("genes", "fit1_FDR", "fit2_FDR")
+
+DE_both <- HvC_Heart_fits12[which(HvC_Heart_fits12$fit1_FDR < FDR_level &  HvC_Heart_fits12$fit2_FDR < FDR_level),]
+nrow(DE_both)
+
+DE_before <- HvC_Heart_fits12[which(HvC_Heart_fits12$fit1_FDR < FDR_level &  HvC_Heart_fits12$fit2_FDR > FDR_level),]
+nrow(DE_before)
+
+DE_after <- HvC_Heart_fits12[which(HvC_Heart_fits12$fit1_FDR > FDR_level &  HvC_Heart_fits12$fit2_FDR < FDR_level),]
+nrow(DE_after)
+
+
+```
+

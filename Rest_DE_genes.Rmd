@@ -6,6 +6,11 @@ output: html_document
 ---
 
 ## Looking for interesting cases: for all of the tissue-specific genes, see which have a species-specific component 
+```{r}
+ p <- ggplot(df, aes(x = factor(df[,2]), y = df[,1], fill = factor(tissue))) + geom_boxplot() + theme_bw() + theme(axis.text.x=element_text(angle = 90, hjust = 0)) + xlab("Species-tissue pair") + ylab("Normalized expression") + ggtitle("Expression ", paste(x)) + scale_fill_manual(name = "Tissue type", breaks = c("Heart", "Kidney", "Liver", "Lung"), values= c(rgb(204/255, 121/255,167/255), rgb(230/255, 159/255, 0/255),  rgb(0,158/255,115/255), rgb(86/255,180/255,233/255))) 
+
+```
+
 
 ```{r}
 

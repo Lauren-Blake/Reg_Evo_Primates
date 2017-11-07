@@ -1,0 +1,1844 @@
+---
+title: "Make_hg19_to_rhe_chimp"
+author: "Lauren Blake"
+date: "July 3, 2017"
+output: html_document
+---
+
+Currently, our orthologous CpG file is all in hg19 liftOver coordinates. We need to convert these to panTro3 and rheMac2.
+
+## Load and format the hg19 coordinates
+```{r}
+# Get libraries
+
+library(plyr)
+library(ggplot2)
+
+bjp<-
+theme(
+  panel.border = element_rect(colour = "black", fill = NA, size = 2),
+  plot.title = element_text(size = 16, face = "bold", hjust = 0.5),
+  axis.text.y =  element_text(size = 14,face = "bold",color = "black"),
+  axis.text.x =  element_text(size = 14,face = "bold",color = "black"),
+  axis.title.y = element_text(size = 14,face = "bold"),
+  axis.title.x = element_text(size = 14,face = "bold"),
+  legend.text = element_text(size = 14,face = "bold"),
+  legend.title = element_text(size = 14,face = "bold"),
+  strip.text.x = element_text(size = 14,face = "bold"),
+  strip.text.y = element_text(size = 14,face = "bold"),
+  strip.background = element_rect(colour = "black", size = 2))
+
+# Get hg19 CpG coordinates
+dfCovnoX <- read.csv("../data/dfCovnoX.txt", sep="")
+
+# Check the dimensions
+dim(dfCovnoX)
+
+
+```
+
+
+```{r}
+# Get CpG coordinates of the orthologous CpGs (minus chromosome) 
+options(scipen = 999)
+check <- unlist(strsplit(as.character(dfCovnoX[1:2905210,]), ":"))
+check2 <- matrix(check, ncol = 2905210)
+coor <- as.data.frame(check2[2,], stringsAsFactors = FALSE)
+
+# Get chromosome
+chr <- as.data.frame(check2[1,], stringsAsFactors = FALSE)
+
+# Get end position (see: https://groups.google.com/a/soe.ucsc.edu/forum/#!topic/genome/X1AhPz8Ozkc)
+coor_num <- as.numeric(unlist(coor))
+coor_num_plus_one <- coor_num + 1
+coor_num_plus_one <- as.character(coor_num_plus_one)
+end <- as.data.frame(coor_num_minus_one, stringsAsFactors = FALSE)
+
+
+bed_pos <- cbind(chr, coor_num, end, stringsAsFactors = FALSE)
+#colnames(bed_pos) <- c("chr", "start", "end")
+
+# Make hg19 file in bed format
+
+write.table(bed_pos,file="../data/dfCovnoX_hg19.bed",sep="\t", col.names = F, row.names = F, quote = F)
+
+
+#options(scipen = 999)
+#check <- unlist(strsplit(as.character(dfCovnoX[1:2905210,]), ":"))
+#check2 <- matrix(check, ncol = 2905210)
+#coor <- as.data.frame(check2[2,], stringsAsFactors = FALSE)
+
+# Get chromosome
+#chr <- as.data.frame(check2[1,], stringsAsFactors = FALSE)
+
+# Get end position (see: https://groups.google.com/a/soe.ucsc.edu/forum/#!topic/genome/X1AhPz8Ozkc)
+#coor_num <- as.numeric(unlist(coor))
+#coor_num_minus_one <- coor_num + 1
+#coor_num_minus_one <- as.character(coor_num_minus_one)
+#beginning <- as.data.frame(coor_num_minus_one, stringsAsFactors = FALSE)
+
+
+#bed_pos <- cbind(chr, coor, beginning, stringsAsFactors = FALSE)
+#colnames(bed_pos) <- c("chr", "start", "end")
+
+# Make hg19 file in bed format
+
+#write.table(bed_pos,file="../data/dfCovnoX_hg19.bed",sep="\t", col.names = F, row.names = F, quote = F)
+
+
+```
+
+## Go from hg19 coordinates to panTro3 and rheMac2
+
+Since the file "/data/dfCovnoX_hg19.txt"_ is large, it can not be entered into http://genome.ucsc.edu/cgi-bin/hgLiftOver. Instead, download the correct liftover chains from http://hgdownload.soe.ucsc.edu/goldenPath/hg19/liftOver/ and use the LiftOver command line with the location of liftOver, the file you want to liftOver, the chain file of the 2 builds, a file name for the sites that are successfully lifted over and a file name for the sites that are not successfully lifted over (e.g. /mnt/lustre/home/jroux/bin/liftOver dfCovnoX_hg19.bed hg19ToRheMac2.over.chain.gz dfCovnoX_hg19ToRheMac2.bed hg19ToRheMac2.unlifted.bed). Because of upstream analysis, we expect all sites to be able to be lifted over. 
+
+
+
+## Make hg19 TSS file a .bed file that can be lifted over
+
+```{r}
+# Open the TSS file
+refGene_hg19_TSS <- read.delim("../data/refGene_hg19_TSS.bed", header=FALSE, stringsAsFactors = F)
+
+#
+refGene_hg19_TSS_pos <- refGene_hg19_TSS[which(refGene_hg19_TSS[,6] == "+"), ]
+refGene_hg19_TSS_neg <- refGene_hg19_TSS[which(refGene_hg19_TSS[,6] == "-"), ]
+
+refGene_hg19_TSS_pos[,3] <- refGene_hg19_TSS_pos[,3] + 1
+refGene_hg19_TSS_neg[,2] <- refGene_hg19_TSS_neg[,2] - 1
+
+refGene_hg19_TSS <- rbind(refGene_hg19_TSS_pos, refGene_hg19_TSS_neg)
+
+# Make TSS hg19 file in bed format
+
+write.table(refGene_hg19_TSS,file="../data/refGene_hg19_TSS_proper.bed",sep="\t", col.names = F, row.names = F, quote = F)
+
+```
+
+## Filter for the genes with RNA-seq
+
+```{r}
+# Get all meta exons
+metaOrthoExonTrios <- read.delim("~/Desktop/Reg_Evo_Primates/data/metaOrthoExonTrios.0.92.0.96.wExonEnsID.wSymbols.txt", header=FALSE)
+
+# Get all unique metaexons-gene pairs 
+
+names <- c(2, 16)
+gene_names <- unique(metaOrthoExonTrios[,names])
+
+# Get gene names in our RNA-seq data
+
+cpm_12184 <- read.delim("../data/cpm_12184.txt")
+inshared_lists <- gene_names[,1] %in% rownames(cpm_12184)
+inshared_lists_data <- as.data.frame(inshared_lists)
+counts_genes_in <- cbind(gene_names, inshared_lists_data)
+counts_genes_in_cutoff_pre <- subset(counts_genes_in, inshared_lists_data == "TRUE")
+genes_in_RNAseq <- counts_genes_in_cutoff_pre[,1:2]
+
+# Filter TSS file by only TSS in our RNA-seq data
+
+inshared_lists <- refGene_hg19_TSS[,5] %in% genes_in_RNAseq[,2]
+inshared_lists_data <- as.data.frame(inshared_lists)
+counts_genes_in <- cbind(refGene_hg19_TSS, inshared_lists_data)
+counts_genes_in_cutoff_pre <- subset(counts_genes_in, inshared_lists_data == "TRUE")
+genes_in_RNAseq_and_TSS <- counts_genes_in_cutoff_pre[,1:6]
+
+length(unique(genes_in_RNAseq_and_TSS[,5]))
+dim(genes_in_RNAseq_and_TSS)
+
+# Make TSS hg19 file in bed format
+
+write.table(genes_in_RNAseq_and_TSS,file="../data/refGene_hg19_TSS_11131.bed",sep="\t", col.names = F, row.names = F, quote = F)
+
+```
+
+There are 11131/12184 genes with RefSeq TSS annotations. 
+
+
+Now, we are going to do the same liftOver command structure but with the hg19 TSS annotations. (For example, command line: /mnt/lustre/home/jroux/bin/liftOver refGene_hg19_TSS_11131.bed hg19ToRheMac2.over.chain.gz tss_11131_hg19ToRheMac2.bed tss_11131_hg19ToRheMac2.unlifted.bed and /mnt/lustre/home/jroux/bin/liftOver refGene_hg19_TSS_11131.bed hg19ToPanTro3.over.chain.gz tss_11131_hg19ToPanTro3.bed tss_11131_hg19ToPanTro3.unlifted.bed)
+
+
+## How many genes have TSS annotations that are able to be Lifted over?
+
+```{r}
+
+# Find intersection
+tss_11131_hg19ToPanTro3 <- read.delim("../data/tss_11131_hg19ToPanTro3.bed", header=FALSE, stringsAsFactors = FALSE)
+tss_11131_hg19ToRheMac2 <- read.delim("../data/tss_11131_hg19ToRheMac2.bed", header=FALSE, stringsAsFactors = FALSE)
+genes_in_RNAseq_and_TSS <- read.delim("../data/refGene_hg19_TSS_11131.bed", header=FALSE, stringsAsFactors = FALSE)
+
+tss.sort.human <- plyr::arrange(genes_in_RNAseq_and_TSS, V5)
+
+length(intersect(intersect(tss_11131_hg19ToPanTro3[,4], tss_11131_hg19ToRheMac2[,4]), genes_in_RNAseq_and_TSS[,4]))
+
+genes_in_RNAseq_and_TSS_orthologous <- as.data.frame(intersect(intersect(tss_11131_hg19ToPanTro3[,4], tss_11131_hg19ToRheMac2[,4]), genes_in_RNAseq_and_TSS[,4]))
+
+# Make files with only intersection
+
+# Humans
+
+inshared_lists <- genes_in_RNAseq_and_TSS[,4] %in% genes_in_RNAseq_and_TSS_orthologous[,1]
+inshared_lists_data <- as.data.frame(inshared_lists)
+counts_genes_in <- cbind( genes_in_RNAseq_and_TSS, inshared_lists_data)
+counts_genes_in_cutoff_pre <- subset(counts_genes_in, inshared_lists_data == "TRUE")
+genes_in_RNAseq_TSS_orth_human <- counts_genes_in_cutoff_pre[,1:6]
+
+length(unique(genes_in_RNAseq_TSS_orth_human$V5))
+dim(genes_in_RNAseq_TSS_orth_human)
+
+# Chimps
+
+inshared_lists <- tss_11131_hg19ToPanTro3[,4] %in% genes_in_RNAseq_and_TSS_orthologous[,1]
+inshared_lists_data <- as.data.frame(inshared_lists)
+counts_genes_in <- cbind(tss_11131_hg19ToPanTro3, inshared_lists_data)
+counts_genes_in_cutoff_pre <- subset(counts_genes_in, inshared_lists_data == "TRUE")
+genes_in_RNAseq_TSS_orth_chimp <- counts_genes_in_cutoff_pre[,1:6]
+
+length(unique(genes_in_RNAseq_TSS_orth_chimp$V5))
+dim(genes_in_RNAseq_TSS_orth_chimp)
+
+# Rhesus
+
+inshared_lists <- tss_11131_hg19ToRheMac2[,4] %in% genes_in_RNAseq_and_TSS_orthologous[,1]
+inshared_lists_data <- as.data.frame(inshared_lists)
+counts_genes_in <- cbind(tss_11131_hg19ToRheMac2, inshared_lists_data)
+counts_genes_in_cutoff_pre <- subset(counts_genes_in, inshared_lists_data == "TRUE")
+genes_in_RNAseq_TSS_orth_rhesus <- counts_genes_in_cutoff_pre[,1:6]
+
+length(unique(genes_in_RNAseq_TSS_orth_rhesus$V5))
+dim(genes_in_RNAseq_TSS_orth_rhesus)
+
+# Intersect the 3 files
+
+check <- merge(genes_in_RNAseq_TSS_orth_human, genes_in_RNAseq_TSS_orth_chimp, by = c("V4"))
+human_chimp_rhesus <- merge(check, genes_in_RNAseq_TSS_orth_rhesus, by = "V4")
+length(unique(human_chimp_rhesus$V5.x))
+
+# Separate files, make sure files in alphabetical order by gene
+sort.human <- plyr::arrange(genes_in_RNAseq_TSS_orth_human, V5)
+sort.chimp <- plyr::arrange(genes_in_RNAseq_TSS_orth_chimp, V5)
+
+sort.rhesus <- plyr::arrange(genes_in_RNAseq_TSS_orth_rhesus, V5)
+
+# Some have different MN numbers at the same site. Get rid of those
+
+anno <- paste(as.character(human_chimp_rhesus[,2]), human_chimp_rhesus[,3], sep = ":")
+human_chimp_rhesus_anno <- cbind(human_chimp_rhesus, anno)
+human_chimp_rhesus_anno_rm <- human_chimp_rhesus_anno[!duplicated(human_chimp_rhesus_anno$anno),]
+length(unique(human_chimp_rhesus_anno_rm$V5.x))
+```
+
+We have 9,665 unique genes. Some will have multiple TSSs. For example, ABAT on chromosome 16 has 3 TSSs. 
+
+## Find the RefSeq TSS annotation that is closest to the first orthologous exon from Ran's file
+
+```{r}
+library("dplyr")
+library("plyr")
+
+ENSG_freq_table <- count(human_chimp_rhesus_anno_rm, as.character(human_chimp_rhesus_anno_rm$V5))
+
+
+solo_ENSG_freq_table <- ENSG_freq_table[which(ENSG_freq_table[,2] == 1), ]
+nrow(solo_ENSG_freq_table)
+
+freq_mult_TSS <- ENSG_freq_table[which(ENSG_freq_table[,2] >= 2), ]
+
+
+nrow(freq_mult_TSS[which(freq_mult_TSS[,2] == 2), ])
+nrow(freq_mult_TSS[which(freq_mult_TSS[,2] == 3), ])
+nrow(freq_mult_TSS[which(freq_mult_TSS[,2] == 4), ])
+nrow(freq_mult_TSS[which(freq_mult_TSS[,2] == 5), ])
+nrow(freq_mult_TSS[which(freq_mult_TSS[,2] >= 6), ])
+```
+
+7907 genes have 1 TSS
+1258 genes have 2 TSS
+341 genes have 3 TSS
+107 genes have 4 TSS
+23 genes have 5 TSS
+29 genes have >5 TSS
+
+
+```{r}
+Number_of_TSS <- c("1", "2", "3", "4", "5", ">5")
+Number_of_RefSeq_Genes <- c(7907,1258,341,107,23,29)
+
+TSS_RefSeq_Genes <- as.data.frame(cbind(Number_of_TSS, Number_of_RefSeq_Genes), stringsAsFactors = F)
+TSS_RefSeq_Genes$Number_of_RefSeq_Genes <- as.numeric(TSS_RefSeq_Genes$Number_of_RefSeq_Genes)
+TSS_RefSeq_Genes$Number_of_TSS <- factor(TSS_RefSeq_Genes$Number_of_TSS, levels = c("1", "2", "3", "4", "5", ">5"))
+ggplot(TSS_RefSeq_Genes, aes(Number_of_TSS, Number_of_RefSeq_Genes)) + geom_point() + bjp + ggtitle("Number of TSS for each RefSeq Gene") + xlab("Number of TSS") + ylab("Number of RefSeq Genes")
+```
+
+### Get information for the genes with only 1 TSS that could be LiftedOver
+
+```{r}
+
+# For humans
+
+solo_ENSG_freq_table <- as.data.frame(solo_ENSG_freq_table[,1])
+
+inshared_lists = genes_in_RNAseq_TSS_orth_human$V5 %in% solo_ENSG_freq_table[,1]
+inshared_lists_data <- as.data.frame(inshared_lists)
+counts_genes_in <- cbind(genes_in_RNAseq_TSS_orth_human, inshared_lists_data)
+counts_genes_in_mult_TSS <- subset(counts_genes_in, inshared_lists_data == "TRUE")
+counts_genes_in_mult_TSS <- counts_genes_in_mult_TSS[,1:6]
+
+sort.human.multiple.TSS <- plyr::arrange(counts_genes_in_mult_TSS, V5)
+
+# Find the 1st orthologous exon for each gene in humans
+
+# Now, I want to remake this but with the value of exon #1
+
+uniq_plus <- c(2,3,4,5,7,11,15,16)
+
+# Make data frame for humans
+non_uniq_ENSG_gene_names <- as.data.frame(unique(metaOrthoExonTrios[,uniq_plus], incomparables = FALSE))
+
+# Subset so you only have ortho exon #1 for humans
+
+uniq_ENSG_gene_names <- non_uniq_ENSG_gene_names[which(non_uniq_ENSG_gene_names$V3 == 1),]
+uniq_ENSG_gene_names <- uniq_ENSG_gene_names[,-2]
+uniq_ENSG_gene_names[,1] <- as.character(uniq_ENSG_gene_names[,1])
+uniq_ENSG_gene_names[,2] <- as.character(uniq_ENSG_gene_names[,2])
+uniq_ENSG_gene_names[,3] <- as.integer(uniq_ENSG_gene_names[,3])
+uniq_ENSG_gene_names[,5] <- as.character(uniq_ENSG_gene_names[,5])
+uniq_ENSG_gene_names[,6] <- as.character(uniq_ENSG_gene_names[,6])
+uniq_ENSG_gene_names[,7] <- as.character(uniq_ENSG_gene_names[,7])
+
+colnames(uniq_ENSG_gene_names) <- c("ENSG", "chr", "First_exon_start_human", "H_strand", "C_strand", "R_strand", "Gene")
+
+# Combine the TSS site with the first ortho exon
+
+TSS_orth_exon_human = merge(sort.human.multiple.TSS, uniq_ENSG_gene_names, by.x = "V5", by.y = "Gene")
+length(unique(TSS_orth_exon_human$V5))
+
+# Take the difference between the TSS annotation and the first exon
+
+diff_TSS_orth_exon_human <- abs(TSS_orth_exon_human$V2 - TSS_orth_exon_human$First_exon_start_human)
+
+TSS_orth_exon_dist_human <- cbind(TSS_orth_exon_human, diff_TSS_orth_exon_human)
+
+# Sort out the TSSs in this file that have multiple NMs for the same TSS
+
+one_TSS_orth_exon_dist_human <- TSS_orth_exon_dist_human[!duplicated(TSS_orth_exon_dist_human$V2),]
+
+
+
+
+inshared_lists = genes_in_RNAseq_TSS_orth_chimp$V5 %in% solo_ENSG_freq_table[,1]
+inshared_lists_data <- as.data.frame(inshared_lists)
+counts_genes_in <- cbind(genes_in_RNAseq_TSS_orth_chimp, inshared_lists_data)
+counts_genes_in_mult_TSS <- subset(counts_genes_in, inshared_lists_data == "TRUE")
+counts_genes_in_mult_TSS <- counts_genes_in_mult_TSS[,1:6]
+
+dim(counts_genes_in_mult_TSS)
+length(unique(counts_genes_in_mult_TSS$V5))
+
+sort.chimp.multiple.TSS <- plyr::arrange(counts_genes_in_mult_TSS, V5)
+
+# Find the 1st orthologous exon for each gene in humans
+
+# Now, I want to remake this but with the value of exon #1
+
+uniq_plus <- c(2,3,4,9,7,11,15,16)
+
+# Make data frame for humans
+non_uniq_ENSG_gene_names <- as.data.frame(unique(metaOrthoExonTrios[,uniq_plus], incomparables = FALSE))
+
+# Subset so you only have ortho exon #1 for humans
+
+uniq_ENSG_gene_names <- non_uniq_ENSG_gene_names[which(non_uniq_ENSG_gene_names$V3 == 1),]
+uniq_ENSG_gene_names <- uniq_ENSG_gene_names[,-2]
+uniq_ENSG_gene_names[,1] <- as.character(uniq_ENSG_gene_names[,1])
+uniq_ENSG_gene_names[,2] <- as.character(uniq_ENSG_gene_names[,2])
+uniq_ENSG_gene_names[,3] <- as.integer(uniq_ENSG_gene_names[,3])
+uniq_ENSG_gene_names[,5] <- as.character(uniq_ENSG_gene_names[,5])
+uniq_ENSG_gene_names[,6] <- as.character(uniq_ENSG_gene_names[,6])
+uniq_ENSG_gene_names[,7] <- as.character(uniq_ENSG_gene_names[,7])
+
+colnames(uniq_ENSG_gene_names) <- c("ENSG", "chr", "First_exon_start_chimp", "H_strand", "C_strand", "R_strand", "Gene")
+
+# Combine the TSS site with the first ortho exon
+
+TSS_orth_exon_chimp = merge(sort.chimp.multiple.TSS, uniq_ENSG_gene_names, by.x = "V5", by.y = "Gene")
+length(unique(TSS_orth_exon_chimp$V5))
+
+# Take the difference between the TSS annotation and the first exon
+
+diff_TSS_orth_exon_chimp <- abs(TSS_orth_exon_chimp$V2 - TSS_orth_exon_chimp$First_exon_start_chimp)
+
+TSS_orth_exon_dist_chimp <- cbind(TSS_orth_exon_chimp, diff_TSS_orth_exon_chimp)
+
+# Sort out the TSSs in this file that have multiple NMs for the same TSS
+
+one_TSS_orth_exon_dist_chimp <- TSS_orth_exon_dist_chimp[!duplicated(TSS_orth_exon_dist_chimp$V2),]
+
+
+# In rhesus
+inshared_lists = genes_in_RNAseq_TSS_orth_rhesus$V5 %in% solo_ENSG_freq_table[,1]
+inshared_lists_data <- as.data.frame(inshared_lists)
+counts_genes_in <- cbind(genes_in_RNAseq_TSS_orth_rhesus, inshared_lists_data)
+counts_genes_in_mult_TSS <- subset(counts_genes_in, inshared_lists_data == "TRUE")
+counts_genes_in_mult_TSS <- counts_genes_in_mult_TSS[,1:6]
+
+dim(counts_genes_in_mult_TSS)
+length(unique(counts_genes_in_mult_TSS$V5))
+
+sort.rhesus.multiple.TSS <- plyr::arrange(counts_genes_in_mult_TSS, V5)
+
+# Find the 1st orthologous exon for each gene in humans
+
+# Now, I want to remake this but with the value of exon #1
+
+uniq_plus <- c(2,3,4,13,7,11,15,16)
+
+# Make data frame for humans
+non_uniq_ENSG_gene_names <- as.data.frame(unique(metaOrthoExonTrios[,uniq_plus], incomparables = FALSE))
+
+# Subset so you only have ortho exon #1 for humans
+
+uniq_ENSG_gene_names <- non_uniq_ENSG_gene_names[which(non_uniq_ENSG_gene_names$V3 == 1),]
+uniq_ENSG_gene_names <- uniq_ENSG_gene_names[,-2]
+uniq_ENSG_gene_names[,1] <- as.character(uniq_ENSG_gene_names[,1])
+uniq_ENSG_gene_names[,2] <- as.character(uniq_ENSG_gene_names[,2])
+uniq_ENSG_gene_names[,3] <- as.integer(uniq_ENSG_gene_names[,3])
+uniq_ENSG_gene_names[,5] <- as.character(uniq_ENSG_gene_names[,5])
+uniq_ENSG_gene_names[,6] <- as.character(uniq_ENSG_gene_names[,6])
+uniq_ENSG_gene_names[,7] <- as.character(uniq_ENSG_gene_names[,7])
+
+colnames(uniq_ENSG_gene_names) <- c("ENSG", "chr", "First_exon_start_rhesus", "H_strand", "C_strand", "R_strand", "Gene")
+
+# Combine the TSS site with the first ortho exon
+
+TSS_orth_exon_rhesus = merge(sort.rhesus.multiple.TSS, uniq_ENSG_gene_names, by.x = "V5", by.y = "Gene")
+length(unique(TSS_orth_exon_rhesus$V5))
+
+# Take the difference between the TSS annotation and the first exon
+
+diff_TSS_orth_exon_rhesus <- abs(TSS_orth_exon_rhesus$V2 - TSS_orth_exon_rhesus$First_exon_start_rhesus)
+
+TSS_orth_exon_dist_rhesus <- cbind(TSS_orth_exon_rhesus, diff_TSS_orth_exon_rhesus)
+
+# Sort out the TSSs in this file that have multiple NMs for the same TSS
+
+one_TSS_orth_exon_dist_rhesus <- TSS_orth_exon_dist_rhesus[!duplicated(TSS_orth_exon_dist_rhesus$V2),]
+
+inshared_lists = one_TSS_orth_exon_dist_rhesus$V5 %in% one_TSS_orth_exon_dist_human$V5
+inshared_lists_data <- as.data.frame(inshared_lists)
+counts_genes_in <- cbind(one_TSS_orth_exon_dist_rhesus, inshared_lists_data)
+counts_genes_in_mult_TSS <- subset(counts_genes_in, inshared_lists_data == "TRUE")
+TSS_orth_exon_dist_rhesus  <- counts_genes_in_mult_TSS[,1:13]
+
+one_TSS_orth_exon_dist_rhesus
+
+
+# Merge by NM
+  # Human and chimp
+human_chimp_one_TSS <- merge(one_TSS_orth_exon_dist_human, one_TSS_orth_exon_dist_chimp, by = c("V4"))
+
+  # Human, chimp, and rhesus
+
+human_chimp_rhesus_one_TSS <- merge(human_chimp_one_TSS, one_TSS_orth_exon_dist_rhesus, by = c("V4"))
+
+# Sort by alphabetical order
+
+human_chimp_rhesus_one_TSS_sorted <- plyr::arrange(human_chimp_rhesus_one_TSS, V5.x)
+
+#PALM2, RNASE4, and SNURF all have 2
+
+remove_extra <- c(4624, 5561, 6300)
+human_chimp_rhesus_one_TSS_sorted <- human_chimp_rhesus_one_TSS_sorted[-(remove_extra), ]
+```
+
+
+
+### Find TSS closest to the first orthologous exon (important if more than 1 TSS for an orthologous gene)
+
+Reminder: some genes have multiple NM ids but they have the same position for the TSS. Therefore, we want to focus on pulling the positions for the 1758 genes in our set that actually has multiple TSSs. 
+
+```{r}
+# Pull the gene names with multiple TSS
+freq_mult_TSS <- as.data.frame(freq_mult_TSS[,1])
+nrow(freq_mult_TSS)
+
+### Distance from TSS to 1st exon in humans ###############################################################
+
+inshared_lists = genes_in_RNAseq_TSS_orth_human$V5 %in% freq_mult_TSS[,1]
+inshared_lists_data <- as.data.frame(inshared_lists)
+counts_genes_in <- cbind(genes_in_RNAseq_TSS_orth_human, inshared_lists_data)
+counts_genes_in_mult_TSS <- subset(counts_genes_in, inshared_lists_data == "TRUE")
+counts_genes_in_mult_TSS <- counts_genes_in_mult_TSS[,1:6]
+
+dim(counts_genes_in_mult_TSS)
+length(unique(counts_genes_in_mult_TSS$V5))
+
+sort.human.multiple.TSS <- plyr::arrange(counts_genes_in_mult_TSS, V5)
+
+# Find the 1st orthologous exon for each gene in humans
+
+# Now, I want to remake this but with the value of exon #1
+
+uniq_plus <- c(2,3,4,5,7,11,15,16)
+
+# Make data frame for humans
+non_uniq_ENSG_gene_names <- as.data.frame(unique(metaOrthoExonTrios[,uniq_plus], incomparables = FALSE))
+
+# Subset so you only have ortho exon #1 for humans
+
+uniq_ENSG_gene_names <- non_uniq_ENSG_gene_names[which(non_uniq_ENSG_gene_names$V3 == 1),]
+uniq_ENSG_gene_names <- uniq_ENSG_gene_names[,-2]
+uniq_ENSG_gene_names[,1] <- as.character(uniq_ENSG_gene_names[,1])
+uniq_ENSG_gene_names[,2] <- as.character(uniq_ENSG_gene_names[,2])
+uniq_ENSG_gene_names[,3] <- as.integer(uniq_ENSG_gene_names[,3])
+uniq_ENSG_gene_names[,5] <- as.character(uniq_ENSG_gene_names[,5])
+uniq_ENSG_gene_names[,6] <- as.character(uniq_ENSG_gene_names[,6])
+uniq_ENSG_gene_names[,7] <- as.character(uniq_ENSG_gene_names[,7])
+
+colnames(uniq_ENSG_gene_names) <- c("ENSG", "chr", "First_exon_start_human", "H_strand", "C_strand", "R_strand", "Gene")
+
+# Combine the TSS site with the first ortho exon
+
+TSS_orth_exon_human = merge(sort.human.multiple.TSS, uniq_ENSG_gene_names, by.x = "V5", by.y = "Gene")
+length(unique(TSS_orth_exon_human$V5))
+
+# Take the difference between the TSS annotation and the first exon
+
+diff_TSS_orth_exon_human <- abs(TSS_orth_exon_human$V2 - TSS_orth_exon_human$First_exon_start_human)
+
+TSS_orth_exon_dist_human <- cbind(TSS_orth_exon_human, diff_TSS_orth_exon_human)
+
+# Sort out the TSSs in this file that have multiple NMs for the same TSS
+
+sort_TSS_orth_exon_dist_human <- TSS_orth_exon_dist_human[!duplicated(TSS_orth_exon_dist_human$V2),]
+
+
+### Distance from TSS to 1st exon in chimps ###############################################################
+
+inshared_lists = genes_in_RNAseq_TSS_orth_chimp$V5 %in% freq_mult_TSS[,1]
+inshared_lists_data <- as.data.frame(inshared_lists)
+counts_genes_in <- cbind(genes_in_RNAseq_TSS_orth_chimp, inshared_lists_data)
+counts_genes_in_mult_TSS <- subset(counts_genes_in, inshared_lists_data == "TRUE")
+counts_genes_in_mult_TSS <- counts_genes_in_mult_TSS[,1:6]
+
+dim(counts_genes_in_mult_TSS)
+length(unique(counts_genes_in_mult_TSS$V5))
+
+sort.chimp.multiple.TSS <- plyr::arrange(counts_genes_in_mult_TSS, V5)
+
+# Find the 1st orthologous exon for each gene in humans
+
+# Now, I want to remake this but with the value of exon #1
+
+uniq_plus <- c(2,3,4,9,7,11,15,16)
+
+# Make data frame for humans
+non_uniq_ENSG_gene_names <- as.data.frame(unique(metaOrthoExonTrios[,uniq_plus], incomparables = FALSE))
+
+# Subset so you only have ortho exon #1 for humans
+
+uniq_ENSG_gene_names <- non_uniq_ENSG_gene_names[which(non_uniq_ENSG_gene_names$V3 == 1),]
+uniq_ENSG_gene_names <- uniq_ENSG_gene_names[,-2]
+uniq_ENSG_gene_names[,1] <- as.character(uniq_ENSG_gene_names[,1])
+uniq_ENSG_gene_names[,2] <- as.character(uniq_ENSG_gene_names[,2])
+uniq_ENSG_gene_names[,3] <- as.integer(uniq_ENSG_gene_names[,3])
+uniq_ENSG_gene_names[,5] <- as.character(uniq_ENSG_gene_names[,5])
+uniq_ENSG_gene_names[,6] <- as.character(uniq_ENSG_gene_names[,6])
+uniq_ENSG_gene_names[,7] <- as.character(uniq_ENSG_gene_names[,7])
+
+colnames(uniq_ENSG_gene_names) <- c("ENSG", "chr", "First_exon_start_chimp", "H_strand", "C_strand", "R_strand", "Gene")
+
+# Combine the TSS site with the first ortho exon
+
+TSS_orth_exon_chimp = merge(sort.chimp.multiple.TSS, uniq_ENSG_gene_names, by.x = "V5", by.y = "Gene")
+length(unique(TSS_orth_exon_chimp$V5))
+
+# Take the difference between the TSS annotation and the first exon
+
+diff_TSS_orth_exon_chimp <- abs(TSS_orth_exon_chimp$V2 - TSS_orth_exon_chimp$First_exon_start_chimp)
+
+TSS_orth_exon_dist_chimp <- cbind(TSS_orth_exon_chimp, diff_TSS_orth_exon_chimp)
+
+# Sort out the TSSs in this file that have multiple NMs for the same TSS
+
+sort_TSS_orth_exon_dist_chimp <- TSS_orth_exon_dist_chimp[!duplicated(TSS_orth_exon_dist_chimp$V2),]
+
+
+### Distance from TSS to 1st exon in rhesus ###############################################################
+
+inshared_lists = genes_in_RNAseq_TSS_orth_rhesus$V5 %in% freq_mult_TSS[,1]
+inshared_lists_data <- as.data.frame(inshared_lists)
+counts_genes_in <- cbind(genes_in_RNAseq_TSS_orth_rhesus, inshared_lists_data)
+counts_genes_in_mult_TSS <- subset(counts_genes_in, inshared_lists_data == "TRUE")
+counts_genes_in_mult_TSS <- counts_genes_in_mult_TSS[,1:6]
+
+dim(counts_genes_in_mult_TSS)
+length(unique(counts_genes_in_mult_TSS$V5))
+
+sort.rhesus.multiple.TSS <- plyr::arrange(counts_genes_in_mult_TSS, V5)
+
+# Find the 1st orthologous exon for each gene in humans
+
+# Now, I want to remake this but with the value of exon #1
+
+uniq_plus <- c(2,3,4,13,7,11,15,16)
+
+# Make data frame for humans
+non_uniq_ENSG_gene_names <- as.data.frame(unique(metaOrthoExonTrios[,uniq_plus], incomparables = FALSE))
+
+# Subset so you only have ortho exon #1 for humans
+
+uniq_ENSG_gene_names <- non_uniq_ENSG_gene_names[which(non_uniq_ENSG_gene_names$V3 == 1),]
+uniq_ENSG_gene_names <- uniq_ENSG_gene_names[,-2]
+uniq_ENSG_gene_names[,1] <- as.character(uniq_ENSG_gene_names[,1])
+uniq_ENSG_gene_names[,2] <- as.character(uniq_ENSG_gene_names[,2])
+uniq_ENSG_gene_names[,3] <- as.integer(uniq_ENSG_gene_names[,3])
+uniq_ENSG_gene_names[,5] <- as.character(uniq_ENSG_gene_names[,5])
+uniq_ENSG_gene_names[,6] <- as.character(uniq_ENSG_gene_names[,6])
+uniq_ENSG_gene_names[,7] <- as.character(uniq_ENSG_gene_names[,7])
+
+colnames(uniq_ENSG_gene_names) <- c("ENSG", "chr", "First_exon_start_rhesus", "H_strand", "C_strand", "R_strand", "Gene")
+
+# Combine the TSS site with the first ortho exon
+
+TSS_orth_exon_rhesus = merge(sort.rhesus.multiple.TSS, uniq_ENSG_gene_names, by.x = "V5", by.y = "Gene")
+length(unique(TSS_orth_exon_rhesus$V5))
+
+# Take the difference between the TSS annotation and the first exon
+
+diff_TSS_orth_exon_rhesus <- abs(TSS_orth_exon_rhesus$V2 - TSS_orth_exon_rhesus$First_exon_start_rhesus)
+
+TSS_orth_exon_dist_rhesus <- cbind(TSS_orth_exon_rhesus, diff_TSS_orth_exon_rhesus)
+
+# Sort out the TSSs in this file that have multiple NMs for the same TSS
+
+sort_TSS_orth_exon_dist_rhesus <- TSS_orth_exon_dist_rhesus[!duplicated(TSS_orth_exon_dist_rhesus$V2),]
+
+# Pick the TSS that minimizes the diff. bet the TSS and the first orthologous exon
+  # For humans
+get_min_set_TSS_human <- sort_TSS_orth_exon_dist_human[as.logical(ave(sort_TSS_orth_exon_dist_human$diff_TSS_orth_exon_human, sort_TSS_orth_exon_dist_human$V5, FUN = function(x) x == min(x))),]
+
+count_min_set_human <- count(get_min_set_TSS_human, as.character(get_min_set_TSS_human$V5))
+summary(count_min_set_human)
+
+  # For chimps
+get_min_set_TSS_chimp <- sort_TSS_orth_exon_dist_chimp[as.logical(ave(sort_TSS_orth_exon_dist_chimp$diff_TSS_orth_exon_chimp, sort_TSS_orth_exon_dist_chimp$V5, FUN = function(x) x == min(x))),]
+
+count_min_set_chimp <- count(get_min_set_TSS_chimp, as.character(get_min_set_TSS_chimp$V5))
+summary(count_min_set_chimp)
+
+  # Rhesus
+get_min_set_TSS_rhesus <- sort_TSS_orth_exon_dist_rhesus[as.logical(ave(sort_TSS_orth_exon_dist_rhesus$diff_TSS_orth_exon_rhesus, sort_TSS_orth_exon_dist_rhesus$V5, FUN = function(x) x == min(x))),]
+
+count_min_set_rhesus <- count(get_min_set_TSS_rhesus, as.character(get_min_set_TSS_rhesus$V5))
+summary(count_min_set_rhesus)
+
+# SGSM2 and SLC30A7 each have two TSSs remaining per species. Remove them. 
+  # Humans
+get_min_set_TSS_human <- get_min_set_TSS_human[!grepl("SGSM2", get_min_set_TSS_human$V5),]
+get_min_set_TSS_human <- get_min_set_TSS_human[!grepl("SLC30A7", get_min_set_TSS_human$V5),]
+
+count_min_set_human <- count(get_min_set_TSS_human, as.character(get_min_set_TSS_human$V5))
+summary(count_min_set_human)
+
+  # Chimps
+get_min_set_TSS_chimp <- get_min_set_TSS_chimp[!grepl("SGSM2", get_min_set_TSS_chimp$V5),]
+get_min_set_TSS_chimp <- get_min_set_TSS_chimp[!grepl("SLC30A7", get_min_set_TSS_chimp$V5),]
+
+count_min_set_chimp <- count(get_min_set_TSS_chimp, as.character(get_min_set_TSS_chimp$V5))
+summary(count_min_set_chimp)
+
+  # Rhesus
+get_min_set_TSS_rhesus <- get_min_set_TSS_rhesus[!grepl("SGSM2", get_min_set_TSS_rhesus$V5),]
+get_min_set_TSS_rhesus <- get_min_set_TSS_rhesus[!grepl("SLC30A7", get_min_set_TSS_rhesus$V5),]
+
+count_min_set_rhesus <- count(get_min_set_TSS_rhesus, as.character(get_min_set_TSS_rhesus$V5))
+summary(count_min_set_rhesus)
+
+# Merge by NM
+  # Human and chimp
+human_chimp_multi_TSS <- merge(get_min_set_TSS_human, get_min_set_TSS_chimp, by = c("V4"))
+
+  # Human, chimp, and rhesus
+
+human_chimp_rhesus_multi_TSS <- merge(human_chimp_multi_TSS, get_min_set_TSS_rhesus, by = c("V4"))
+
+# Sort by alphabetical order
+
+human_chimp_rhesus_multi_TSS_sorted <- plyr::arrange(human_chimp_rhesus_multi_TSS, V5.x)
+
+# Make sure there is no overlap in the gene lists
+
+any_overlap_genes <- intersect(human_chimp_rhesus_one_TSS_sorted[,2], human_chimp_rhesus_multi_TSS_sorted[,2])
+any_overlap_genes
+
+# Combine the two datasets
+
+human_chimp_rhesus_TSS_9582 <- rbind(human_chimp_rhesus_one_TSS_sorted, human_chimp_rhesus_multi_TSS_sorted)
+human_chimp_rhesus_TSS_9583 <- human_chimp_rhesus_TSS_9582
+```
+
+We now have 9582 genes.
+
+### Compare human, chimp, and rhesus distances
+
+```{r}
+check_for_differences <- cbind(human_chimp_rhesus_TSS_9583[,2:7], human_chimp_rhesus_TSS_9583$diff_TSS_orth_exon_human, human_chimp_rhesus_TSS_9583[,15:18], human_chimp_rhesus_TSS_9583$diff_TSS_orth_exon_chimp, human_chimp_rhesus_TSS_9583[,27:30], human_chimp_rhesus_TSS_9583$diff_TSS_orth_exon_rhesus)
+dim(check_for_differences)
+
+# Find the greatest difference
+
+min_diff <- transform(check_for_differences, min = pmin(check_for_differences[,7], check_for_differences[,12], check_for_differences[,17]))
+max_diff <- transform(min_diff, max = pmax(check_for_differences[,7], check_for_differences[,12], check_for_differences[,17]))
+
+# Find the difference between min and max
+
+biggest_difference <- abs(max_diff$max - max_diff$min)
+select_genes <- cbind(max_diff, biggest_difference)
+
+nrow(select_genes[which(select_genes$biggest_difference <= 100) , ])
+nrow(select_genes[which(select_genes$biggest_difference <= 500) , ])
+nrow(select_genes[which(select_genes$biggest_difference <= 1000) , ])
+nrow(select_genes[which(select_genes$biggest_difference <= 2000) , ])
+nrow(select_genes[which(select_genes$biggest_difference <= 2500) , ])
+nrow(select_genes[which(select_genes$biggest_difference <= 3000) , ])
+nrow(select_genes[which(select_genes$biggest_difference <= 5000) , ])
+nrow(select_genes[which(select_genes$biggest_difference <= 10000) , ])
+nrow(select_genes[which(select_genes$biggest_difference <= 20000) , ])
+```
+
+```{r}
+Number_of_TSS <- c("<100", "<500", "<1000", "<2000", "<2500", "<3000", "<5000", "<10000", "<20000")
+Number_of_RefSeq_Genes <- c(3315, 5096, 6082, 7120, 7470, 7750, 8425, 9113, 9401)
+
+TSS_RefSeq_Genes <- as.data.frame(cbind(Number_of_TSS, Number_of_RefSeq_Genes), stringsAsFactors = F)
+TSS_RefSeq_Genes$Number_of_RefSeq_Genes <- as.numeric(TSS_RefSeq_Genes$Number_of_RefSeq_Genes)
+TSS_RefSeq_Genes$Number_of_TSS <- factor(TSS_RefSeq_Genes$Number_of_TSS, levels =  c("<100", "<500", "<1000", "<2000", "<2500", "<3000", "<5000", "<10000", "<20000"))
+ggplot(TSS_RefSeq_Genes, aes(Number_of_TSS, Number_of_RefSeq_Genes)) + geom_point() + bjp  + ggtitle("Difference between each species' distance between TSS and 1st orthologous exon for each of the 9582 RefSeq Genes") + xlab("Difference between each species' distance between TSS and 1st orthologous exon") + ylab("Number of RefSeq Genes")
+```
+
+### Filter by max. distance 
+
+```{r}
+# Take only genes that have max_dist < 2500 bp
+summary(select_genes$biggest_difference)
+select_genes_2500 <- select_genes[which(biggest_difference <= 2500), ]
+dim(select_genes_2500)
+# Take out any genes on the X chromosome
+
+select_genes_2500_no_X <- select_genes_2500[which(select_genes_2500$V1.x != "chrX"), ]
+dim(select_genes_2500_no_X)
+
+# Make select_genes_2500_no_X a file
+
+write.table(select_genes_2500_no_X,file="../data/select_genes_2500_no_X.txt",sep="\t", col.names = F, row.names = F, quote = F)
+
+select_genes_2500_no_X <- read.delim("../data/select_genes_2500_no_X.txt", header = FALSE)
+
+# Read table
+# select_genes_2500_no_X <- read.table("../data/select_genes_2500_no_X.txt")
+```
+
+Left with 7249 genes (Lifted over TSS and not on the X chromosome). 
+
+
+### Obtain the TSS annotations for the 3 genomes
+
+```{r}
+# Human TSS for 7,249 genes
+
+make_bed_human_7251 <- cbind.data.frame(select_genes_2500_no_X[,2:5], select_genes_2500_no_X[,1], select_genes_2500_no_X[,6])
+
+make_bed_human_7251[,1] <- as.character(make_bed_human_7251[,1])
+make_bed_human_7251[,4] <- as.character(make_bed_human_7251[,4])
+make_bed_human_7251[,5] <- as.character(make_bed_human_7251[,5])
+
+
+
+# Chimp TSS for 7,249 genes
+
+make_bed_chimp_7251 <- cbind.data.frame(select_genes_2500_no_X[,8:11], select_genes_2500_no_X[,1], select_genes_2500_no_X[,6])
+
+make_bed_chimp_7251[,1] <- as.character(make_bed_chimp_7251[,1])
+make_bed_chimp_7251[,4] <- as.character(make_bed_chimp_7251[,4])
+make_bed_chimp_7251[,5] <- as.character(make_bed_chimp_7251[,5])
+
+# How often does the strand of human and chimp match?
+
+match_strand <- (make_bed_human_7251[,4] == make_bed_chimp_7251[,4])
+summary(match_strand)
+6625 / (6625 + 624)
+
+# Rhesus TSS for 7,249 genes
+
+make_bed_rhesus_7251 <- cbind.data.frame(select_genes_2500_no_X[,13:16], select_genes_2500_no_X[,1], select_genes_2500_no_X[,6])
+
+make_bed_rhesus_7251[,1] <- as.character(make_bed_rhesus_7251[,1])
+make_bed_rhesus_7251[,4] <- as.character(make_bed_rhesus_7251[,4])
+make_bed_rhesus_7251[,5] <- as.character(make_bed_rhesus_7251[,5])
+
+match_strand <- (make_bed_human_7251[,4] == make_bed_rhesus_7251[,4])
+summary(match_strand)
+
+5583/(5583 + 1666)
+
+# Save the files
+write.table(make_bed_human_7251, file="../data/refGene_hg19_TSS_7249.bed",sep="\t", col.names = F, row.names = F, quote = F)
+write.table(make_bed_chimp_7251,file="../data/refGene_PanTro3_TSS_7249.bed",sep="\t", col.names = F, row.names = F, quote = F)
+write.table(make_bed_rhesus_7251,file="../data/refGene_RheMac2_TSS_7249.bed",sep="\t", col.names = F, row.names = F, quote = F)
+
+
+```
+
+## Find orthologous CpGs that are 500 bp upstream and 250 bp downstream from the TSS
+
+```{r}
+# Set length from TSS
+
+TSS_upstream <- 20000
+TSS_downstream <- 250
+
+# Separate into positive and negative strands
+make_bed_human_7251_pos <- make_bed_human_7251[which(make_bed_human_7251[,4] == "+"), ]
+make_bed_human_7251_neg <- make_bed_human_7251[which(make_bed_human_7251[,4] == "-"), ]
+
+# Boundaries for positive strand
+
+make_bed_human_7251_pos_lower <- make_bed_human_7251_pos[,2] - TSS_upstream
+make_bed_human_7251_pos_upper <- make_bed_human_7251_pos[,2] + TSS_downstream 
+human_pos_bounds <- cbind.data.frame(make_bed_human_7251_pos[,1], make_bed_human_7251_pos_lower, make_bed_human_7251_pos_upper, make_bed_human_7251_pos[,4:5])
+colnames(human_pos_bounds) <- c("chr", "start", "end","strand", "gene")
+
+# Boundaries for negative strand
+
+make_bed_human_7251_neg_lower <- make_bed_human_7251_neg[,2] + TSS_upstream
+make_bed_human_7251_neg_upper <- make_bed_human_7251_neg[,2] - TSS_downstream 
+human_neg_bounds <- cbind.data.frame(make_bed_human_7251_neg[,1], make_bed_human_7251_neg_upper, make_bed_human_7251_neg_lower, make_bed_human_7251_neg[,4:5])
+colnames(human_neg_bounds) <- c("chr", "start", "end", "strand", "gene")
+
+human_bounds <- rbind(human_pos_bounds, human_neg_bounds)
+
+
+
+
+
+
+
+# Do an experiment with the 
+
+human_bounds[,1] <- as.character(human_bounds[,1])
+human_bounds[,2] <- as.numeric(human_bounds[,2])
+human_bounds[,3] <- as.numeric(human_bounds[,3])
+
+
+sep_methyl_bed <- read.delim("../data/dfCovnoX_hg19.bed", header = FALSE)
+sep_methyl_bed[,1] <- as.character(sep_methyl_bed[,1])
+
+sep_methyl_bed[,2] <- as.numeric(sep_methyl_bed[,2])
+sep_methyl_bed[,3] <- as.numeric(sep_methyl_bed[,3])
+
+library("bedr")
+
+sort_human_bounds <- bedr.sort.region(human_bounds)
+
+is.region <- in.region(sep_methyl_bed, sort_human_bounds)
+cpgs_pick <- which(is.region == TRUE)
+
+a.int <- bedr(input = list(a = sort_human_bounds, b = sep_methyl_bed), method = "intersect", params = "-loj")
+
+#write.table(is.region,file="../data/orth_cpgs_within_20000_250",sep="\t", col.names = F, row.names = F, quote = F)
+#write.table(cpgs_pick,file="../data/orth_cpgs_within_20000_250_rows_to_pick",sep="\t", col.names = F, row.names = F, quote = F)
+
+#write.table(a.int,file="../data/orth_cpgs_within_20000_250_intersection",sep="\t", col.names = T, row.names = F, quote = F)
+
+
+# Remove objects for space
+
+rm(is.region)
+rm(cpgs_pick)
+
+# Bind together the chromosome and the CpG
+
+gene_chr_cpg <- paste(a.int$V1,a.int$V2, sep = ":")
+gene_chr_cpg <- as.character(matrix(gene_chr_cpg, ncol = 1))
+gene_chr_cpg <- as.data.frame(gene_chr_cpg, stringsAsFactors = F, ncol = 1)
+
+# Bind intersection 
+
+a.int <- cbind(a.int, gene_chr_cpg)
+```
+
+
+```{r}
+# Load data
+methyl_20000_promoters <- read.csv("~/Desktop/Tissue paper w Julien/methyl_20000_promoters.csv", stringsAsFactors = F)
+
+cpg_with_genes <- merge(a.int, methyl_20000_promoters, by.x = 'gene_chr_cpg', by.y = 'X')
+
+write.table(cpg_with_genes, file="../data/genes_methyl_orth_cpgs_within_20000_250.txt",sep="\t", col.names = F, row.names = F, quote = F)
+
+gene_20000_freq_table <- count(cpg_with_genes, c('gene'))
+count_gene_20000_freq_table <- plyr::arrange(gene_20000_freq_table, gene_20000_freq_table[,2])
+hist(gene_20000_freq_table[,2], breaks = 100)
+```
+
+458 genes only have 1 orthologous CpGs associated with them. 
+151 genes only have 2 orthologous CpGs associated with them. 
+
+
+```{r}
+# Obtain the genes with 2 or more orthologous CpGs
+multiple_cpgs_per_gene <- gene_20000_freq_table[which(gene_20000_freq_table[,2] != 1), ]
+
+# Obtain methylation levels for genes with 2 or more orthologoous CpGs
+
+inshared_lists <- cpg_with_genes$gene %in% multiple_cpgs_per_gene$gene
+inshared_lists_data <- as.data.frame(inshared_lists)
+counts_genes_in <- cbind(cpg_with_genes, inshared_lists_data)
+counts_genes_in_cutoff <- subset(counts_genes_in, inshared_lists_data == "TRUE")
+methylation_multiple_cpgs_per_gene <- counts_genes_in_cutoff[,1:57]
+```
+
+### Original clustering
+
+```{r}
+# Average over all orthologous CpGs
+
+avg_methylation_multiple_cpgs_per_gene <- array(data = NA, dim = c(5255,48))
+
+for (i in 10:57){
+avg_methylation_multiple_cpgs_per_gene[,i-9] <- aggregate(methylation_multiple_cpgs_per_gene[,i] ~ methylation_multiple_cpgs_per_gene$gene, data = methylation_multiple_cpgs_per_gene, mean)[,2]
+}
+
+colnames(avg_methylation_multiple_cpgs_per_gene) <- colnames(methylation_multiple_cpgs_per_gene[,10:57])
+rownames(avg_methylation_multiple_cpgs_per_gene) <-  aggregate(methylation_multiple_cpgs_per_gene[,10] ~ methylation_multiple_cpgs_per_gene$gene, data = methylation_multiple_cpgs_per_gene, mean)[,1])
+
+call_chimp_heart <- c("C1H", "C2H", "C3H", "C4H")
+call_human_heart <- c("H1H", "H2H", "H3H", "H4H")
+call_rhesus_heart <- c("R1H", "R2H", "R3H", "R4H")
+
+call_chimp_kidney <- c("C1K", "C2K", "C3K", "C4K")
+call_human_kidney <- c("H1K", "H2K", "H3K", "H4K")
+call_rhesus_kidney <- c("R1K", "R2K", "R3K", "R4K")
+
+call_chimp_liver <- c("C1Li", "C2Li", "C3Li", "C4Li")
+call_human_liver <- c("H1Li", "H2Li", "H3Li", "H4Li")
+call_rhesus_liver <- c("R1Li", "R2Li", "R3Li", "R4Li")
+
+call_chimp_lung <- c("C1Lu", "C2Lu", "C3Lu", "C4Lu")
+call_human_lung <- c("H1Lu", "H2Lu", "H3Lu", "H4Lu")
+call_rhesus_lung <- c("R1Lu", "R2Lu", "R3Lu", "R4Lu")
+
+# Run Basic PCA
+
+pca_genes <- prcomp(t(avg_methylation_multiple_cpgs_per_gene), scale = T)
+scores <- pca_genes$x
+
+matrixpca <- pca_genes$x
+pc1 <- matrixpca[,1]
+pc2 <- matrixpca[,2]
+pc3 <- matrixpca[,3]
+pc4 <- matrixpca[,4]
+pc5 <- matrixpca[,5]
+
+pcs <- data.frame(pc1, pc2, pc3, pc4, pc5)
+
+library("ggplot2")
+library("RColorBrewer")
+
+samples <- read.csv("../data/Sample_info_RNAseq.csv")
+tissue <- samples$Tissue
+species <- samples$Species
+
+# Load colors 
+
+colors <- colorRampPalette(c(brewer.pal(9, "Blues")[1],brewer.pal(9, "Blues")[9]))(100)
+pal <- c(brewer.pal(9, "Set1"), brewer.pal(8, "Set2"), brewer.pal(12, "Set3"))
+
+
+ggplot(data=pcs, aes(x=pc1, y=pc2, color=tissue, shape=species, size=2)) + geom_point(aes(colour = as.factor(tissue)))
+
+
+cors <- cor(avg_methylation_multiple_cpgs_per_gene, method="spearman", use="pairwise.complete.obs")
+
+heatmap.2( cors, scale="none", col = colors, margins = c(12, 12), trace='none', denscol="white", ColSideColors=pal[as.integer(as.factor(species))], RowSideColors=pal[as.integer(as.factor(tissue))+9], cexCol = 0.2 + 1/log10(15), cexRow = 0.2 + 1/log10(15))
+
+# PCA with just the humans and chimps
+
+pca_genes <- prcomp(t(avg_methylation_multiple_cpgs_per_gene[,1:32]), scale = F)
+scores <- pca_genes$x
+
+matrixpca <- pca_genes$x
+pc1 <- matrixpca[,1]
+pc2 <- matrixpca[,2]
+pc3 <- matrixpca[,3]
+pc4 <- matrixpca[,4]
+pc5 <- matrixpca[,5]
+
+pcs <- data.frame(pc1, pc2, pc3, pc4, pc5)
+
+tissue <- samples$Tissue[1:32]
+species <- samples$Species[1:32]
+
+ggplot(data=pcs, aes(x=pc1, y=pc2, color=tissue, shape=species, size=2)) + geom_point(aes(colour = as.factor(tissue)))
+
+```
+
+# Is the distance from the TSS to an orthologous CpG the same in all 3 species? How many orthologous CpGs are within a 250bp window of the TSS?
+
+```{r}
+make_bed_human_7251 <- read.table("../data/refGene_hg19_TSS_7249.bed")
+make_bed_chimp_7251 <- read.table("../data/refGene_PanTro3_TSS_7249.bed")
+make_bed_rhesus_7251 <- read.table("../data/refGene_RheMac2_TSS_7249.bed")
+
+# Set length from TSS
+
+TSS_upstream <- 250
+TSS_downstream <- 250
+
+make_orth_cpg_bounds <- function(make_bed_species_7251){
+
+# Separate into positive and negative strands
+  make_bed_species_7251_pos <- make_bed_species_7251[which(make_bed_species_7251[,4] == "+"), ]
+  make_bed_species_7251_neg <- make_bed_species_7251[which(make_bed_species_7251[,4] == "-"), ]
+
+# Boundaries for positive strand
+
+  make_bed_species_7251_pos_lower <- make_bed_species_7251_pos[,2] - TSS_upstream
+  make_bed_species_7251_pos_upper <- make_bed_species_7251_pos[,2] + TSS_downstream 
+  species_pos_bounds <- cbind.data.frame(make_bed_species_7251_pos[,1], make_bed_species_7251_pos_lower,  make_bed_species_7251_pos_upper, make_bed_species_7251_pos[,4:5], make_bed_species_7251_pos[,6])
+  colnames(species_pos_bounds) <- c("chr", "start", "end","strand", "gene", "ENSG")
+
+# Boundaries for negative strand
+
+  make_bed_species_7251_neg_lower <- make_bed_species_7251_neg[,2] + TSS_upstream
+  make_bed_species_7251_neg_upper <- make_bed_species_7251_neg[,2] - TSS_downstream 
+  species_neg_bounds <- cbind.data.frame(make_bed_species_7251_neg[,1], make_bed_species_7251_neg_upper, make_bed_species_7251_neg_lower, make_bed_species_7251_neg[,4:5], make_bed_species_7251_neg[,6])
+  colnames(species_neg_bounds) <- c("chr", "start", "end", "strand", "gene", "ENSG")
+
+  species_bounds <- rbind(species_pos_bounds, species_neg_bounds)
+  return(species_bounds)
+}
+
+human_orth_cpg_bounds <- make_orth_cpg_bounds(make_bed_human_7251)
+
+chimp_orth_cpg_bounds <- make_orth_cpg_bounds(make_bed_chimp_7251)
+rhesus_orth_cpg_bounds <- make_orth_cpg_bounds(make_bed_rhesus_7251)
+
+# Put bounds in alphabetical order based on gene name
+
+human_orth_cpg_bounds_sort <- plyr::arrange(human_orth_cpg_bounds, gene)
+chimp_orth_cpg_bounds_sort <- plyr::arrange(chimp_orth_cpg_bounds, gene)
+rhesus_orth_cpg_bounds_sort <- plyr::arrange(rhesus_orth_cpg_bounds, gene)
+
+# Make sure the genes are the same
+match_strand <- (human_orth_cpg_bounds_sort[,5] == chimp_orth_cpg_bounds_sort[,5])
+summary(match_strand)
+
+match_strand <- (human_orth_cpg_bounds_sort[,5] == rhesus_orth_cpg_bounds_sort[,5])
+summary(match_strand)
+
+human_orth_cpg_bounds_sort[,1] <- as.character(human_orth_cpg_bounds_sort[,1])
+human_orth_cpg_bounds_sort[,2] <- as.integer(human_orth_cpg_bounds_sort[,2])    
+human_orth_cpg_bounds_sort[,3] <- as.integer(human_orth_cpg_bounds_sort[,3])
+
+
+human_250_interval <- bedr.sort.region(human_orth_cpg_bounds_sort, method = "lexicographical", check.chr = FALSE)
+write.table(human_250_interval, file="../data/250_7251_genes_interval_humans.bed",sep="\t", col.names = F, row.names = F, quote = F)
+
+chimp_orth_cpg_bounds_sort[,1] <- as.character(chimp_orth_cpg_bounds_sort[,1])
+chimp_orth_cpg_bounds_sort[,2] <- as.integer(chimp_orth_cpg_bounds_sort[,2])    
+chimp_orth_cpg_bounds_sort[,3] <- as.integer(chimp_orth_cpg_bounds_sort[,3])
+
+
+chimp_250_interval <- bedr.sort.region(chimp_orth_cpg_bounds_sort, method = "lexicographical", check.chr = FALSE)
+write.table(chimp_250_interval, file="../data/250_7251_genes_interval_chimps.bed",sep="\t", col.names = F, row.names = F, quote = F)
+
+
+rhesus_orth_cpg_bounds_sort[,1] <- as.character(rhesus_orth_cpg_bounds_sort[,1])
+rhesus_orth_cpg_bounds_sort[,2] <- as.integer(rhesus_orth_cpg_bounds_sort[,2])    
+rhesus_orth_cpg_bounds_sort[,3] <- as.integer(rhesus_orth_cpg_bounds_sort[,3])
+
+rhesus_250_interval <- bedr.sort.region(rhesus_orth_cpg_bounds_sort, method = "lexicographical", check.chr = FALSE)
+write.table(rhesus_250_interval, file="../data/250_7251_genes_interval_rhesus.bed",sep="\t", col.names = F, row.names = F, quote = F)
+
+```
+
+## Find the orthologous CpGs in each TSS window
+
+```{r}
+# Get the orthologous CpGs
+sep_methyl_bed <- read.delim("../data/dfCovnoX_hg19.bed", header = FALSE)
+sep_methyl_bed_chimp <- read.delim("../data/dfCovnoX_hg19ToPanTro3.bed", header = FALSE)
+sep_methyl_bed_rhesus <- read.delim("../data/dfCovnoX_hg19ToRheMac2.bed", header = FALSE)
+
+
+sep_methyl_bed[,1] <- as.character(sep_methyl_bed[,1])
+
+sep_methyl_bed[,2] <- as.numeric(sep_methyl_bed[,2])
+sep_methyl_bed[,3] <- as.numeric(sep_methyl_bed[,3])
+
+
+# Remove "chr"
+human_orth_cpg_bounds_sort_chr <- gsub('chr', '', human_orth_cpg_bounds_sort[,1])
+human_orth_cpg_bounds_sort[,1] <- human_orth_cpg_bounds_sort_chr
+
+sep_methyl_bed_human_chr <- gsub('chr', '', sep_methyl_bed[,1])
+sep_methyl_bed[,1] <- sep_methyl_bed_human_chr
+colnames(sep_methyl_bed) <- c("chr", "start", "end")
+
+sort_human_bounds <- bedr.sort.region(human_orth_cpg_bounds_sort, check.chr = FALSE)
+sep_methyl_bed_human <-  bedr.sort.region(sep_methyl_bed, method = "lexicographical", check.chr = FALSE)
+
+
+# Use bedtools to find the intersection for humans
+
+library("bedr")
+
+human.cpg.int <- bedr(input = list(a = sort_human_bounds, b = sep_methyl_bed_human), method = "intersect", params = "-loj", check.chr=FALSE)
+
+#write.table(human.cpg.int, file="../data/orth_cpgs_within_250_intersection_humans",sep="\t", col.names = F, row.names = F, quote = F)
+
+# Use bedtools to find the intersection for chimps
+
+chimp_orth_cpg_bounds_sort[,1] <- as.character(chimp_orth_cpg_bounds_sort[,1])
+chimp_orth_cpg_bounds_sort[,2] <- as.numeric(chimp_orth_cpg_bounds_sort[,2])
+chimp_orth_cpg_bounds_sort[,3] <- as.numeric(chimp_orth_cpg_bounds_sort[,3])
+
+# Remove "chr"
+chimp_orth_cpg_bounds_sort_chr <- gsub('chr', '', chimp_orth_cpg_bounds_sort[,1])
+chimp_orth_cpg_bounds_sort[,1] <- chimp_orth_cpg_bounds_sort_chr
+
+sep_methyl_bed_chimp_chr <- gsub('chr', '', sep_methyl_bed_chimp[,1])
+sep_methyl_bed_chimp[,1] <- sep_methyl_bed_chimp_chr
+colnames(sep_methyl_bed_chimp) <- c("chr", "start", "end")
+
+sort_chimp_bounds <- bedr.sort.region(chimp_orth_cpg_bounds_sort, check.chr = FALSE)
+sep_methyl_bed_chimp <-  bedr.sort.region(sep_methyl_bed_chimp, method = "lexicographical", check.chr = FALSE)
+
+
+chimp.cpg.int <- bedr(input = list(a = sort_chimp_bounds, b = sep_methyl_bed_chimp), method = "intersect", params = "-loj", check.chr = FALSE)
+#write.table(chimp.cpg.int, file="../data/orth_cpgs_within_250_intersection_chimps",sep="\t", col.names = F, row.names = F, quote = F)
+
+
+# Use bedtools to find the intersection for rhesus
+
+rhesus_orth_cpg_bounds_sort[,1] <- as.character(rhesus_orth_cpg_bounds_sort[,1])
+rhesus_orth_cpg_bounds_sort[,2] <- as.numeric(rhesus_orth_cpg_bounds_sort[,2])
+rhesus_orth_cpg_bounds_sort[,3] <- as.numeric(rhesus_orth_cpg_bounds_sort[,3])
+
+# Remove "chr"
+rhesus_orth_cpg_bounds_sort_chr <- gsub('chr', '', rhesus_orth_cpg_bounds_sort[,1])
+rhesus_orth_cpg_bounds_sort[,1] <- rhesus_orth_cpg_bounds_sort_chr
+
+sep_methyl_bed_rhesus_chr <- gsub('chr', '', sep_methyl_bed_rhesus[,1])
+sep_methyl_bed_rhesus[,1] <- sep_methyl_bed_rhesus_chr
+colnames(sep_methyl_bed_rhesus) <- c("chr", "start", "end")
+
+sort_rhesus_bounds <- bedr.sort.region(rhesus_orth_cpg_bounds_sort, check.chr = FALSE)
+sep_methyl_bed_rhesus <-  bedr.sort.region(sep_methyl_bed_rhesus, method = "lexicographical", check.chr = FALSE)
+
+
+rhesus.cpg.int <- bedr(input = list(a = sort_rhesus_bounds, b = sep_methyl_bed_rhesus), method = "intersect", params = "-loj", check.chr = FALSE)
+#write.table(rhesus.cpg.int, file="../data/orth_cpgs_within_250_intersection_rhesus",sep="\t", col.names = F, row.names = F, quote = F)
+
+```
+
+### How many orthologous CpGs within 250bp upstream and downstream of the TSS?
+
+```{r}
+# Read in data
+#human.cpg.int <- read.table("../data/orth_cpgs_within_250_intersection_humans")
+#chimp.cpg.int <- read.table("../data/orth_cpgs_within_250_intersection_chimps")
+#rhesus.cpg.int <- read.table("../data/orth_cpgs_within_250_intersection_rhesus")
+
+# Subset each of the species so that there is only genes with at least 2 CpGs
+  # Human
+human.cpg.int_2cpgs <- human.cpg.int[duplicated(human.cpg.int[,2]),]
+length(unique(human.cpg.int_2cpgs[,5])) # 4476
+
+  # Chimp
+chimp.cpg.int_2cpgs <- chimp.cpg.int[duplicated(chimp.cpg.int[,2]),]
+length(unique(chimp.cpg.int_2cpgs[,5])) # 4469
+
+  # Rhesus
+rhesus.cpg.int_2cpgs <- rhesus.cpg.int[duplicated(rhesus.cpg.int[,2]),]
+length(unique(rhesus.cpg.int_2cpgs[,5])) # 4477
+
+# Find the overlap between the 3
+
+genes_2_cpgs <- intersect(intersect(human.cpg.int_2cpgs[,5], chimp.cpg.int_2cpgs[,5]), rhesus.cpg.int_2cpgs[,5]) # 4447
+length(genes_2_cpgs) # 4447
+
+```
+
+There are 4447 genes with at least 2 orthologous CpGs (whether they are the same CpGs need to be tested)
+
+### Obtain the 4,447 genes with at least 2 orthologous CpGs (not necessarily the same CpGs)
+
+```{r}
+# Humans
+inshared_lists = human.cpg.int_2cpgs[,5] %in% genes_2_cpgs
+inshared_lists_data <- as.data.frame(inshared_lists)
+counts_genes_in <- cbind(human.cpg.int_2cpgs, inshared_lists_data)
+counts_genes_in_mult_TSS <- subset(counts_genes_in, inshared_lists_data == "TRUE")
+human.cpg.intersect_2cpgs <- counts_genes_in_mult_TSS[,1:9]
+length(unique(human.cpg.intersect_2cpgs[,5]))
+
+# Chimps
+inshared_lists = chimp.cpg.int_2cpgs[,5] %in% genes_2_cpgs
+inshared_lists_data <- as.data.frame(inshared_lists)
+counts_genes_in <- cbind(chimp.cpg.int_2cpgs, inshared_lists_data)
+counts_genes_in_mult_TSS <- subset(counts_genes_in, inshared_lists_data == "TRUE")
+chimp.cpg.intersect_2cpgs <- counts_genes_in_mult_TSS[,1:9]
+length(unique(chimp.cpg.intersect_2cpgs[,5]))
+
+# Rhesus
+inshared_lists = rhesus.cpg.int_2cpgs[,5] %in% genes_2_cpgs
+inshared_lists_data <- as.data.frame(inshared_lists)
+counts_genes_in <- cbind(rhesus.cpg.int_2cpgs, inshared_lists_data)
+counts_genes_in_mult_TSS <- subset(counts_genes_in, inshared_lists_data == "TRUE")
+rhesus.cpg.intersect_2cpgs <- counts_genes_in_mult_TSS[,1:9]
+length(unique(rhesus.cpg.intersect_2cpgs[,5]))
+
+colnames(human.cpg.intersect_2cpgs) <- c("chr", "start", "end", "strand", "gene", "ENSG", "chr.b", "start.b", "end.b")
+colnames(chimp.cpg.intersect_2cpgs) <- c("chr", "start", "end", "strand", "gene", "ENSG", "chr.b", "start.b", "end.b")
+colnames(rhesus.cpg.intersect_2cpgs) <- c("chr", "start", "end", "strand", "gene", "ENSG", "chr.b", "start.b", "end.b")
+```
+
+### For each gene, find the endpoints (orthologous CpGs) for each of the genes
+
+```{r}
+# Add chr:start position to each dataframe as well as 
+
+# Human int
+new_human_cpgs <- paste(human.cpg.intersect_2cpgs[,7], sep = ":", human.cpg.intersect_2cpgs[,8])
+new_human_cpgs <- paste("chr", new_human_cpgs, sep = "")
+human.cpg.intersect_2cpgs <- cbind(human.cpg.intersect_2cpgs, new_human_cpgs)
+
+# Chimp int
+new_chimp_cpgs <- paste(chimp.cpg.intersect_2cpgs[,7], sep = ":", chimp.cpg.intersect_2cpgs[,8])
+new_chimp_cpgs <- paste("chr", new_chimp_cpgs, sep = "")
+chimp.cpg.intersect_2cpgs <- cbind(chimp.cpg.intersect_2cpgs, new_chimp_cpgs)
+
+# Rhesus int
+new_rhesus_cpgs <- paste(rhesus.cpg.intersect_2cpgs[,7], sep = ":", rhesus.cpg.intersect_2cpgs[,8])
+new_rhesus_cpgs <- paste("chr", new_rhesus_cpgs, sep = "")
+rhesus.cpg.intersect_2cpgs <- cbind(rhesus.cpg.intersect_2cpgs, new_rhesus_cpgs)
+
+# Now make chr:start for human, chimp, and rhesus orthologous CpGs
+
+# All orth CpGs
+dfCovnoX <- read.table("../data/dfCovnoX.txt", stringsAsFactors = FALSE)
+dfCovnoX_hg19ToPanTro3 <- read.table("../data/dfCovnoX_hg19ToPanTro3.bed", stringsAsFactors = FALSE)
+dfCovnoX_hg19ToRheMac2 <- read.table("../data/dfCovnoX_hg19ToRheMac2.bed", stringsAsFactors = FALSE)
+
+
+
+# To see matches for all orthologous CpGs
+
+chr_human <- unlist(strsplit(as.character(dfCovnoX[1:2905210,]), ":"))
+chr_human1 <- matrix(chr_human, ncol = 2905210)
+chr_human2 <- as.data.frame(chr_human1[1,], stringsAsFactors = FALSE)
+
+# Human and chimp
+summary(chr_human2 == dfCovnoX_hg19ToPanTro3[,1])
+# Chimp and rhesus
+summary(dfCovnoX_hg19ToRheMac2[,1] == dfCovnoX_hg19ToPanTro3[,1])
+# Human and rhesus
+summary(chr_human2 == dfCovnoX_hg19ToRheMac2[,1])
+
+
+dfCovnoX_hg19ToPanTro3 <- paste(dfCovnoX_hg19ToPanTro3[,1], dfCovnoX_hg19ToPanTro3[,2], sep = ":")
+dfCovnoX_hg19ToRheMac2 <- paste(dfCovnoX_hg19ToRheMac2[,1], dfCovnoX_hg19ToRheMac2[,2], sep = ":")
+
+ortho_cpg_3_genomes <- cbind(dfCovnoX, dfCovnoX_hg19ToPanTro3, dfCovnoX_hg19ToRheMac2)
+
+
+three_genomes_dfCovnoX <- cbind(dfCovnoX, ortho_cpg_3_genomes)
+
+#Find chimp cpgs
+chimp_human_cpgs <- merge(chimp.cpg.intersect_2cpgs, ortho_cpg_3_genomes, by.x = "new_chimp_cpgs", by.y = "dfCovnoX_hg19ToPanTro3")
+chimp_human_cpgs <- chimp_human_cpgs[,1:11]
+
+rhesus_human_cpgs <- merge(rhesus.cpg.intersect_2cpgs, ortho_cpg_3_genomes, by.x = "new_rhesus_cpgs", by.y = "dfCovnoX_hg19ToRheMac2")
+rhesus_human_cpgs <- rhesus_human_cpgs[,1:11]
+
+# Merge human and chimp
+
+human_chimp_all_orth_cpgs <- merge(human.cpg.intersect_2cpgs, chimp_human_cpgs, by.x = "new_human_cpgs", by.y = "dfCovnoX")
+
+# Merge human, chimp, and rhesus
+
+human_chimp_rhesus_all_orth_cpgs <- merge(human_chimp_all_orth_cpgs, rhesus_human_cpgs,  by.x = "new_human_cpgs", by.y = "dfCovnoX", stringsAsFactors = FALSE)
+
+# How many genes are there?
+
+length(unique(human_chimp_rhesus_all_orth_cpgs$gene.x)) # 4437
+
+# Eliminate if gene names aren't the same
+
+hceq <- human_chimp_rhesus_all_orth_cpgs[human_chimp_rhesus_all_orth_cpgs$gene.x==human_chimp_rhesus_all_orth_cpgs$gene.y,]
+
+hcreq <- hceq[hceq$gene.x == hceq$gene, ]
+length(unique(hcreq$gene.x)) # 4438
+
+# We want each to have at least 2 CpGs
+
+human_chimp_rhesus_2_orth_cpgs <- count(hcreq, gene.x)
+
+orth_cpg_freq_table <- human_chimp_rhesus_2_orth_cpgs[which(human_chimp_rhesus_2_orth_cpgs[,2] >= 2), ]
+nrow(orth_cpg_freq_table)
+
+# Re-format 
+
+orth_cpg_freq_table_vect <- as.data.frame(unlist(orth_cpg_freq_table[,1]))
+
+# Genes with at least 2 CpGs
+inshared_lists = hcreq$gene.x %in% orth_cpg_freq_table_vect[,1]
+summary(inshared_lists)
+
+inshared_lists_data <- as.data.frame(inshared_lists)
+counts_genes_in <- cbind(hcreq, inshared_lists_data)
+counts_genes_in_mult_TSS <- subset(counts_genes_in, inshared_lists_data == "TRUE")
+dim(counts_genes_in_mult_TSS)
+
+human.cpg.intersect_2cpgs <- counts_genes_in_mult_TSS[,1:31]
+
+length(unique(human_chimp_rhesus_2_orth_cpgs$gene.x)) # 4158
+
+gene_reg_same_cpg <- as.character(unique(human_chimp_rhesus_2_orth_cpgs$gene.x))
+
+
+# Here are the bounds for 250 bp around the TSS 
+library("bedr")
+
+human_orth_cpg_bounds_sort[,1] <- as.character(human_orth_cpg_bounds_sort[,1])
+human_orth_cpg_bounds_sort[,2] <- as.integer(human_orth_cpg_bounds_sort[,2])    
+human_orth_cpg_bounds_sort[,3] <- as.integer(human_orth_cpg_bounds_sort[,3])
+
+# Want to select the gene regions (e.g. 250)
+
+gene_names <- intersect(intersect(intersect(gene_reg_same_cpg, human_orth_cpg_bounds_sort$gene), chimp_orth_cpg_bounds_sort$gene), rhesus_orth_cpg_bounds_sort$gene)
+
+inshared_lists <- human_orth_cpg_bounds_sort$gene %in% gene_names
+inshared_lists_data <- as.data.frame(inshared_lists)
+counts_genes_in <- cbind(human_orth_cpg_bounds_sort, inshared_lists_data)
+human_orth_cpg_bounds_sort_res <- subset(counts_genes_in, inshared_lists_data == "TRUE")
+dim(human_orth_cpg_bounds_sort_res)
+
+human_250_interval <- bedr.sort.region(human_orth_cpg_bounds_sort_res[,1:6], method = "lexicographical", check.chr = FALSE)
+
+# Same for chimps
+
+chimp_orth_cpg_bounds_sort[,1] <- as.character(chimp_orth_cpg_bounds_sort[,1])
+chimp_orth_cpg_bounds_sort[,2] <- as.integer(chimp_orth_cpg_bounds_sort[,2])    
+chimp_orth_cpg_bounds_sort[,3] <- as.integer(chimp_orth_cpg_bounds_sort[,3])
+
+inshared_lists <- chimp_orth_cpg_bounds_sort$gene %in% gene_names
+inshared_lists_data <- as.data.frame(inshared_lists)
+counts_genes_in <- cbind(chimp_orth_cpg_bounds_sort, inshared_lists_data)
+chimp_orth_cpg_bounds_sort_res <- subset(counts_genes_in, inshared_lists_data == "TRUE")
+dim(chimp_orth_cpg_bounds_sort_res)
+
+chimp_250_interval <- bedr.sort.region(chimp_orth_cpg_bounds_sort_res[,1:6], method = "lexicographical", check.chr = FALSE)
+
+
+# Same for rhesus
+
+rhesus_orth_cpg_bounds_sort[,1] <- as.character(rhesus_orth_cpg_bounds_sort[,1])
+rhesus_orth_cpg_bounds_sort[,2] <- as.integer(rhesus_orth_cpg_bounds_sort[,2])    
+rhesus_orth_cpg_bounds_sort[,3] <- as.integer(rhesus_orth_cpg_bounds_sort[,3])
+
+inshared_lists <- rhesus_orth_cpg_bounds_sort$gene %in% gene_names
+inshared_lists_data <- as.data.frame(inshared_lists)
+counts_genes_in <- cbind(rhesus_orth_cpg_bounds_sort, inshared_lists_data)
+rhesus_orth_cpg_bounds_sort_res <- subset(counts_genes_in, inshared_lists_data == "TRUE")
+dim(rhesus_orth_cpg_bounds_sort_res)
+
+rhesus_250_interval <- bedr.sort.region(rhesus_orth_cpg_bounds_sort_res, method = "lexicographical", check.chr = FALSE)
+
+write.table(human_250_interval, file="../data/250_complete_interval_humans.bed",sep="\t", col.names = F, row.names = F, quote = F)
+write.table(chimp_250_interval, file="../data/250_complete_interval_chimps.bed",sep="\t", col.names = F, row.names = F, quote = F)
+write.table(rhesus_250_interval, file="../data/250_complete_interval_rhesus.bed",sep="\t", col.names = F, row.names = F, quote = F)
+
+# To do: What if we say it has to be on the same chromosome?
+
+# Grab the first CpG for each gene
+
+val_first_gene <- human.cpg.intersect_2cpgs[as.logical(ave(human.cpg.intersect_2cpgs$start.b.x, human.cpg.intersect_2cpgs$gene.x, FUN = function(x) x == min(x))),]
+length(unique(val_first_gene$gene.x)) 
+
+val_first_gene_sort <- arrange(val_first_gene, gene.x)
+
+# Grab the last CpG for each gene
+
+val_last_gene <- human.cpg.intersect_2cpgs[as.logical(ave(human_chimp_rhesus_2_orth_cpgs$start.b.x, human_chimp_rhesus_2_orth_cpgs$gene.x, FUN = function(x) x == max(x))),]
+length(unique(val_last_gene$gene.x))
+
+val_last_gene_sort <- arrange(val_last_gene, gene.x)
+length(unique(val_last_gene$gene.x))
+
+val_last_gene_sort[,1] <- as.data.frame(val_last_gene_sort[,1], stringsAsFactors = FALSE)
+
+# Make species-specific bed files
+
+# Humans
+humans_250 <- as.data.frame(cbind(val_first_gene_sort$chr.x, as.numeric(val_first_gene_sort$start.b.x), as.numeric(val_last_gene_sort$end.b.x), as.character(val_first_gene_sort$gene)), stringsAsFactors = FALSE)
+humans_250[,2] <- as.integer(humans_250[,2])
+humans_250[,3] <- as.integer(humans_250[,3])
+colnames(humans_250) <- c("chr", "start", "end", "gene")
+
+# Make sure it is a bedfile
+
+humans_250_sort <-  bedr.sort.region(humans_250, method = "lexicographical", check.chr = FALSE)
+
+write.table(humans_250_sort, file="../data/boundaries_within_250_humans",sep="\t", col.names = F, row.names = F, quote = F)
+
+# Chimps
+
+chimps_250 <- as.data.frame(cbind(val_first_gene_sort$chr.y, as.numeric(val_first_gene_sort$start.b.y), as.numeric(val_last_gene_sort$end.b.y), as.character(val_first_gene_sort$gene)), stringsAsFactors = FALSE)
+chimps_250[,2] <- as.integer(chimps_250[,2])
+chimps_250[,3] <- as.integer(chimps_250[,3])
+#colnames(chimps_250) <- c("chr", "start", "end", "gene")
+
+chimps_250[,1] <- paste("chr", chimps_250[,1], sep = '' )
+# Make sure it is a bedfile
+
+chimps_250_sort <-  bedr.sort.region(chimps_250, method = "lexicographical", check.chr = FALSE)
+
+write.table(chimps_250_sort, file="../boundaries_within_250_chimps.bed", sep="\t", col.names = F, row.names = F, quote = F)
+# Rhesus
+
+rhesus_250 <- as.data.frame(cbind(val_first_gene_sort$chr, as.numeric(val_first_gene_sort$start.b), as.numeric(val_last_gene_sort$end.b), as.character(val_first_gene_sort$gene)), stringsAsFactors = FALSE)
+rhesus_250[,2] <- as.integer(rhesus_250[,2])
+rhesus_250[,3] <- as.integer(rhesus_250[,3])
+
+# How big are the windows (max 500 bp)?
+
+window_size <- abs(humans_250[,3] - humans_250[,2])
+
+hist(window_size, breaks = 25, xlab = "Window size (bp)", main = "Window size (bp) with orthologous CpG endpoints")
+
+```
+
+### Pick up orthologous CpGs for the region (know what to grab in the orthologous CpG file)
+
+```{r}
+# 
+bed_pos[,1] <- as.character(bed_pos[,1])
+bed_pos[,2] <- as.numeric(bed_pos[,2])
+bed_pos[,3] <- as.numeric(bed_pos[,3])
+
+humans_250_sort[,1] <- paste("chr", humans_250_sort[,1], sep = "")
+
+bed_pos <- bedr.sort.region(bed_pos, method = "lexicographical", check.chr = TRUE)
+humans_250_sort <- bedr.sort.region(humans_250_sort, method = "lexicographical", check.chr = TRUE)
+humans_250_sort_merge <- bedr.merge.region(humans_250_sort)
+
+int_250 <- bedr(input = list(a = bed_pos, b = humans_250_sort), method = "intersect", params = "-wao")
+int_250_merge <- bedr(input = list(a = bed_pos, b = humans_250_sort_merge), method = "intersect", params = "-wao")
+
+# For the genes with the 
+show <- int_250_merge[,5] != -1
+
+matrix_grab <- which(show == TRUE)
+matrix_grab_genes <- int_250_merge[matrix_grab,]
+
+matrix_grab_250 <- as.data.frame(cbind(matrix_grab, matrix_grab_genes[,1:3], matrix_grab_genes$names), stringsAsFactors = FALSE)
+matrix_grab_250[,1] <- as.numeric(matrix_grab_250[,1])
+matrix_grab_250[,5] <- as.character(matrix_grab_250[,5])
+dim(matrix_grab_250)
+
+write.table(matrix_grab_250, "../data/250_matrix_grab_250_merged.txt", quote = FALSE)
+```
+
+### Clustering based on regions
+
+```{r}
+# Read in the data
+
+methyl_250_2cpgs <- read.csv("~/Desktop/Reg_Evo_Primates/data/methyl_250_2cpgs.txt", sep="", stringsAsFactors=FALSE)
+methyl_250_2cpgs_species_tissues_only <- methyl_250_2cpgs[,2:49]
+
+# Average over all orthologous CpGs
+
+avg_methylation_multiple_cpgs_per_gene <- array(data = NA, dim = c(3965,48))
+
+for (i in 2:49){
+avg_methylation_multiple_cpgs_per_gene[,i-1] <- aggregate(methyl_250_2cpgs[,i] ~ methyl_250_2cpgs[,54], data = methyl_250_2cpgs, mean)[,2]
+}
+
+colnames(avg_methylation_multiple_cpgs_per_gene) <- colnames(methyl_250_2cpgs[,2:49])
+
+# Get the gene names
+
+gene_names <- array(data = NA, dim = c(3965,1))
+
+for (i in 2){
+gene_names[,i-1] <- aggregate(methyl_250_2cpgs[,i] ~ methyl_250_2cpgs[,54], data = methyl_250_2cpgs, mean)[,1]
+}
+
+# Make file with average values and gene names
+
+matrix_methyl <- cbind(avg_methylation_multiple_cpgs_per_gene, gene_names)
+write.table(matrix_methyl, "../data/3965_avg_methyl_per_ts_gene.txt")
+
+# PCA with just the humans and chimps
+
+pca_genes <- prcomp(t(avg_methylation_multiple_cpgs_per_gene), scale = T)
+scores <- pca_genes$x
+
+matrixpca <- pca_genes$x
+pc1 <- matrixpca[,1]
+pc2 <- matrixpca[,2]
+pc3 <- matrixpca[,3]
+pc4 <- matrixpca[,4]
+pc5 <- matrixpca[,5]
+
+pcs <- data.frame(pc1, pc2, pc3, pc4, pc5)
+
+
+
+
+
+
+library("ggplot2")
+library("RColorBrewer")
+
+samples <- read.csv("../data/Sample_info_RNAseq.csv")
+
+tissue <- samples$Tissue
+species <- samples$Species
+
+# Load colors 
+
+colors <- colorRampPalette(c(brewer.pal(9, "Blues")[1],brewer.pal(9, "Blues")[9]))(100)
+pal <- c(brewer.pal(9, "Set1"), brewer.pal(8, "Set2"), brewer.pal(12, "Set3"))
+
+ggplot(data=pcs, aes(x=pc1, y=pc2, color=tissue, shape=species, size=2)) + geom_point(aes(colour = as.factor(tissue)))
+ggplot(data=pcs, aes(x=pc2, y=pc3, color=tissue, shape=species, size=2)) + geom_point(aes(colour = as.factor(tissue)))
+
+
+cors <- cor(avg_methylation_multiple_cpgs_per_gene, method="pearson", use="pairwise")
+
+heatmap.2( cors, scale="none", col = colors, margins = c(12, 12), trace='none', denscol="white", ColSideColors=pal[as.integer(as.factor(species))], RowSideColors=pal[as.integer(as.factor(tissue))+9], cexCol = 0.2 + 1/log10(15), cexRow = 0.2 + 1/log10(15))
+
+# PCA with just the humans and chimps
+
+pca_genes <- prcomp(t(avg_methylation_multiple_cpgs_per_gene[,1:32]), scale = F)
+scores <- pca_genes$x
+
+matrixpca <- pca_genes$x
+pc1 <- matrixpca[,1]
+pc2 <- matrixpca[,2]
+pc3 <- matrixpca[,3]
+pc4 <- matrixpca[,4]
+pc5 <- matrixpca[,5]
+
+pcs <- data.frame(pc1, pc2, pc3, pc4, pc5)
+
+tissue <- samples$Tissue[1:32]
+species <- samples$Species[1:32]
+
+ggplot(data=pcs, aes(x=pc1, y=pc2, color=tissue, shape=species, size=2)) + geom_point(aes(colour = as.factor(tissue)))
+
+cors <- cor(avg_methylation_multiple_cpgs_per_gene[,1:32], method="pearson", use="pairwise")
+
+heatmap.2( cors, scale="none", col = colors, margins = c(12, 12), trace='none', denscol="white", ColSideColors=pal[as.integer(as.factor(species))], RowSideColors=pal[as.integer(as.factor(tissue))+9], cexCol = 0.2 + 1/log10(15), cexRow = 0.2 + 1/log10(15))
+
+```
+
+### Run Bryan's clustering code
+
+```{r}
+library(dendextend)
+library(colorspace)
+library(tidyverse)
+
+#Function to make pearson correlation matrix and convert into distance matrix
+pearson <- function(x, ...) {
+    x <- as.matrix(x)
+    res <- as.dist(1 - cor(x, method = "pearson", use = "everything"))
+    res <- as.dist(res)
+    attr(res, "method") <- "pearson"
+    return(res)
+}
+
+#Convert rpkm gene expression matrix into correlation matrix (this is for the heat map tiles part)
+
+tissue <- samples$Tissue
+species <- samples$Species
+
+cor(avg_methylation_multiple_cpgs_per_gene)->all_data
+
+hc <- avg_methylation_multiple_cpgs_per_gene %>% pearson %>% hclust(method="average")
+dend <- hc %>% as.dendrogram 
+
+heatmap.2(all_data, scale="none", col = colors, margins = c(5, 5),  trace='none', denscol="white", Colv=dend,Rowv=dend, ColSideColors=pal[as.integer(as.factor(species))], RowSideColors=pal[as.integer(as.factor(tissue))+9])
+
+
+#Convert rpkm gene expression matrix into correlation matrix (this is for the heat map tiles part)
+
+tissue <- samples$Tissue[1:32]
+species <- samples$Species[1:32]
+
+cor(avg_methylation_multiple_cpgs_per_gene[,1:32])->all_data
+
+hc <- avg_methylation_multiple_cpgs_per_gene[,1:32] %>% pearson %>% hclust(method="average")
+dend <- hc %>% as.dendrogram 
+
+heatmap.2(all_data, scale="none", col = colors, margins = c(5, 5), trace='none', denscol="white", Colv=dend,Rowv=dend, ColSideColors=pal[as.integer(as.factor(species))], RowSideColors=pal[as.integer(as.factor(tissue))+9])
+```
+
+
+
+### If desired, separate into genes rather than merged regions
+
+```{r}
+# Some merged windows are large, want to separate all the regions with multiple genes (e.g. 19)
+check_window <- abs(humans_250_sort_merge[,3] - humans_250_sort_merge[,2])
+hist(check_window, xlab = "Distance of region (bp)")
+
+# Read in methylation data
+
+
+# Make bedtools readable
+
+
+# Use bedtools to sort by CpGs by region. Do not merge regions. 
+
+
+# Take average methylation level over the genes (now that you have the methylation value for each gene)
+```
+
+
+```{r}
+human_orth <- read.table("../data/250_7251_genes_interval_humans_orth_cpgs.txt")
+chimp_orth <- read.table("../data/250_7251_genes_interval_chimps_orth_cpgs.txt")
+rhesus_orth <- read.table("../data/250_7251_genes_interval_rhesus_orth_cpgs.txt")
+
+nrow(human_orth)
+nrow(chimp_orth)
+nrow(rhesus_orth)
+
+head(human_orth)
+head(chimp_orth)
+
+human_chimp_orth <- merge(human_orth, chimp_orth, by = "V4")
+human_chimp_rhesus_orth <- merge(human_chimp_orth, rhesus_orth, by = "V4")
+
+human_chimp_rhesus_orth$V7.x <- as.character(human_chimp_rhesus_orth$V7.x)
+human_chimp_rhesus_orth$V7.y <- as.character(human_chimp_rhesus_orth$V7.y)
+human_chimp_rhesus_orth$V7 <- as.character(human_chimp_rhesus_orth$V7)
+
+human_chimp_rhesus_orth_dim_overlap <- human_chimp_rhesus_orth[which(human_chimp_rhesus_orth$V7.x == human_chimp_rhesus_orth$V7.y) , ]
+
+human_chimp_rhesus_orth_dim_overlap2 <- human_chimp_rhesus_orth_dim_overlap[which(human_chimp_rhesus_orth_dim_overlap$V7.x == human_chimp_rhesus_orth_dim_overlap$V7) , ]
+
+human_chimp_rhesus_orth_dim_overlap3 <- human_chimp_rhesus_orth_dim_overlap2[which(human_chimp_rhesus_orth_dim_overlap2$V7.y == human_chimp_rhesus_orth_dim_overlap2$V7) , ]
+
+nrow(human_chimp_rhesus_orth_dim_overlap3) #49337
+length(unique(human_chimp_rhesus_orth_dim_overlap3$V7.x)) #4822
+
+head(human_chimp_rhesus_orth_dim_overlap3)
+
+
+# Eliminate if less than 2 orthologous CpGs/gene (want an interval)
+
+table_human_chimp_rhesus_orth_dim_overlap3 <- as.data.frame(table(human_chimp_rhesus_orth_dim_overlap3$V7.x))
+
+table_human_chimp_rhesus_orth_dim_overlap3 <- table_human_chimp_rhesus_orth_dim_overlap3[which(table_human_chimp_rhesus_orth_dim_overlap3[,2] >= 2), ]
+
+inshared_lists = human_chimp_rhesus_orth_dim_overlap3$V7.x %in% table_human_chimp_rhesus_orth_dim_overlap3[,1]
+inshared_lists_data <- as.data.frame(inshared_lists)
+counts_genes_in <- cbind(human_chimp_rhesus_orth_dim_overlap3, inshared_lists_data)
+counts_genes_in_mult_TSS <- subset(counts_genes_in, inshared_lists_data == "TRUE")
+counts_genes_in_mult_TSS <- counts_genes_in_mult_TSS[,1:19]
+
+nrow(counts_genes_in_mult_TSS) # 48959
+length(unique(counts_genes_in_mult_TSS$V7.y)) # 4444
+
+
+
+val_first_gene <- counts_genes_in_mult_TSS[as.logical(ave(counts_genes_in_mult_TSS$V2.x, counts_genes_in_mult_TSS$V7.x, FUN = function(x) x == min(x))),]
+
+val_last_gene <- counts_genes_in_mult_TSS[as.logical(ave(counts_genes_in_mult_TSS$V2.x, counts_genes_in_mult_TSS$V7.x, FUN = function(x) x == max(x))),]
+
+val_first_gene_sorted <- arrange(val_first_gene, val_first_gene[,7])
+val_last_gene_sorted <- arrange(val_last_gene, val_last_gene[,7])
+
+summary(val_first_gene_sorted[,3] == val_last_gene_sorted[,3])
+
+window_size <- abs(val_last_gene_sorted[,3] - val_first_gene_sorted[,3])
+
+hist(window_size, breaks = 25, xlab = "Window size (bp)", main = "Window size (bp) with orth. CpG endpoints")
+
+# Make into bed file
+
+compare_250_dfCovnoX <- as.data.frame(cbind(as.character(val_first_gene_sorted[,2]), as.integer(val_first_gene_sorted[,3]),   as.integer(val_last_gene_sorted[,3]), val_last_gene_sorted[,7], as.integer(val_last_gene_sorted[,5]), as.integer(val_last_gene_sorted[,6])), stringsAsFactors = FALSE)
+
+compare_250_dfCovnoX[,1] <- as.character(compare_250_dfCovnoX[,1])
+compare_250_dfCovnoX[,2] <- as.integer(compare_250_dfCovnoX[,2])
+compare_250_dfCovnoX[,3] <- as.integer(compare_250_dfCovnoX[,3])
+compare_250_dfCovnoX[,4] <- as.character(compare_250_dfCovnoX[,4])
+compare_250_dfCovnoX[,5] <- as.integer(compare_250_dfCovnoX[,5])
+compare_250_dfCovnoX[,6] <- as.integer(compare_250_dfCovnoX[,6])
+
+bed_pos[,1] <- as.character(bed_pos[,1])
+bed_pos[,2] <- as.integer(bed_pos[,2])
+bed_pos[,3] <- as.integer(bed_pos[,3])
+
+
+
+
+bed_pos_sort <- bedr.sort.region(bed_pos, method = "lexicographical", check.chr = TRUE)
+compare_250_dfCovnoX_sort <- bedr.sort.region(compare_250_dfCovnoX, method = "lexicographical", check.chr = FALSE)
+compare_250_dfCovnoX_sort <- bedr.merge.region(compare_250_dfCovnoX_sort)
+
+cpg.int <- bedr(input = list(a = bed_pos_sort, b = compare_250_dfCovnoX_sort), method = "intersect", params = "-loj")
+
+cpg.int[,8] <- seq(1:2905210)
+cpg.int.needed <- cpg.int[which(cpg.int[,4] != ".") , ]
+
+to_count <- as.factor(cpg.int.needed$names)
+
+check <- as.data.frame(table(to_count))
+summary(check[,2])
+hist(check[,2], breaks = 50)
+write.table(cpg.int.needed, "../data/250_orth_cpg_int_needed.txt", quote = FALSE)
+write.table(cpg.int.needed$V8, "../data/250_row_numbers_orth_cpg_int_needed.txt", quote = FALSE)
+
+```
+
+
+
+
+
+
+
+
+Now we are going to run bedtools with the intersection of 
+
+# Steps for additional analysis
+
+1) For each species, identify the endpoint coordinates on their own genome (bin around Lifted over TSS). 
+2) Find the highest and the lowest orthologous CpG within the endopoint coordinates.
+3) For each sample (on own coordinate system), we are going to find all of the methylation values between the highest and lowest orthologous CpG. The orthologous CpGs will be the endpoints. 
+4) Take the average methylation value for each region in each sample. 
+5) Re-run the PCA. 
+
+
+
+```{r}
+chimp_250_methyl <- read.table("../data/250_7251_chimp_methyl.txt", header = TRUE)
+
+methyl_only <- seq(from = 2, to = 49, by = 3)
+
+chimp_250_methyl_only <- chimp_250_methyl[,methyl_only]
+colnames(chimp_250_methyl_only) <- c("C1H", "C2H", "C3H", "C4H", "C1K", "C2K", "C3K", "C4K", "C1Li", "C2Li", "C3Li", "C4Li", "C1Lu", "C2Lu", "C3Lu", "C4Lu")
+
+human_250_methyl <- read.table("../data/250_7251_human_methyl.txt", header = TRUE)
+human_250_methyl_only <- human_250_methyl[,methyl_only]
+colnames(human_250_methyl_only) <- c("H1H", "H2H", "H3H", "H4H", "H1K", "H2K", "H3K", "H4K", "H1Li", "H2Li", "H3Li", "H4Li", "H1Lu", "H2Lu", "H3Lu", "H4Lu")
+
+rhesus_250_methyl <- read.table("../data/250_7251_rhesus_methyl.txt", header = TRUE)
+rhesus_250_methyl_only <- rhesus_250_methyl[,methyl_only]
+colnames(rhesus_250_methyl_only) <- c("R1H", "R2H", "R3H", "R4H", "R1K", "R2K", "R3K", "R4K", "R1Li", "R2Li", "R3Li", "R4Li", "R1Lu", "R2Lu", "R3Lu", "R4Lu")
+
+
+methyl_250 <- cbind(chimp_250_methyl_only, human_250_methyl_only, rhesus_250_methyl_only)
+head(methyl_250)
+
+
+methyl_250_cpg <- read.table("../data/250_orth_cpg_methyl_status.txt", header = T)
+dim(methyl_250_cpg)
+methyl_250_cpg_gene <- cbind(methyl_250_cpg, cpg.int.needed[,7])
+
+# Average over all orthologous CpGs
+
+avg_methylation_multiple_cpgs_per_gene <- array(data = NA, dim = c(4248,48))
+
+for (i in 1:48){
+avg_methylation_multiple_cpgs_per_gene[,i] <- aggregate(methyl_250_cpg_gene[,i] ~ methyl_250_cpg_gene[,49], data = methyl_250_cpg_gene, mean)[,2]
+}
+
+colnames(avg_methylation_multiple_cpgs_per_gene) <- colnames(methyl_250_cpg_gene[,1:48])
+#rownames(avg_methylation_multiple_cpgs_per_gene) <-  aggregate(methylation_multiple_cpgs_per_gene[,10] ~ methylation_multiple_cpgs_per_gene$gene, data = methylation_multiple_cpgs_per_gene, mean)[,1])
+
+call_chimp_heart <- c("C1H", "C2H", "C3H", "C4H")
+call_human_heart <- c("H1H", "H2H", "H3H", "H4H")
+call_rhesus_heart <- c("R1H", "R2H", "R3H", "R4H")
+
+call_chimp_kidney <- c("C1K", "C2K", "C3K", "C4K")
+call_human_kidney <- c("H1K", "H2K", "H3K", "H4K")
+call_rhesus_kidney <- c("R1K", "R2K", "R3K", "R4K")
+
+call_chimp_liver <- c("C1Li", "C2Li", "C3Li", "C4Li")
+call_human_liver <- c("H1Li", "H2Li", "H3Li", "H4Li")
+call_rhesus_liver <- c("R1Li", "R2Li", "R3Li", "R4Li")
+
+call_chimp_lung <- c("C1Lu", "C2Lu", "C3Lu", "C4Lu")
+call_human_lung <- c("H1Lu", "H2Lu", "H3Lu", "H4Lu")
+call_rhesus_lung <- c("R1Lu", "R2Lu", "R3Lu", "R4Lu")
+
+# Run Basic PCA
+
+pca_genes <- prcomp(t(methyl_250), scale = T)
+scores <- pca_genes$x
+
+
+
+matrixpca <- pca_genes$x
+pc1 <- matrixpca[,1]
+pc2 <- matrixpca[,2]
+pc3 <- matrixpca[,3]
+pc4 <- matrixpca[,4]
+pc5 <- matrixpca[,5]
+
+pcs <- data.frame(pc1, pc2, pc3, pc4, pc5)
+
+library("ggplot2")
+library("RColorBrewer")
+
+samples <- read.csv("../data/Sample_info_RNAseq.csv")
+
+tissue <- samples$Tissue
+species <- samples$Species
+
+# Load colors 
+
+colors <- colorRampPalette(c(brewer.pal(9, "Blues")[1],brewer.pal(9, "Blues")[9]))(100)
+pal <- c(brewer.pal(9, "Set1"), brewer.pal(8, "Set2"), brewer.pal(12, "Set3"))
+
+
+ggplot(data=pcs, aes(x=pc1, y=pc2, color=tissue, shape=species, size=2)) + geom_point(aes(colour = as.factor(tissue)))
+ggplot(data=pcs, aes(x=pc2, y=pc3, color=tissue, shape=species, size=2)) + geom_point(aes(colour = as.factor(tissue)))
+
+
+cors <- cor(avg_methylation_multiple_cpgs_per_gene, method="pearson", use="pairwise.all.obs")
+
+heatmap.2( cors, scale="none", col = colors, margins = c(12, 12), trace='none', denscol="white", ColSideColors=pal[as.integer(as.factor(species))], RowSideColors=pal[as.integer(as.factor(tissue))+9], cexCol = 0.2 + 1/log10(15), cexRow = 0.2 + 1/log10(15))
+
+# PCA with just the humans and chimps
+
+pca_genes <- prcomp(t(avg_methylation_multiple_cpgs_per_gene[,1:32]), scale = F)
+scores <- pca_genes$x
+
+matrixpca <- pca_genes$x
+pc1 <- matrixpca[,1]
+pc2 <- matrixpca[,2]
+pc3 <- matrixpca[,3]
+pc4 <- matrixpca[,4]
+pc5 <- matrixpca[,5]
+
+pcs <- data.frame(pc1, pc2, pc3, pc4, pc5)
+
+tissue <- samples$Tissue[1:32]
+species <- samples$Species[1:32]
+
+ggplot(data=pcs, aes(x=pc1, y=pc2, color=tissue, shape=species, size=2)) + geom_point(aes(colour = as.factor(tissue)))
+
+```
+
+
