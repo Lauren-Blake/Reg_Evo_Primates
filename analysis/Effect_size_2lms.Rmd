@@ -1,0 +1,1265 @@
+---
+title: "Effect_size_differences"
+author: "Lauren Blake"
+date: "November 27, 2017"
+output: html_document
+---
+
+This is a script to evaluate the effect sizes of the 2 linear models. 
+
+## Load in data 
+
+
+```{r chunk-options, include=FALSE}
+source("chunk-options.R")
+```
+
+
+```{r}
+# import sample labels
+samples <- read.delim("../data/Sample_info_RNAseq_RIN.txt")
+# expression
+exprs <- read.table("../data/human_chimp_orth_exp_methyl_7725_hum.txt", sep="")
+# methylation data
+methyl <- read.csv("../data/chimp_human_orth_7725_avg_methyl_per_ts_gene.txt", sep="")
+
+# Normalized gene expression data
+cpm.voom.cyclic <- readRDS("../data/human_chimp_orth_cpm_voom_cyclic.rds")
+
+# Load libraries
+library("edgeR")
+library("limma")
+library("plyr")
+library("ashr")
+```
+
+## Function that will perform the interspecies analysis- DE genes
+```{r}
+
+effect_size_hc_species_DE <- function(two_species, FDR_level, FSR_level){
+## Determine DE genes (for tissue analysis)
+
+# Factors that will go in the lm
+chimp_human_heart <- two_species
+index_sample <- chimp_human_heart
+FDR_level <- FDR_level
+
+# Get variables
+species <- as.data.frame(samples[,2])
+tissue <- as.data.frame(samples[,3])
+RIN <- as.data.frame(samples[,4])
+
+# Sort tissue samples
+  tissue <- as.data.frame(samples[,2])
+  tissue <- tissue[chimp_human_heart,]
+  tissue_no_extra <- droplevels.factor(tissue)
+
+# Run the linear model in limma
+  design <- model.matrix(~ as.factor(tissue_no_extra) + RIN[chimp_human_heart,])
+  fit_all <- lmFit(cpm.voom.cyclic[,chimp_human_heart], design)
+  fit_all <- eBayes(fit_all)
+
+# Get results
+  HvC_Heart_fit_all = topTable(fit_all, coef=2, adjust="BH", number=Inf, sort.by="none")
+  HvC_Heart_fit_all_5perc <-
+HvC_Heart_fit_all[which(HvC_Heart_fit_all$adj.P.Val < FDR_level), ]
+
+# Find which DE genes have methylation values associated with it
+    human_chimp_heart <-  rownames(exprs) %in% HvC_Heart_fit_all_5perc$genes
+  human_chimp_heart <- as.data.frame(human_chimp_heart)
+  counts_genes_in <- cbind(exprs, human_chimp_heart)
+  counts_genes_in_cutoff <- subset(counts_genes_in, human_chimp_heart ==
+"TRUE")
+  counts_genes_in_cutoff <- counts_genes_in_cutoff[,1:79]
+  expression_values_only <- counts_genes_in_cutoff[,2:32]
+  methylation_values_only <- counts_genes_in_cutoff[,49:79]
+  dim(expression_values_only)
+  dim(methylation_values_only)
+  
+# Rename is that we can use Joyce's code
+exprs_subset <- expression_values_only
+methyl_subset <- methylation_values_only
+  
+# check agreement between methylation data and expression data
+all.equal(rownames(methyl_subset), rownames(exprs_subset))
+all.equal(colnames(methyl_subset), colnames(exprs_subset))
+
+# <---- sample data matching
+samples_sub <- samples[samples$Sample_ID %in% colnames(exprs_subset),]
+
+
+exprs_pair <- exprs_subset[,index_sample]
+methyl_pair <- methyl_subset[,index_sample]
+species <- droplevels.factor(samples$Species[index_sample])
+tissue <- droplevels.factor(samples$Tissue[index_sample])
+RIN <- samples$RIN[index_sample]
+
+
+# Extract parameters
+N <- ncol(exprs_pair)
+ngenes <- nrow(methyl_pair)
+# <---- Model 1: exprs ~ tissue
+# specify tissue coding
+design_1 <- model.matrix(~species + RIN)
+design_1[design_1[,2]==0,2] <- -1
+model_1 <- lmFit(exprs_pair, design_1)
+
+# <---- Model 3: exprs corrected for methylation ~ tissue
+# specify design matrix
+resid_exprs <- array(0, dim = dim(exprs_pair))
+for (index in 1:nrow(exprs_pair)){
+  resid_exprs[index,] <- lm(t(exprs_pair[index, ]) ~ t(methyl_pair[index, ]))$resid
+}
+rownames(resid_exprs) <- rownames(exprs_pair)
+model_3 <- lmFit(resid_exprs, design_1)  
+
+
+## Effect size differences
+
+# get effect sizes
+beta1 <- coef(model_1[,2])
+beta3 <- coef(model_3[,2])
+se_beta1 <- se_beta2 <- se_beta3 <- cov_beta13 <- vector("numeric", ngenes)
+# <---- get variances of beta1^S tissue effect
+se_beta1 <- model_1$sigma*sqrt((solve(t(design_1)%*%design_1))[2,2])
+head(cbind(se_beta1,model_1$sigma*sqrt(model_1$cov.coefficients[2,2])))
+# <---- get variances of beta2 methylation effect
+for (g in 1:length(se_beta2)) {
+  design_2g <- model.matrix(~ as.numeric(methyl_pair[g,]))  
+  sigma_g <- model_1$sigma[g]
+  se_beta2[index] <- sigma_g*sqrt((solve(t(design_2g)%*%design_2g))[2,2])
+}
+# <---- get variances of beta3 tissue effect
+A <- solve(t(design_1)%*%design_1)%*%t(design_1)
+contr.vector <- array(c(0,1), dim=c(2,1))
+# compute beta3 by hand
+for (g in 1:length(se_beta3)) {
+  M_g <- t(methyl_pair[g,])
+  design_2g <- model.matrix(~ as.numeric(M_g))  
+  A_2g <- solve(t(design_2g)%*%design_2g)%*%t(design_2g)
+  sigma_g <- model_1$sigma[g]
+  var_beta2g <- (se_beta2^2)[g]
+  var_part1 <- (se_beta1[g])^2
+  var_part2 <- ( A%*%M_g%*%var_beta2g%*%t(M_g)%*%t(A) )[2,2]
+  var_part3 <- ( 2*(sigma_g^2)*A%*%t(A_2g)%*%contr.vector%*%t(M_g)%*%t(A) )[2,2]
+  se_beta3[g] <- sqrt(var_part1 + var_part2 + var_part3)
+  }
+# cov(beta1,beta3)
+for (g in 1:length(cov_beta13)) {
+  M_g <- t(methyl_pair[g,])
+  design_2g <- model.matrix(~ as.numeric(M_g))  
+  A_2g <- solve(t(design_2g)%*%design_2g)%*%t(design_2g)
+  sigma_g <- model_1$sigma[g]
+  var_part1 <- (se_beta1[g])^2
+  cov_beta13[g] <- var_part1 - (sigma_g^2)*((A %*% t(A_2g) %*%contr.vector%*%t(M_g)%*%t(A))[2,2])
+}
+  
+# cov(beta1-beta3)
+cov_diff_sqrt <- sqrt(se_beta1^2 + se_beta3^2 - 2*cov_beta13)
+beta_diff <- beta1-beta3
+
+## Run adaptive shrinkage (with Matthew Stephens' package ashr)
+
+fit_ash <- ash(as.vector(beta_diff), cov_diff_sqrt, mode=0)
+names(fit_ash$result)
+
+# lfsr is the minimum of PositiveProb and NegativeProb
+# look at genes at various cut-off, say svalue < .01 etc. do they make sense?
+
+ind_sig <- (fit_ash$result$svalue < FSR_level)
+ind_sig[ind_sig == TRUE] <- "red"
+ind_sig[ind_sig == FALSE] <- "black"
+
+make_plot <- cbind(beta1-beta3, cov_diff_sqrt, ind_sig, fit_ash$result$lfdr)
+colnames(make_plot) <- c("Diff", "SE", "Sign", "LFDR")
+make_plot[,1] <- as.numeric(make_plot[,1])
+make_plot[,2] <- as.numeric(make_plot[,2])
+make_plot[,3] <- as.character(make_plot[,3])
+make_plot[,4] <- as.numeric(make_plot[,4])
+
+return(make_plot)
+}
+```
+
+## Function that will perform the interspecies analysis- non-DE genes
+```{r}
+
+effect_size_hc_species_non_DE <- function(two_species, FDR_level, FSR_level){
+## Determine DE genes (for tissue analysis)
+
+# Factors that will go in the lm
+chimp_human_heart <- two_species
+index_sample <- chimp_human_heart
+FDR_level <- FDR_level
+
+# Get variables
+species <- as.data.frame(samples[,2])
+tissue <- as.data.frame(samples[,3])
+RIN <- as.data.frame(samples[,4])
+
+# Sort tissue samples
+  tissue <- as.data.frame(samples[,2])
+  tissue <- tissue[chimp_human_heart,]
+  tissue_no_extra <- droplevels.factor(tissue)
+
+# Run the linear model in limma
+  design <- model.matrix(~ as.factor(tissue_no_extra) + RIN[chimp_human_heart,])
+  fit_all <- lmFit(cpm.voom.cyclic[,chimp_human_heart], design)
+  fit_all <- eBayes(fit_all)
+
+# Get results
+  HvC_Heart_fit_all = topTable(fit_all, coef=2, adjust="BH", number=Inf, sort.by="none")
+  HvC_Heart_fit_all_5perc <-
+HvC_Heart_fit_all[which(HvC_Heart_fit_all$adj.P.Val < FDR_level), ]
+
+# Find which DE genes have methylation values associated with it
+    human_chimp_heart <-  rownames(exprs) %in% HvC_Heart_fit_all_5perc$genes
+  human_chimp_heart <- as.data.frame(human_chimp_heart)
+  counts_genes_in <- cbind(exprs, human_chimp_heart)
+  counts_genes_in_cutoff <- subset(counts_genes_in, human_chimp_heart ==
+"FALSE")
+  counts_genes_in_cutoff <- counts_genes_in_cutoff[,1:79]
+  expression_values_only <- counts_genes_in_cutoff[,2:32]
+  methylation_values_only <- counts_genes_in_cutoff[,49:79]
+  dim(expression_values_only)
+  dim(methylation_values_only)
+  
+# Rename is that we can use Joyce's code
+exprs_subset <- expression_values_only
+methyl_subset <- methylation_values_only
+  
+# check agreement between methylation data and expression data
+all.equal(rownames(methyl_subset), rownames(exprs_subset))
+all.equal(colnames(methyl_subset), colnames(exprs_subset))
+
+# <---- sample data matching
+samples_sub <- samples[samples$Sample_ID %in% colnames(exprs_subset),]
+
+
+exprs_pair <- exprs_subset[,index_sample]
+methyl_pair <- methyl_subset[,index_sample]
+species <- droplevels.factor(samples$Species[index_sample])
+tissue <- droplevels.factor(samples$Tissue[index_sample])
+RIN <- samples$RIN[index_sample]
+
+
+# Extract parameters
+N <- ncol(exprs_pair)
+ngenes <- nrow(methyl_pair)
+# <---- Model 1: exprs ~ tissue
+# specify tissue coding
+design_1 <- model.matrix(~species + RIN)
+design_1[design_1[,2]==0,2] <- -1
+model_1 <- lmFit(exprs_pair, design_1)
+
+# <---- Model 3: exprs corrected for methylation ~ tissue
+# specify design matrix
+resid_exprs <- array(0, dim = dim(exprs_pair))
+for (index in 1:nrow(exprs_pair)){
+  resid_exprs[index,] <- lm(t(exprs_pair[index, ]) ~ t(methyl_pair[index, ]))$resid
+}
+rownames(resid_exprs) <- rownames(exprs_pair)
+model_3 <- lmFit(resid_exprs, design_1)  
+
+
+## Effect size differences
+
+# get effect sizes
+beta1 <- coef(model_1[,2])
+beta3 <- coef(model_3[,2])
+se_beta1 <- se_beta2 <- se_beta3 <- cov_beta13 <- vector("numeric", ngenes)
+# <---- get variances of beta1^S tissue effect
+se_beta1 <- model_1$sigma*sqrt((solve(t(design_1)%*%design_1))[2,2])
+head(cbind(se_beta1,model_1$sigma*sqrt(model_1$cov.coefficients[2,2])))
+# <---- get variances of beta2 methylation effect
+for (g in 1:length(se_beta2)) {
+  design_2g <- model.matrix(~ as.numeric(methyl_pair[g,]))  
+  sigma_g <- model_1$sigma[g]
+  se_beta2[index] <- sigma_g*sqrt((solve(t(design_2g)%*%design_2g))[2,2])
+}
+# <---- get variances of beta3 tissue effect
+A <- solve(t(design_1)%*%design_1)%*%t(design_1)
+contr.vector <- array(c(0,1), dim=c(2,1))
+# compute beta3 by hand
+for (g in 1:length(se_beta3)) {
+  M_g <- t(methyl_pair[g,])
+  design_2g <- model.matrix(~ as.numeric(M_g))  
+  A_2g <- solve(t(design_2g)%*%design_2g)%*%t(design_2g)
+  sigma_g <- model_1$sigma[g]
+  var_beta2g <- (se_beta2^2)[g]
+  var_part1 <- (se_beta1[g])^2
+  var_part2 <- ( A%*%M_g%*%var_beta2g%*%t(M_g)%*%t(A) )[2,2]
+  var_part3 <- ( 2*(sigma_g^2)*A%*%t(A_2g)%*%contr.vector%*%t(M_g)%*%t(A) )[2,2]
+  se_beta3[g] <- sqrt(var_part1 + var_part2 + var_part3)
+  }
+# cov(beta1,beta3)
+for (g in 1:length(cov_beta13)) {
+  M_g <- t(methyl_pair[g,])
+  design_2g <- model.matrix(~ as.numeric(M_g))  
+  A_2g <- solve(t(design_2g)%*%design_2g)%*%t(design_2g)
+  sigma_g <- model_1$sigma[g]
+  var_part1 <- (se_beta1[g])^2
+  cov_beta13[g] <- var_part1 - (sigma_g^2)*((A %*% t(A_2g) %*%contr.vector%*%t(M_g)%*%t(A))[2,2])
+}
+  
+# cov(beta1-beta3)
+cov_diff_sqrt <- sqrt(se_beta1^2 + se_beta3^2 - 2*cov_beta13)
+beta_diff <- beta1-beta3
+
+## Run adaptive shrinkage (with Matthew Stephens' package ashr)
+
+fit_ash <- ash(as.vector(beta_diff), cov_diff_sqrt, mode=0)
+names(fit_ash$result)
+
+# lfsr is the minimum of PositiveProb and NegativeProb
+# look at genes at various cut-off, say svalue < .01 etc. do they make sense?
+
+ind_sig <- (fit_ash$result$svalue < FSR_level)
+ind_sig[ind_sig == TRUE] <- "red"
+ind_sig[ind_sig == FALSE] <- "black"
+
+make_plot <- cbind(beta1-beta3, cov_diff_sqrt, ind_sig, fit_ash$result$lfdr)
+colnames(make_plot) <- c("Diff", "SE", "Sign", "LFDR")
+make_plot[,1] <- as.numeric(make_plot[,1])
+make_plot[,2] <- as.numeric(make_plot[,2])
+make_plot[,3] <- as.character(make_plot[,3])
+make_plot[,4] <- as.numeric(make_plot[,4])
+
+return(make_plot)
+}
+```
+
+### Results: Human heart versus chimp heart
+
+```{r}
+######### Human heart versus chimp heart ###############
+
+hc_heart_DE_make_plot <- effect_size_hc_species_DE(c(1, 5, 9, 13, 20, 24, 28), 0.05, 0.05)
+
+plot(x=hc_heart_DE_make_plot[,1], y=hc_heart_DE_make_plot[,2],
+     ylab = "Standard error of the difference",
+     xlab = "Difference in effect size from 2 lms", 
+     main = "Difference of effect size (DE genes in human versus chimp heart)",
+     pch=16, cex=.6, col = hc_heart_DE_make_plot[,3])
+legend("topleft", legend=c("s < 0.05", "s >= 0.05"), col=c("red", "black"), pch=16:16, cex=0.8)
+
+sum(hc_heart_DE_make_plot[,3] == "red")
+length(hc_heart_DE_make_plot[,3])
+
+hc_heart_non_DE_make_plot <- effect_size_hc_species_non_DE(c(1, 5, 9, 13, 20, 24, 28), 0.05, 0.05)
+
+plot(x=hc_heart_non_DE_make_plot[,1], y=hc_heart_non_DE_make_plot[,2],
+     ylab = "Standard error of the difference",
+     xlab = "Difference in effect size from 2 lms", 
+     main = "Difference of effect size (non DE genes in human versus chimp heart)",
+     pch=16, cex=.6, col = hc_heart_non_DE_make_plot[,3])
+legend("topright", legend=c("s < 0.05", "s >= 0.05"), col=c("red", "black"), pch=16:16, cex=0.8)
+
+sum(hc_heart_non_DE_make_plot[,3] == "red")
+length(hc_heart_non_DE_make_plot[,3])
+
+
+######### Human heart versus chimp heart ###############
+
+hc_heart_DE_make_plot <- effect_size_hc_species_DE(c(1, 5, 9, 13, 20, 24, 28), 0.05, 0.01)
+
+plot(x=hc_heart_DE_make_plot[,1], y=hc_heart_DE_make_plot[,2],
+     ylab = "Standard error of the difference",
+     xlab = "Difference in effect size from 2 lms", 
+     main = "Difference of effect size (DE genes in human versus chimp heart)",
+     pch=16, cex=.6, col = hc_heart_DE_make_plot[,3])
+legend("topleft", legend=c("s < 0.01", "s >= 0.01"), col=c("red", "black"), pch=16:16, cex=0.8)
+
+sum(hc_heart_DE_make_plot[,3] == "red")
+length(hc_heart_DE_make_plot[,3])
+
+hc_heart_non_DE_make_plot <- effect_size_hc_species_non_DE(c(1, 5, 9, 13, 20, 24, 28), 0.05, 0.01)
+
+plot(x=hc_heart_non_DE_make_plot[,1], y=hc_heart_non_DE_make_plot[,2],
+     ylab = "Standard error of the difference",
+     xlab = "Difference in effect size from 2 lms", 
+     main = "Difference of effect size (non DE genes in human versus chimp heart)",
+     pch=16, cex=.6, col = hc_heart_non_DE_make_plot[,3])
+legend("topright", legend=c("s < 0.01", "s >= 0.01"), col=c("red", "black"), pch=16:16, cex=0.8)
+
+sum(hc_heart_non_DE_make_plot[,3] == "red")
+length(hc_heart_non_DE_make_plot[,3])
+
+
+
+######### Human heart versus chimp heart ###############
+
+hc_heart_DE_make_plot <- effect_size_hc_species_DE(c(1, 5, 9, 13, 20, 24, 28), 0.1, 0.1)
+
+plot(x=hc_heart_DE_make_plot[,1], y=hc_heart_DE_make_plot[,2],
+     ylab = "Standard error of the difference",
+     xlab = "Difference in effect size from 2 lms", 
+     main = "Difference of effect size (DE genes in human versus chimp heart)",
+     pch=16, cex=.6, col = hc_heart_DE_make_plot[,3])
+legend("topleft", legend=c("s < 0.1", "s >= 0.1"), col=c("red", "black"), pch=16:16, cex=0.8)
+
+sum(hc_heart_DE_make_plot[,3] == "red")
+length(hc_heart_DE_make_plot[,3])
+
+hc_heart_non_DE_make_plot <- effect_size_hc_species_non_DE(c(1, 5, 9, 13, 20, 24, 28), 0.1, 0.1)
+
+plot(x=hc_heart_non_DE_make_plot[,1], y=hc_heart_non_DE_make_plot[,2],
+     ylab = "Standard error of the difference",
+     xlab = "Difference in effect size from 2 lms", 
+     main = "Difference of effect size (non DE genes in human versus chimp heart)",
+     pch=16, cex=.6, col = hc_heart_non_DE_make_plot[,3])
+legend("topright", legend=c("s < 0.1", "s >= 0.1"), col=c("red", "black"), pch=16:16, cex=0.8)
+
+sum(hc_heart_non_DE_make_plot[,3] == "red")
+length(hc_heart_non_DE_make_plot[,3])
+
+```
+
+### Results: Human kidney versus chimp kidney
+
+```{r}
+
+hc_heart_DE_make_plot <- effect_size_hc_species_DE(c(2, 6, 10, 14, 17, 21, 25, 29), 0.05, 0.05)
+
+plot(x=hc_heart_DE_make_plot[,1], y=hc_heart_DE_make_plot[,2],
+     ylab = "Standard error of the difference",
+     xlab = "Difference in effect size from 2 lms", 
+     main = "Difference of effect size (DE genes in human versus chimp kidney)",
+     pch=16, cex=.6, col = hc_heart_DE_make_plot[,3])
+legend("topleft", legend=c("s < 0.05", "s >= 0.05"), col=c("red", "black"), pch=16:16, cex=0.8)
+
+a <- sum(hc_heart_DE_make_plot[,3] == "red")
+a
+b <- length(hc_heart_DE_make_plot[,3])
+b
+
+hc_heart_non_DE_make_plot <- effect_size_hc_species_non_DE(c(2, 6, 10, 14, 17, 21, 25, 29), 0.05, 0.05)
+
+plot(x=hc_heart_non_DE_make_plot[,1], y=hc_heart_non_DE_make_plot[,2],
+     ylab = "Standard error of the difference",
+     xlab = "Difference in effect size from 2 lms", 
+     main = "Difference of effect size (non DE genes in human versus chimp kidney)",
+     pch=16, cex=.6, col = hc_heart_non_DE_make_plot[,3])
+legend("topright", legend=c("s < 0.05", "s >= 0.05"), col=c("red", "black"), pch=16:16, cex=0.8)
+
+c <- sum(hc_heart_non_DE_make_plot[,3] == "red")
+c
+d <- length(hc_heart_non_DE_make_plot[,3])
+d
+
+test <- matrix(c(a,b,c,d), ncol = 2, byrow = FALSE)
+prop.test(test, correct = TRUE)
+```
+
+
+### Results: Human liver versus chimp liver
+
+```{r}
+hc_heart_DE_make_plot <- effect_size_hc_species_DE(c(3, 7, 11, 15, 18, 22, 26, 30), 0.05, 0.05)
+
+plot(x=hc_heart_DE_make_plot[,1], y=hc_heart_DE_make_plot[,2],
+     ylab = "Standard error of the difference",
+     xlab = "Difference in effect size from 2 lms", 
+     main = "Difference of effect size (DE genes in human versus chimp liver)",
+     pch=16, cex=.6, col = hc_heart_DE_make_plot[,3])
+legend("topleft", legend=c("s < 0.05", "s >= 0.05"), col=c("red", "black"), pch=16:16, cex=0.8)
+
+sum(hc_heart_DE_make_plot[,3] == "red")
+length(hc_heart_DE_make_plot[,3])
+
+hc_heart_non_DE_make_plot <- effect_size_hc_species_non_DE(c(3, 7, 11, 15, 18, 22, 26, 30), 0.05, 0.05)
+
+plot(x=hc_heart_non_DE_make_plot[,1], y=hc_heart_non_DE_make_plot[,2],
+     ylab = "Standard error of the difference",
+     xlab = "Difference in effect size from 2 lms", 
+     main = "Difference of effect size (non DE genes in human versus chimp liver)",
+     pch=16, cex=.6, col = hc_heart_non_DE_make_plot[,3])
+legend("topright", legend=c("s < 0.05", "s >= 0.05"), col=c("red", "black"), pch=16:16, cex=0.8)
+
+sum(hc_heart_non_DE_make_plot[,3] == "red")
+length(hc_heart_non_DE_make_plot[,3])
+
+```
+
+### Results: Human lung versus chimp lung
+
+```{r}
+######### Human heart versus chimp heart ###############
+
+hc_heart_DE_make_plot <- effect_size_hc_species_DE(c(4, 8, 12, 16, 19, 23, 27, 31), 0.05, 0.05)
+
+plot(x=hc_heart_DE_make_plot[,1], y=hc_heart_DE_make_plot[,2],
+     ylab = "Standard error of the difference",
+     xlab = "Difference in effect size from 2 lms", 
+     main = "Difference of effect size (DE genes in human versus chimp lung)",
+     pch=16, cex=.6, col = hc_heart_DE_make_plot[,3])
+legend("topleft", legend=c("s < 0.05", "s >= 0.05"), col=c("red", "black"), pch=16:16, cex=0.8)
+
+sum(hc_heart_DE_make_plot[,3] == "red")
+length(hc_heart_DE_make_plot[,3])
+
+hc_heart_non_DE_make_plot <- effect_size_hc_species_non_DE(c(4, 8, 12, 16, 19, 23, 27, 31), 0.05, 0.05)
+
+plot(x=hc_heart_non_DE_make_plot[,1], y=hc_heart_non_DE_make_plot[,2],
+     ylab = "Standard error of the difference",
+     xlab = "Difference in effect size from 2 lms", 
+     main = "Difference of effect size (non DE genes in human versus chimp lung)",
+     pch=16, cex=.6, col = hc_heart_non_DE_make_plot[,3])
+legend("topright", legend=c("s < 0.05", "s >= 0.05"), col=c("red", "black"), pch=16:16, cex=0.8)
+
+sum(hc_heart_non_DE_make_plot[,3] == "red")
+length(hc_heart_non_DE_make_plot[,3])
+
+```
+
+
+
+## Function that will perform the intertissue analysis- DE genes
+```{r}
+
+effect_size_hc_tissue_DE <- function(two_tissues, FDR_level, FSR_level){
+## Determine DE genes (for tissue analysis)
+
+# Factors that will go in the lm
+chimp_human_heart <- two_tissues
+index_sample <- chimp_human_heart
+FDR_level <- FDR_level
+
+# Get variables
+species <- as.data.frame(samples[,2])
+tissue <- as.data.frame(samples[,3])
+RIN <- as.data.frame(samples[,4])
+
+# Sort tissue samples
+  tissue <- as.data.frame(samples[,3])
+  tissue <- tissue[chimp_human_heart,]
+  tissue_no_extra <- droplevels.factor(tissue)
+
+# Run the linear model in limma
+  design <- model.matrix(~ as.factor(tissue_no_extra) + RIN[chimp_human_heart,])
+  fit_all <- lmFit(cpm.voom.cyclic[,chimp_human_heart], design)
+  fit_all <- eBayes(fit_all)
+
+# Get results
+  HvC_Heart_fit_all = topTable(fit_all, coef=2, adjust="BH", number=Inf, sort.by="none")
+  HvC_Heart_fit_all_5perc <-
+HvC_Heart_fit_all[which(HvC_Heart_fit_all$adj.P.Val < FDR_level), ]
+
+# Find which DE genes have methylation values associated with it
+    human_chimp_heart <-  rownames(exprs) %in% HvC_Heart_fit_all_5perc$genes
+  human_chimp_heart <- as.data.frame(human_chimp_heart)
+  counts_genes_in <- cbind(exprs, human_chimp_heart)
+  counts_genes_in_cutoff <- subset(counts_genes_in, human_chimp_heart ==
+"TRUE")
+  counts_genes_in_cutoff <- counts_genes_in_cutoff[,1:79]
+  expression_values_only <- counts_genes_in_cutoff[,2:32]
+  methylation_values_only <- counts_genes_in_cutoff[,49:79]
+  dim(expression_values_only)
+  dim(methylation_values_only)
+  
+# Rename is that we can use Joyce's code
+exprs_subset <- expression_values_only
+methyl_subset <- methylation_values_only
+  
+# check agreement between methylation data and expression data
+all.equal(rownames(methyl_subset), rownames(exprs_subset))
+all.equal(colnames(methyl_subset), colnames(exprs_subset))
+
+# <---- sample data matching
+samples_sub <- samples[samples$Sample_ID %in% colnames(exprs_subset),]
+
+
+exprs_pair <- exprs_subset[,index_sample]
+methyl_pair <- methyl_subset[,index_sample]
+species <- droplevels.factor(samples$Species[index_sample])
+tissue <- droplevels.factor(samples$Tissue[index_sample])
+RIN <- samples$RIN[index_sample]
+
+
+# Extract parameters
+N <- ncol(exprs_pair)
+ngenes <- nrow(methyl_pair)
+# <---- Model 1: exprs ~ tissue
+# specify tissue coding
+design_1 <- model.matrix(~tissue + RIN)
+design_1[design_1[,2]==0,2] <- -1
+model_1 <- lmFit(exprs_pair, design_1)
+
+# <---- Model 3: exprs corrected for methylation ~ tissue
+# specify design matrix
+resid_exprs <- array(0, dim = dim(exprs_pair))
+for (index in 1:nrow(exprs_pair)){
+  resid_exprs[index,] <- lm(t(exprs_pair[index, ]) ~ t(methyl_pair[index, ]))$resid
+}
+rownames(resid_exprs) <- rownames(exprs_pair)
+model_3 <- lmFit(resid_exprs, design_1)  
+
+
+## Effect size differences
+
+# get effect sizes
+beta1 <- coef(model_1[,2])
+beta3 <- coef(model_3[,2])
+se_beta1 <- se_beta2 <- se_beta3 <- cov_beta13 <- vector("numeric", ngenes)
+# <---- get variances of beta1^S tissue effect
+se_beta1 <- model_1$sigma*sqrt((solve(t(design_1)%*%design_1))[2,2])
+head(cbind(se_beta1,model_1$sigma*sqrt(model_1$cov.coefficients[2,2])))
+# <---- get variances of beta2 methylation effect
+for (g in 1:length(se_beta2)) {
+  design_2g <- model.matrix(~ as.numeric(methyl_pair[g,]))  
+  sigma_g <- model_1$sigma[g]
+  se_beta2[index] <- sigma_g*sqrt((solve(t(design_2g)%*%design_2g))[2,2])
+}
+# <---- get variances of beta3 tissue effect
+A <- solve(t(design_1)%*%design_1)%*%t(design_1)
+contr.vector <- array(c(0,1), dim=c(2,1))
+# compute beta3 by hand
+for (g in 1:length(se_beta3)) {
+  M_g <- t(methyl_pair[g,])
+  design_2g <- model.matrix(~ as.numeric(M_g))  
+  A_2g <- solve(t(design_2g)%*%design_2g)%*%t(design_2g)
+  sigma_g <- model_1$sigma[g]
+  var_beta2g <- (se_beta2^2)[g]
+  var_part1 <- (se_beta1[g])^2
+  var_part2 <- ( A%*%M_g%*%var_beta2g%*%t(M_g)%*%t(A) )[2,2]
+  var_part3 <- ( 2*(sigma_g^2)*A%*%t(A_2g)%*%contr.vector%*%t(M_g)%*%t(A) )[2,2]
+  se_beta3[g] <- sqrt(var_part1 + var_part2 + var_part3)
+  }
+# cov(beta1,beta3)
+for (g in 1:length(cov_beta13)) {
+  M_g <- t(methyl_pair[g,])
+  design_2g <- model.matrix(~ as.numeric(M_g))  
+  A_2g <- solve(t(design_2g)%*%design_2g)%*%t(design_2g)
+  sigma_g <- model_1$sigma[g]
+  var_part1 <- (se_beta1[g])^2
+  cov_beta13[g] <- var_part1 - (sigma_g^2)*((A %*% t(A_2g) %*%contr.vector%*%t(M_g)%*%t(A))[2,2])
+}
+  
+# cov(beta1-beta3)
+cov_diff_sqrt <- sqrt(se_beta1^2 + se_beta3^2 - 2*cov_beta13)
+beta_diff <- beta1-beta3
+
+## Run adaptive shrinkage (with Matthew Stephens' package ashr)
+
+fit_ash <- ash(as.vector(beta_diff), cov_diff_sqrt, mode=0)
+names(fit_ash$result)
+
+# lfsr is the minimum of PositiveProb and NegativeProb
+# look at genes at various cut-off, say svalue < .01 etc. do they make sense?
+
+ind_sig <- (fit_ash$result$svalue < FSR_level)
+ind_sig[ind_sig == TRUE] <- "red"
+ind_sig[ind_sig == FALSE] <- "black"
+
+make_plot <- cbind(beta1-beta3, cov_diff_sqrt, ind_sig, fit_ash$result$lfdr)
+colnames(make_plot) <- c("Diff", "SE", "Sign", "LFDR")
+make_plot[,1] <- as.numeric(make_plot[,1])
+make_plot[,2] <- as.numeric(make_plot[,2])
+make_plot[,3] <- as.character(make_plot[,3])
+make_plot[,4] <- as.numeric(make_plot[,4])
+
+return(make_plot)
+}
+```
+
+## Function that will perform the intertissue analysis- non-DE genes
+```{r}
+
+effect_size_hc_tissue_non_DE <- function(two_tissues, FDR_level, FSR_level){
+## Determine DE genes (for tissue analysis)
+
+# Factors that will go in the lm
+chimp_human_heart <- two_tissues
+index_sample <- chimp_human_heart
+FDR_level <- FDR_level
+
+# Get variables
+species <- as.data.frame(samples[,2])
+tissue <- as.data.frame(samples[,3])
+RIN <- as.data.frame(samples[,4])
+
+# Sort tissue samples
+  tissue <- as.data.frame(samples[,3])
+  tissue <- tissue[chimp_human_heart,]
+  tissue_no_extra <- droplevels.factor(tissue)
+
+# Run the linear model in limma
+  design <- model.matrix(~ as.factor(tissue_no_extra) + RIN[chimp_human_heart,])
+  fit_all <- lmFit(cpm.voom.cyclic[,chimp_human_heart], design)
+  fit_all <- eBayes(fit_all)
+
+# Get results
+  HvC_Heart_fit_all = topTable(fit_all, coef=2, adjust="BH", number=Inf, sort.by="none")
+  HvC_Heart_fit_all_5perc <-
+HvC_Heart_fit_all[which(HvC_Heart_fit_all$adj.P.Val < FDR_level), ]
+
+# Find which DE genes have methylation values associated with it
+    human_chimp_heart <-  rownames(exprs) %in% HvC_Heart_fit_all_5perc$genes
+  human_chimp_heart <- as.data.frame(human_chimp_heart)
+  counts_genes_in <- cbind(exprs, human_chimp_heart)
+  counts_genes_in_cutoff <- subset(counts_genes_in, human_chimp_heart ==
+"FALSE")
+  counts_genes_in_cutoff <- counts_genes_in_cutoff[,1:79]
+  expression_values_only <- counts_genes_in_cutoff[,2:32]
+  methylation_values_only <- counts_genes_in_cutoff[,49:79]
+  dim(expression_values_only)
+  dim(methylation_values_only)
+  
+# Rename is that we can use Joyce's code
+exprs_subset <- expression_values_only
+methyl_subset <- methylation_values_only
+  
+# check agreement between methylation data and expression data
+all.equal(rownames(methyl_subset), rownames(exprs_subset))
+all.equal(colnames(methyl_subset), colnames(exprs_subset))
+
+# <---- sample data matching
+samples_sub <- samples[samples$Sample_ID %in% colnames(exprs_subset),]
+
+
+exprs_pair <- exprs_subset[,index_sample]
+methyl_pair <- methyl_subset[,index_sample]
+species <- droplevels.factor(samples$Species[index_sample])
+tissue <- droplevels.factor(samples$Tissue[index_sample])
+RIN <- samples$RIN[index_sample]
+
+
+# Extract parameters
+N <- ncol(exprs_pair)
+ngenes <- nrow(methyl_pair)
+# <---- Model 1: exprs ~ tissue
+# specify tissue coding
+design_1 <- model.matrix(~tissue + RIN)
+design_1[design_1[,2]==0,2] <- -1
+model_1 <- lmFit(exprs_pair, design_1)
+
+# <---- Model 3: exprs corrected for methylation ~ tissue
+# specify design matrix
+resid_exprs <- array(0, dim = dim(exprs_pair))
+for (index in 1:nrow(exprs_pair)){
+  resid_exprs[index,] <- lm(t(exprs_pair[index, ]) ~ t(methyl_pair[index, ]))$resid
+}
+rownames(resid_exprs) <- rownames(exprs_pair)
+model_3 <- lmFit(resid_exprs, design_1)  
+
+
+## Effect size differences
+
+# get effect sizes
+beta1 <- coef(model_1[,2])
+beta3 <- coef(model_3[,2])
+se_beta1 <- se_beta2 <- se_beta3 <- cov_beta13 <- vector("numeric", ngenes)
+# <---- get variances of beta1^S tissue effect
+se_beta1 <- model_1$sigma*sqrt((solve(t(design_1)%*%design_1))[2,2])
+head(cbind(se_beta1,model_1$sigma*sqrt(model_1$cov.coefficients[2,2])))
+# <---- get variances of beta2 methylation effect
+for (g in 1:length(se_beta2)) {
+  design_2g <- model.matrix(~ as.numeric(methyl_pair[g,]))  
+  sigma_g <- model_1$sigma[g]
+  se_beta2[index] <- sigma_g*sqrt((solve(t(design_2g)%*%design_2g))[2,2])
+}
+# <---- get variances of beta3 tissue effect
+A <- solve(t(design_1)%*%design_1)%*%t(design_1)
+contr.vector <- array(c(0,1), dim=c(2,1))
+# compute beta3 by hand
+for (g in 1:length(se_beta3)) {
+  M_g <- t(methyl_pair[g,])
+  design_2g <- model.matrix(~ as.numeric(M_g))  
+  A_2g <- solve(t(design_2g)%*%design_2g)%*%t(design_2g)
+  sigma_g <- model_1$sigma[g]
+  var_beta2g <- (se_beta2^2)[g]
+  var_part1 <- (se_beta1[g])^2
+  var_part2 <- ( A%*%M_g%*%var_beta2g%*%t(M_g)%*%t(A) )[2,2]
+  var_part3 <- ( 2*(sigma_g^2)*A%*%t(A_2g)%*%contr.vector%*%t(M_g)%*%t(A) )[2,2]
+  se_beta3[g] <- sqrt(var_part1 + var_part2 + var_part3)
+  }
+# cov(beta1,beta3)
+for (g in 1:length(cov_beta13)) {
+  M_g <- t(methyl_pair[g,])
+  design_2g <- model.matrix(~ as.numeric(M_g))  
+  A_2g <- solve(t(design_2g)%*%design_2g)%*%t(design_2g)
+  sigma_g <- model_1$sigma[g]
+  var_part1 <- (se_beta1[g])^2
+  cov_beta13[g] <- var_part1 - (sigma_g^2)*((A %*% t(A_2g) %*%contr.vector%*%t(M_g)%*%t(A))[2,2])
+}
+  
+# cov(beta1-beta3)
+cov_diff_sqrt <- sqrt(se_beta1^2 + se_beta3^2 - 2*cov_beta13)
+beta_diff <- beta1-beta3
+
+## Run adaptive shrinkage (with Matthew Stephens' package ashr)
+
+fit_ash <- ash(as.vector(beta_diff), cov_diff_sqrt, mode=0)
+names(fit_ash$result)
+
+# lfsr is the minimum of PositiveProb and NegativeProb
+# look at genes at various cut-off, say svalue < .01 etc. do they make sense?
+
+ind_sig <- (fit_ash$result$svalue < FSR_level)
+ind_sig[ind_sig == TRUE] <- "red"
+ind_sig[ind_sig == FALSE] <- "black"
+
+make_plot <- cbind(beta1-beta3, cov_diff_sqrt, ind_sig, fit_ash$result$lfdr)
+colnames(make_plot) <- c("Diff", "SE", "Sign", "LFDR")
+make_plot[,1] <- as.numeric(make_plot[,1])
+make_plot[,2] <- as.numeric(make_plot[,2])
+make_plot[,3] <- as.character(make_plot[,3])
+make_plot[,4] <- as.numeric(make_plot[,4])
+
+return(make_plot)
+}
+```
+
+### Results: human heart versus human kidney
+
+```{r}
+######### Human heart versus human kidney ###############
+
+hk_DE_make_plot <- effect_size_hc_tissue_DE(c(17, 20, 21, 24, 25, 28, 29), 0.05, 0.05)
+
+plot(x=hk_DE_make_plot[,1], y=hk_DE_make_plot[,2],
+     ylab = "Standard error of the difference",
+     xlab = "Difference in effect size from 2 lms", 
+     main = "Difference of effect size (DE genes in human heart vs human kidney)",
+     pch=16, cex=.6, col = hk_DE_make_plot[,3])
+legend("topleft", legend=c("s < 0.05", "s >= 0.05"), col=c("red", "black"), pch=16:16, cex=0.8)
+
+sum(hk_DE_make_plot[,3] == "red")
+length(hk_DE_make_plot[,3])
+
+hk_make_plot <- effect_size_hc_tissue_non_DE(c(17, 20, 21, 24, 25, 28, 29), 0.05, 0.05)
+
+plot(x=hk_make_plot[,1], y=hk_make_plot[,2],
+     ylab = "Standard error of the difference",
+     xlab = "Difference in effect size from 2 lms", 
+     main = "Difference of effect size (non-DE genes in human heart vs human kidney)",
+     pch=16, cex=.6, col = hk_make_plot[,3])
+legend("topleft", legend=c("s < 0.05", "s >= 0.05"), col=c("red", "black"), pch=16:16, cex=0.8)
+
+sum(hk_make_plot[,3] == "red")
+length(hk_make_plot[,3])
+
+######### Human heart versus human kidney ###############
+
+hk_DE_make_plot <- effect_size_hc_tissue_DE(c(17, 20, 21, 24, 25, 28, 29), 0.05, 0.01)
+
+plot(x=hk_DE_make_plot[,1], y=hk_DE_make_plot[,2],
+     ylab = "Standard error of the difference",
+     xlab = "Difference in effect size from 2 lms", 
+     main = "Difference of effect size (DE genes in human heart vs human kidney)",
+     pch=16, cex=.6, col = hk_DE_make_plot[,3])
+legend("topleft", legend=c("s < 0.01", "s >= 0.01"), col=c("red", "black"), pch=16:16, cex=0.8)
+
+sum(hk_DE_make_plot[,3] == "red")
+length(hk_DE_make_plot[,3])
+
+hk_make_plot <- effect_size_hc_tissue_non_DE(c(17, 20, 21, 24, 25, 28, 29), 0.05, 0.01)
+
+plot(x=hk_make_plot[,1], y=hk_make_plot[,2],
+     ylab = "Standard error of the difference",
+     xlab = "Difference in effect size from 2 lms", 
+     main = "Difference of effect size (non-DE genes in human heart vs human kidney)",
+     pch=16, cex=.6, col = hk_make_plot[,3])
+legend("topleft", legend=c("s < 0.01", "s >= 0.01"), col=c("red", "black"), pch=16:16, cex=0.8)
+
+sum(hk_make_plot[,3] == "red")
+length(hk_make_plot[,3])
+
+######### Human heart versus human kidney ###############
+
+hk_DE_make_plot <- effect_size_hc_tissue_DE(c(17, 20, 21, 24, 25, 28, 29), 0.1, 0.1)
+
+plot(x=hk_DE_make_plot[,1], y=hk_DE_make_plot[,2],
+     ylab = "Standard error of the difference",
+     xlab = "Difference in effect size from 2 lms", 
+     main = "Difference of effect size (DE genes in human heart vs human kidney)",
+     pch=16, cex=.6, col = hk_DE_make_plot[,3])
+legend("topleft", legend=c("s < 0.05", "s >= 0.05"), col=c("red", "black"), pch=16:16, cex=0.8)
+
+sum(hk_DE_make_plot[,3] == "red")
+length(hk_DE_make_plot[,3])
+
+hk_make_plot <- effect_size_hc_tissue_non_DE(c(17, 20, 21, 24, 25, 28, 29), 0.1, 0.1)
+
+plot(x=hk_make_plot[,1], y=hk_make_plot[,2],
+     ylab = "Standard error of the difference",
+     xlab = "Difference in effect size from 2 lms", 
+     main = "Difference of effect size (non-DE genes in human heart vs human kidney)",
+     pch=16, cex=.6, col = hk_make_plot[,3])
+legend("topleft", legend=c("s < 0.1", "s >= 0.1"), col=c("red", "black"), pch=16:16, cex=0.8)
+
+sum(hk_make_plot[,3] == "red")
+length(hk_make_plot[,3])
+
+```
+
+### Results: chimp heart versus chimp kidney
+
+```{r}
+######### Chimp heart versus human chimp kidney ###############
+
+hk_DE_make_plot <- effect_size_hc_tissue_DE(c(1, 2, 5, 6, 9, 10, 13, 14), 0.05, 0.05)
+
+plot(x=hk_DE_make_plot[,1], y=hk_DE_make_plot[,2],
+     ylab = "Standard error of the difference",
+     xlab = "Difference in effect size from 2 lms", 
+     main = "Difference of effect size (DE genes in chimp heart vs chimp kidney)",
+     pch=16, cex=.6, col = hk_DE_make_plot[,3])
+legend("topleft", legend=c("s < 0.05", "s >= 0.05"), col=c("red", "black"), pch=16:16, cex=0.8)
+
+sum(hk_DE_make_plot[,3] == "red")
+length(hk_DE_make_plot[,3])
+
+hk_make_plot <- effect_size_hc_tissue_non_DE(c(1, 2, 5, 6, 9, 10, 13, 14), 0.05, 0.05)
+
+plot(x=hk_make_plot[,1], y=hk_make_plot[,2],
+     ylab = "Standard error of the difference",
+     xlab = "Difference in effect size from 2 lms", 
+     main = "Difference of effect size (non-DE genes in chimp heart vs chimp kidney)",
+     pch=16, cex=.6, col = hk_make_plot[,3])
+legend("topleft", legend=c("s < 0.05", "s >= 0.05"), col=c("red", "black"), pch=16:16, cex=0.8)
+
+sum(hk_make_plot[,3] == "red")
+length(hk_make_plot[,3])
+
+######### Chimp heart versus human chimp kidney ###############
+
+hk_DE_make_plot <- effect_size_hc_tissue_DE(c(1, 2, 5, 6, 9, 10, 13, 14), 0.05, 0.01)
+
+plot(x=hk_DE_make_plot[,1], y=hk_DE_make_plot[,2],
+     ylab = "Standard error of the difference",
+     xlab = "Difference in effect size from 2 lms", 
+     main = "Difference of effect size (DE genes in chimp heart vs chimp kidney)",
+     pch=16, cex=.6, col = hk_DE_make_plot[,3])
+legend("topleft", legend=c("s < 0.01", "s >= 0.01"), col=c("red", "black"), pch=16:16, cex=0.8)
+
+sum(hk_DE_make_plot[,3] == "red")
+length(hk_DE_make_plot[,3])
+
+hk_make_plot <- effect_size_hc_tissue_non_DE(c(1, 2, 5, 6, 9, 10, 13, 14), 0.05, 0.01)
+
+plot(x=hk_make_plot[,1], y=hk_make_plot[,2],
+     ylab = "Standard error of the difference",
+     xlab = "Difference in effect size from 2 lms", 
+     main = "Difference of effect size (non-DE genes in chimp heart vs chimp kidney)",
+     pch=16, cex=.6, col = hk_make_plot[,3])
+legend("topleft", legend=c("s < 0.01", "s >= 0.01"), col=c("red", "black"), pch=16:16, cex=0.8)
+
+sum(hk_make_plot[,3] == "red")
+length(hk_make_plot[,3])
+
+######### Chimp heart versus human chimp kidney ###############
+
+hk_DE_make_plot <- effect_size_hc_tissue_DE(c(1, 2, 5, 6, 9, 10, 13, 14), 0.1, 0.1)
+
+plot(x=hk_DE_make_plot[,1], y=hk_DE_make_plot[,2],
+     ylab = "Standard error of the difference",
+     xlab = "Difference in effect size from 2 lms", 
+     main = "Difference of effect size (DE genes in chimp heart vs chimp kidney)",
+     pch=16, cex=.6, col = hk_DE_make_plot[,3])
+legend("topleft", legend=c("s < 0.1", "s >= 0.1"), col=c("red", "black"), pch=16:16, cex=0.8)
+
+sum(hk_DE_make_plot[,3] == "red")
+length(hk_DE_make_plot[,3])
+
+hk_make_plot <- effect_size_hc_tissue_non_DE(c(1, 2, 5, 6, 9, 10, 13, 14), 0.1, 0.1)
+
+plot(x=hk_make_plot[,1], y=hk_make_plot[,2],
+     ylab = "Standard error of the difference",
+     xlab = "Difference in effect size from 2 lms", 
+     main = "Difference of effect size (non-DE genes in chimp heart vs chimp kidney)",
+     pch=16, cex=.6, col = hk_make_plot[,3])
+legend("topleft", legend=c("s < 0.1", "s >= 0.1"), col=c("red", "black"), pch=16:16, cex=0.8)
+
+sum(hk_make_plot[,3] == "red")
+length(hk_make_plot[,3])
+
+```
+
+### Human heart kidney versus human kidney
+
+```{r}
+hk_DE_make_plot <- effect_size_hc_tissue_DE(c(18, 20, 22, 24, 26, 28, 30), 0.05, 0.05)
+
+plot(x=hk_DE_make_plot[,1], y=hk_DE_make_plot[,2],
+     ylab = "Standard error of the difference",
+     xlab = "Difference in effect size from 2 lms", 
+     main = "Difference of effect size (DE genes in human heart vs human liver)",
+     pch=16, cex=.6, col = hk_DE_make_plot[,3])
+legend("topleft", legend=c("s < 0.05", "s >= 0.05"), col=c("red", "black"), pch=16:16, cex=0.8)
+
+a <- sum(hk_DE_make_plot[,3] == "red")
+a
+b <- length(hk_DE_make_plot[,3])
+b
+
+hk_make_plot <- effect_size_hc_tissue_non_DE(c(18, 20, 22, 24, 26, 28, 30), 0.05, 0.05)
+
+plot(x=hk_make_plot[,1], y=hk_make_plot[,2],
+     ylab = "Standard error of the difference",
+     xlab = "Difference in effect size from 2 lms", 
+     main = "Difference of effect size (non-DE genes in human heart vs human liver)",
+     pch=16, cex=.6, col = hk_make_plot[,3])
+legend("topleft", legend=c("s < 0.05", "s >= 0.05"), col=c("red", "black"), pch=16:16, cex=0.8)
+
+c <- sum(hk_make_plot[,3] == "red")
+c
+d <- length(hk_make_plot[,3])
+d
+```
+
+### Chimp heart versus chimp liver
+
+```{r}
+hk_DE_make_plot <- effect_size_hc_tissue_DE(c(1, 3, 5, 7, 9, 11, 13, 15), 0.05, 0.05)
+
+plot(x=hk_DE_make_plot[,1], y=hk_DE_make_plot[,2],
+     ylab = "Standard error of the difference",
+     xlab = "Difference in effect size from 2 lms", 
+     main = "Difference of effect size (DE genes in chimp heart vs chimp liver)",
+     pch=16, cex=.6, col = hk_DE_make_plot[,3])
+legend("topleft", legend=c("s < 0.05", "s >= 0.05"), col=c("red", "black"), pch=16:16, cex=0.8)
+
+sum(hk_DE_make_plot[,3] == "red")
+length(hk_DE_make_plot[,3])
+
+hk_make_plot <- effect_size_hc_tissue_non_DE(c(1, 3, 5, 7, 9, 11, 13, 15), 0.05, 0.05)
+
+plot(x=hk_make_plot[,1], y=hk_make_plot[,2],
+     ylab = "Standard error of the difference",
+     xlab = "Difference in effect size from 2 lms", 
+     main = "Difference of effect size (non-DE genes in chimp heart vs chimp liver)",
+     pch=16, cex=.6, col = hk_make_plot[,3])
+legend("topleft", legend=c("s < 0.05", "s >= 0.05"), col=c("red", "black"), pch=16:16, cex=0.8)
+
+sum(hk_make_plot[,3] == "red")
+length(hk_make_plot[,3])
+```
+
+
+### Human heart versus human lung
+
+```{r}
+hk_DE_make_plot <- effect_size_hc_tissue_DE(c(19, 20, 23, 24, 27, 28, 31), 0.05, 0.05)
+
+plot(x=hk_DE_make_plot[,1], y=hk_DE_make_plot[,2],
+     ylab = "Standard error of the difference",
+     xlab = "Difference in effect size from 2 lms", 
+     main = "Difference of effect size (DE genes in human heart vs human lung)",
+     pch=16, cex=.6, col = hk_DE_make_plot[,3])
+legend("topleft", legend=c("s < 0.05", "s >= 0.05"), col=c("red", "black"), pch=16:16, cex=0.8)
+
+sum(hk_DE_make_plot[,3] == "red")
+length(hk_DE_make_plot[,3])
+
+hk_make_plot <- effect_size_hc_tissue_non_DE(c(19, 20, 23, 24, 27, 28, 31), 0.05, 0.05)
+
+plot(x=hk_make_plot[,1], y=hk_make_plot[,2],
+     ylab = "Standard error of the difference",
+     xlab = "Difference in effect size from 2 lms", 
+     main = "Difference of effect size (non-DE genes in human heart vs human lung)",
+     pch=16, cex=.6, col = hk_make_plot[,3])
+legend("topleft", legend=c("s < 0.05", "s >= 0.05"), col=c("red", "black"), pch=16:16, cex=0.8)
+
+sum(hk_make_plot[,3] == "red")
+length(hk_make_plot[,3])
+```
+
+### Chimp heart versus chimp lung
+
+```{r}
+hk_DE_make_plot <- effect_size_hc_tissue_DE(c(1, 4, 5, 8, 9, 12, 13, 16), 0.05, 0.05)
+
+plot(x=hk_DE_make_plot[,1], y=hk_DE_make_plot[,2],
+     ylab = "Standard error of the difference",
+     xlab = "Difference in effect size from 2 lms", 
+     main = "Difference of effect size (DE genes in chimp heart vs chimp lung)",
+     pch=16, cex=.6, col = hk_DE_make_plot[,3])
+legend("topleft", legend=c("s < 0.05", "s >= 0.05"), col=c("red", "black"), pch=16:16, cex=0.8)
+
+sum(hk_DE_make_plot[,3] == "red")
+length(hk_DE_make_plot[,3])
+
+hk_make_plot <- effect_size_hc_tissue_non_DE(c(1, 4, 5, 8, 9, 12, 13, 16), 0.05, 0.05)
+
+plot(x=hk_make_plot[,1], y=hk_make_plot[,2],
+     ylab = "Standard error of the difference",
+     xlab = "Difference in effect size from 2 lms", 
+     main = "Difference of effect size (non-DE genes in chimp heart vs chimp lung)",
+     pch=16, cex=.6, col = hk_make_plot[,3])
+legend("topleft", legend=c("s < 0.05", "s >= 0.05"), col=c("red", "black"), pch=16:16, cex=0.8)
+
+sum(hk_make_plot[,3] == "red")
+length(hk_make_plot[,3])
+```
+
+
+### Human kidney versus human liver
+
+```{r}
+hk_DE_make_plot <- effect_size_hc_tissue_DE(c(17, 18, 21, 22, 25, 26, 29, 30), 0.05, 0.05)
+
+plot(x=hk_DE_make_plot[,1], y=hk_DE_make_plot[,2],
+     ylab = "Standard error of the difference",
+     xlab = "Difference in effect size from 2 lms", 
+     main = "Difference of effect size (DE genes in human kidney vs human liver)",
+     pch=16, cex=.6, col = hk_DE_make_plot[,3])
+legend("topleft", legend=c("s < 0.05", "s >= 0.05"), col=c("red", "black"), pch=16:16, cex=0.8)
+
+sum(hk_DE_make_plot[,3] == "red")
+length(hk_DE_make_plot[,3])
+
+hk_make_plot <- effect_size_hc_tissue_non_DE(c(17, 18, 21, 22, 25, 26, 29, 30), 0.05, 0.05)
+
+plot(x=hk_make_plot[,1], y=hk_make_plot[,2],
+     ylab = "Standard error of the difference",
+     xlab = "Difference in effect size from 2 lms", 
+     main = "Difference of effect size (non-DE genes in human kidney vs human liver)",
+     pch=16, cex=.6, col = hk_make_plot[,3])
+legend("topleft", legend=c("s < 0.05", "s >= 0.05"), col=c("red", "black"), pch=16:16, cex=0.8)
+
+sum(hk_make_plot[,3] == "red")
+length(hk_make_plot[,3])
+```
+
+### Chimp kidney versus chimp liver
+
+```{r}
+hk_DE_make_plot <- effect_size_hc_tissue_DE(c(2, 3, 6, 7, 10, 11, 14, 15), 0.05, 0.05)
+
+plot(x=hk_DE_make_plot[,1], y=hk_DE_make_plot[,2],
+     ylab = "Standard error of the difference",
+     xlab = "Difference in effect size from 2 lms", 
+     main = "Difference of effect size (DE genes in chimp kidney vs chimp liver)",
+     pch=16, cex=.6, col = hk_DE_make_plot[,3])
+legend("topleft", legend=c("s < 0.05", "s >= 0.05"), col=c("red", "black"), pch=16:16, cex=0.8)
+
+sum(hk_DE_make_plot[,3] == "red")
+length(hk_DE_make_plot[,3])
+
+hk_make_plot <- effect_size_hc_tissue_non_DE(c(2, 3, 6, 7, 10, 11, 14, 15), 0.05, 0.05)
+
+plot(x=hk_make_plot[,1], y=hk_make_plot[,2],
+     ylab = "Standard error of the difference",
+     xlab = "Difference in effect size from 2 lms", 
+     main = "Difference of effect size (non-DE genes in chimp kidney vs chimp liver)",
+     pch=16, cex=.6, col = hk_make_plot[,3])
+legend("topleft", legend=c("s < 0.05", "s >= 0.05"), col=c("red", "black"), pch=16:16, cex=0.8)
+
+sum(hk_make_plot[,3] == "red")
+length(hk_make_plot[,3])
+```
+
+
+### Human kidney versus human lung
+
+```{r}
+hk_DE_make_plot <- effect_size_hc_tissue_DE(c(17, 19, 21, 23, 25, 27, 29, 31), 0.05, 0.05)
+
+plot(x=hk_DE_make_plot[,1], y=hk_DE_make_plot[,2],
+     ylab = "Standard error of the difference",
+     xlab = "Difference in effect size from 2 lms", 
+     main = "Difference of effect size (DE genes in human kidney vs human lung)",
+     pch=16, cex=.6, col = hk_DE_make_plot[,3])
+legend("topleft", legend=c("s < 0.05", "s >= 0.05"), col=c("red", "black"), pch=16:16, cex=0.8)
+
+sum(hk_DE_make_plot[,3] == "red")
+length(hk_DE_make_plot[,3])
+
+hk_make_plot <- effect_size_hc_tissue_non_DE(c(17, 19, 21, 23, 25, 27, 29, 31), 0.05, 0.05)
+
+plot(x=hk_make_plot[,1], y=hk_make_plot[,2],
+     ylab = "Standard error of the difference",
+     xlab = "Difference in effect size from 2 lms", 
+     main = "Difference of effect size (non-DE genes in human kidney vs human lung",
+     pch=16, cex=.6, col = hk_make_plot[,3])
+legend("topleft", legend=c("s < 0.05", "s >= 0.05"), col=c("red", "black"), pch=16:16, cex=0.8)
+
+sum(hk_make_plot[,3] == "red")
+length(hk_make_plot[,3])
+```
+
+### Chimp kidney versus chimp lung
+
+```{r}
+hk_DE_make_plot <- effect_size_hc_tissue_DE(c(2, 4, 6, 8, 10, 12, 14, 16), 0.05, 0.05)
+
+plot(x=hk_DE_make_plot[,1], y=hk_DE_make_plot[,2],
+     ylab = "Standard error of the difference",
+     xlab = "Difference in effect size from 2 lms", 
+     main = "Difference of effect size (DE genes in chimp kidney vs chimp lung)",
+     pch=16, cex=.6, col = hk_DE_make_plot[,3])
+legend("topleft", legend=c("s < 0.05", "s >= 0.05"), col=c("red", "black"), pch=16:16, cex=0.8)
+
+sum(hk_DE_make_plot[,3] == "red")
+length(hk_DE_make_plot[,3])
+
+hk_make_plot <- effect_size_hc_tissue_non_DE(c(2, 4, 6, 8, 10, 12, 14, 16), 0.05, 0.05)
+
+plot(x=hk_make_plot[,1], y=hk_make_plot[,2],
+     ylab = "Standard error of the difference",
+     xlab = "Difference in effect size from 2 lms", 
+     main = "Difference of effect size (non-DE genes in chimp kidney vs chimp lung)",
+     pch=16, cex=.6, col = hk_make_plot[,3])
+legend("topleft", legend=c("s < 0.05", "s >= 0.05"), col=c("red", "black"), pch=16:16, cex=0.8)
+
+sum(hk_make_plot[,3] == "red")
+length(hk_make_plot[,3])
+```
+
+
+### Human liver versus human lung
+
+```{r}
+hk_DE_make_plot <- effect_size_hc_tissue_DE(c(18, 19, 22, 23, 26, 27, 30, 31), 0.05, 0.05)
+
+plot(x=hk_DE_make_plot[,1], y=hk_DE_make_plot[,2],
+     ylab = "Standard error of the difference",
+     xlab = "Difference in effect size from 2 lms", 
+     main = "Difference of effect size (DE genes in human liver vs human lung)",
+     pch=16, cex=.6, col = hk_DE_make_plot[,3])
+legend("topleft", legend=c("s < 0.05", "s >= 0.05"), col=c("red", "black"), pch=16:16, cex=0.8)
+
+sum(hk_DE_make_plot[,3] == "red")
+length(hk_DE_make_plot[,3])
+
+hk_make_plot <- effect_size_hc_tissue_non_DE(c(18, 19, 22, 23, 26, 27, 30, 31), 0.05, 0.05)
+
+plot(x=hk_make_plot[,1], y=hk_make_plot[,2],
+     ylab = "Standard error of the difference",
+     xlab = "Difference in effect size from 2 lms", 
+     main = "Difference of effect size (non-DE genes in human liver vs human lung",
+     pch=16, cex=.6, col = hk_make_plot[,3])
+legend("topleft", legend=c("s < 0.05", "s >= 0.05"), col=c("red", "black"), pch=16:16, cex=0.8)
+
+sum(hk_make_plot[,3] == "red")
+length(hk_make_plot[,3])
+```
+
+### Chimp liver versus chimp lung
+
+```{r}
+hk_DE_make_plot <- effect_size_hc_tissue_DE(c(3, 4, 7, 8, 11, 12, 15, 16), 0.05, 0.05)
+
+plot(x=hk_DE_make_plot[,1], y=hk_DE_make_plot[,2],
+     ylab = "Standard error of the difference",
+     xlab = "Difference in effect size from 2 lms", 
+     main = "Difference of effect size (DE genes in chimp liver vs chimp lung)",
+     pch=16, cex=.6, col = hk_DE_make_plot[,3])
+legend("topleft", legend=c("s < 0.05", "s >= 0.05"), col=c("red", "black"), pch=16:16, cex=0.8)
+
+sum(hk_DE_make_plot[,3] == "red")
+length(hk_DE_make_plot[,3])
+
+hk_make_plot <- effect_size_hc_tissue_non_DE(c(3, 4, 7, 8, 11, 12, 15, 16), 0.05, 0.05)
+
+plot(x=hk_make_plot[,1], y=hk_make_plot[,2],
+     ylab = "Standard error of the difference",
+     xlab = "Difference in effect size from 2 lms", 
+     main = "Difference of effect size (non-DE genes in chimp liver vs chimp lung)",
+     pch=16, cex=.6, col = hk_make_plot[,3])
+legend("topleft", legend=c("s < 0.05", "s >= 0.05"), col=c("red", "black"), pch=16:16, cex=0.8)
+
+sum(hk_make_plot[,3] == "red")
+length(hk_make_plot[,3])
+```

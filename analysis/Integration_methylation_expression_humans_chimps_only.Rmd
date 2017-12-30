@@ -7,6 +7,11 @@ output: html_document
 
 In this script, we will perform a joint analysis of methylation and gene expression levels in humans and chimpanzees only. We chose only these two species because the number of genes that we had methylation values for around the promoter was quite low when we required orthology between humans, chimps, and rhesus. 
 
+```{r chunk-options, include=FALSE}
+source("chunk-options.R")
+```
+
+
 # Load data
 
 
@@ -59,7 +64,7 @@ colnames(RIN) <- c("RIN")
 #new_sample_info[,3] <- as.character(new_sample_info[,3])
 #new_sample_info[,4] <- as.character(new_sample_info[,4])
 
-write.table(new_sample_info, "../data/human_chimp_orth_new_sample_info.txt", quote = F)
+#write.table(new_sample_info, "../data/human_chimp_orth_new_sample_info.txt", quote = F)
 
 
 ## Make the contrast matrix and rename columns of the contrast matrix
@@ -97,17 +102,6 @@ fit1 <- eBayes(fit1)
 
 HvC_full_model <- topTable(fit1, coef=2, adjust="BH", number=Inf, sort.by="none")
 summary(HvC_full_model$logFC)
-
-summary(HvC_full_model$logFC - HvC_Heart_fit_all$logFC)
-
-plot(HvC_full_model$logFC, HvC_Heart_fit_all$logFC, xlab = "Full model- human and chimp hearts", ylab = "Model with human and chimp hearts only", main = "Beta for difference between chimp hearts and human hearts")
-abline(a = 0, b = 1, col = "red")
-
-plot(HvC_full_model$t, HvC_Heart_fit_all$t, xlab = "Full model- human and chimp hearts", ylab = "Model with human and chimp hearts only", main = "T for the beta")
-abline(a = 0, b = 1, col = "red")
-
-plot(HvC_full_model$adj.P.Val, HvC_Heart_fit_all$adj.P.Val, xlab = "Full model- human and chimp hearts", ylab = "Model with human and chimp hearts only", main = "BH-adj P value for the beta")
-abline(a = 0, b = 1, col = "red")
 
 # Get the expression values for the genes that we have average methylation data
 
@@ -181,6 +175,18 @@ summary(HvC_Heart_fit_all$adj.P.Val < .01)
 summary(HvC_Heart_fit_all$adj.P.Val < .05)
 summary(HvC_Heart_fit_all$adj.P.Val < .1)
 
+summary(HvC_full_model$logFC - HvC_Heart_fit_all$logFC)
+
+plot(HvC_full_model$logFC, HvC_Heart_fit_all$logFC, xlab = "Full model- human and chimp hearts", ylab = "Model with human and chimp hearts only", main = "Beta for difference between chimp hearts and human hearts")
+abline(a = 0, b = 1, col = "red")
+
+plot(HvC_full_model$t, HvC_Heart_fit_all$t, xlab = "Full model- human and chimp hearts", ylab = "Model with human and chimp hearts only", main = "T for the beta")
+abline(a = 0, b = 1, col = "red")
+
+plot(HvC_full_model$adj.P.Val, HvC_Heart_fit_all$adj.P.Val, xlab = "Full model- human and chimp hearts", ylab = "Model with human and chimp hearts only", main = "BH-adj P value for the beta")
+abline(a = 0, b = 1, col = "red")
+
+
 # Genes DE at FDR 5% and we have methyl data for it
 
 HvC_Heart_fit_all_5perc <- HvC_Heart_fit_all[which(HvC_Heart_fit_all$adj.P.Val < 0.05), ]
@@ -201,8 +207,8 @@ methylation_values_only <- counts_genes_in_cutoff[,49:79]
 resid_methyl <- array(0, dim = c(nrow(expression_values_only), 7)) 
 
 # Regress out RIN on a gene-by-gene basis
-expression_values <- as.data.frame(expression_values)
-methylation_values <- as.data.frame(methylation_values)
+expression_values <- as.data.frame(expression_values_only)
+methylation_values <- as.data.frame(methylation_values_only)
 
 
 for (i in 1:nrow(expression_values_only)){
@@ -244,11 +250,12 @@ DE_after <- HvC_Heart_fits12[which(HvC_Heart_fits12$fit1_FDR > FDR_level &  HvC_
 nrow(DE_after)
 
 
-### Permute the methylation values, then re-run
+### Permute the methylation values, then re-run (normally would permute 1000 times, but in this example, we will only permute 10 times)
 
 run1000 <- array(0, dim = c(3, 1000)) 
-
-for (k in 1:1000){
+# for (k in 1:1000){
+  
+for (k in 1:10){
 
 # Run 1 for all genes
 run1 <- array(0, dim = c(nrow(expression_values_only), 7)) 
@@ -297,19 +304,11 @@ new_numbers <- rbind(DE_total_report, DE_before_report, DE_after_report)
 run1000[,k] <- new_numbers
 }
 
-median(run1000[1,1:1000])
-median(run1000[2,1:1000])
-median(run1000[3,1:1000])
+median(run1000[1,1:10])
+median(run1000[2,1:10])
+median(run1000[3,1:10])
 
 
 ```
 
-
-
-```{r}
-# Separate expression and methylation
-
-expression_values_only <- exp_methyl[,2:32]
-methylation_values_only <- exp_methyl[,49:79]
-```
 

@@ -1,0 +1,108 @@
+y <- c(100,300,500,530,560,570,590,1000,1200,1300,2000)
+y2 <- c(y[1],y[-length(y)])
+distance <- y-y2
+
+# annotate regions
+region_index <- which(distance > 300)
+region_array <- data.frame(starting=c(1,region_index),
+                           ending=c(region_index-1,length(y)))
+
+# take out region with less than 3 CpGs
+region_array_subset <- region_array[with(region_array, which((ending-starting+1)>2)), ] 
+
+region_list <- vector("list",nrow(region_array_subset))
+
+# Pull the average methylation for each region
+for (index in 1:length(region_list)) {
+  region_tmp <- unlist(region_array_subset[index,])
+  region_tmp2 <- c(region_tmp[1]:region_tmp[2])
+  region_list[[index]] <- mean(y[region_tmp2])
+}
+
+
+
+# for (index3 in 1:length(region_list)) {
+#   region_index <- distance[]
+#   for (index in seq_along(region_index)) {
+#     region_dist <- distance[1:(region_index[index]-1)]
+#     
+#     for (index2 in seq_along(re/Users/laurenblakegion_dist)) {
+#       dd <- distance[index2]  
+#       if (dd < 300) {
+#         region_list[[index3]] <- c(region,index2)
+#       } 
+#     }
+#   }
+# }
+
+
+
+# Read the orth CpG file
+methyl_means_array <- array("NA", dim = c(263784, 48))
+orth_cpg <- read.table("/mnt/gluster/home/leblake/Methylation/dfCovnoXposMeth.txt")
+dfCovnoX <- read.table("/mnt/gluster/home/leblake/Methylation/liftOVer/dfCovnoX_hg19.bed")
+y <- c(dfCovnoX[,2])
+y2 <- c(y[1],y[-length(y)])
+distance <- y-y2
+
+
+
+# annotate regions
+region_index <- which(distance > 300)
+region_array <- data.frame(starting=c(1,region_index),
+                           ending=c(region_index-1,length(y)))
+
+# take out region with less than 3 CpGs
+region_array_subset <- region_array[with(region_array, which((ending-starting+1)>2)), ] 
+
+#write.table(region_array_subset, file = "./region_array_subset")
+
+
+# Read the orth CpG file
+orth_cpg <- read.table("/mnt/gluster/home/leblake/Methylation/dfCovnoXposMeth.txt")
+
+
+# Make an array for the methylated regions (MR)
+methyl_means_array <- array("NA", dim = c(263784, 48))
+colnames(methyl_means_array) <- colnames(orth_cpg[,2:49])
+
+
+for (i in 1:263784){
+#print(i)
+
+# Get rows for a given MR from the orthologous jpg file
+ 
+grab_row <- orth_cpg[region_array_subset[i,1]+1:region_array_subset[i,2]+1,]
+
+# Trim only to columns we want (the first column contains a row number not a methylation value)
+
+grab_row_trim <- grab_row[,-1]
+
+# Get col means
+
+get_row_means <- colMeans(grab_row_trim)
+
+# Put row means into an array
+
+methyl_means_array[i,] <- get_row_means
+}
+
+head(methyl_means_array)
+write.table(methyl_means_array, file = "/mnt/gluster/home/leblake/Methylation/region_methyl_means_array_batch", quote = FALSE)
+
+
+for (i in 1:
+
+   Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+  2.000   2.000   3.000   6.295   6.000 288.000 
+
+263784
+
+
+methyl_reg <- read.table(“./region_array_subset”)
+dim(methyl_reg)
+methyl_last2 <- methyl_reg[200000:235001,]
+write.table(methyl_last2, “./region_array_subset_last2”)
+
+methyl_last3 <- methyl_reg[235000:263784,]
+

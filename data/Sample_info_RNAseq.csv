@@ -1,1 +1,49 @@
-Sample ID,Individual,Species,TissueC1H,chimp 4x0519,chimpanzee,heartC1K,chimp 4x0519,chimpanzee,kidneyC1Li,chimp 4x0519,chimpanzee,liverC1Lu,chimp 4x0519,chimpanzee,lungC2H,chimp YN07-387,chimpanzee,heartC2K,chimp YN07-387,chimpanzee,kidneyC2Li,chimp YN07-387,chimpanzee,liverC2Lu,chimp YN07-387,chimpanzee,lungC3H,chimp 4x0516,chimpanzee,heartC3K,chimp 4x0516,chimpanzee,kidneyC3Li,chimp 4x0516,chimpanzee,liverC3Lu,chimp 4x0516,chimpanzee,lungC4H,chimp c0563-YN07-147,chimpanzee,heartC4K,chimp c0563-YN07-147,chimpanzee,kidneyC4Li,chimp c0563-YN07-147,chimpanzee,liverC4Lu,chimp c0563-YN07-147,chimpanzee,lungH1H,hum  60705,human,heartH1K,hum  60705,human,kidneyH1Li,hum  60705,human,liverH1Lu,hum  60705,human,lungH2H,hum 61317,human,heartH2K,hum 61317,human,kidneyH2Li,hum 61317,human,liverH2Lu,hum 61317,human,lungH3H,hum 62789,human,heartH3K,hum 62789,human,kidneyH3Li,hum 62789,human,liverH3Lu,hum 62789,human,lungH4H,hum 62905,human,heartH4K,hum 62905,human,kidneyH4Li,hum 62905,human,liverH4Lu,hum 62905,human,lungR1H,rhe YN07-314,rhesus macaque,heartR1K,rhe YN07-314,rhesus macaque,kidneyR1Li,rhe YN07-314,rhesus macaque,liverR1Lu,rhe YN07-314,rhesus macaque,lungR2H,rhe YN07-330,rhesus macaque,heartR2K,rhe YN07-330,rhesus macaque,kidneyR2Li,rhe YN07-330,rhesus macaque,liverR2Lu,rhe YN07-330,rhesus macaque,lungR3H,rhe YN07-315,rhesus macaque,heartR3K,rhe YN07-315,rhesus macaque,kidneyR3Li,rhe YN07-315,rhesus macaque,liverR3Lu,rhe YN07-315,rhesus macaque,lungR4H,rhe YN07-317,rhesus macaque,heartR4K,rhe YN07-317,rhesus macaque,kidneyR4Li,rhe YN07-317,rhesus macaque,liverR4Lu,rhe YN07-317,rhesus macaque,lung
+Sample ID,Individual,Species,Tissue,RIN score
+C1H,chimp 4x0519,chimpanzee,heart,8.3
+C1K,chimp 4x0519,chimpanzee,kidney,7
+C1Li,chimp 4x0519,chimpanzee,liver,7.4
+C1Lu,chimp 4x0519,chimpanzee,lung,6
+C2H,chimp YN07-387,chimpanzee,heart,7.5
+C2K,chimp YN07-387,chimpanzee,kidney,7.2
+C2Li,chimp YN07-387,chimpanzee,liver,8
+C2Lu,chimp YN07-387,chimpanzee,lung,8.3
+C3H,chimp 4x0516,chimpanzee,heart,7.7
+C3K,chimp 4x0516,chimpanzee,kidney,8.5
+C3Li,chimp 4x0516,chimpanzee,liver,7.6
+C3Lu,chimp 4x0516,chimpanzee,lung,6.2
+C4H,chimp c0563-YN07-147,chimpanzee,heart,7.8
+C4K,chimp c0563-YN07-147,chimpanzee,kidney,7.3
+C4Li,chimp c0563-YN07-147,chimpanzee,liver,7
+C4Lu,chimp c0563-YN07-147,chimpanzee,lung,8
+H1H,hum  60705,human,heart,7.6
+H1K,hum  60705,human,kidney,7.1
+H1Li,hum  60705,human,liver,7.9
+H1Lu,hum  60705,human,lung,7.3
+H2H,hum 61317,human,heart,6.7
+H2K,hum 61317,human,kidney,5.7
+H2Li,hum 61317,human,liver,6.7
+H2Lu,hum 61317,human,lung,8
+H3H,hum 62789,human,heart,6.4
+H3K,hum 62789,human,kidney,6
+H3Li,hum 62789,human,liver,5.1
+H3Lu,hum 62789,human,lung,8.8
+H4H,hum 62905,human,heart,8.6
+H4K,hum 62905,human,kidney,7.5
+H4Li,hum 62905,human,liver,6
+H4Lu,hum 62905,human,lung,7.8
+R1H,rhe YN07-314,rhesus macaque,heart,8.5
+R1K,rhe YN07-314,rhesus macaque,kidney,9
+R1Li,rhe YN07-314,rhesus macaque,liver,9
+R1Lu,rhe YN07-314,rhesus macaque,lung,9.1
+R2H,rhe YN07-330,rhesus macaque,heart,9
+R2K,rhe YN07-330,rhesus macaque,kidney,8.3
+R2Li,rhe YN07-330,rhesus macaque,liver,9.1
+R2Lu,rhe YN07-330,rhesus macaque,lung,8.9
+R3H,rhe YN07-315,rhesus macaque,heart,8.9
+R3K,rhe YN07-315,rhesus macaque,kidney,9.2
+R3Li,rhe YN07-315,rhesus macaque,liver,8.9
+R3Lu,rhe YN07-315,rhesus macaque,lung,9.5
+R4H,rhe YN07-317,rhesus macaque,heart,8.7
+R4K,rhe YN07-317,rhesus macaque,kidney,8.7
+R4Li,rhe YN07-317,rhesus macaque,liver,8.9
+R4Lu,rhe YN07-317,rhesus macaque,lung,9.1

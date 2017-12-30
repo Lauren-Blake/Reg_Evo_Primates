@@ -12,7 +12,14 @@ To examine whether changes in gene expression levels between humans and chimpanz
 Expression microarray probe effects only
 Expression microarray probe effects and CpG-specific methylation levels
 
-# Load data
+This script shows that, for a given pair (e.g. human versus chimpanzee liver) we should use the genes DE between human and chimpanzee liver only rather than all genes. The method using only DE genes is what Pai et al. used, but it was not entirely clear in the main paper.   
+
+```{r chunk-options, include=FALSE}
+source("chunk-options.R")
+```
+
+
+# Load and normalize data
 
 ```{r}
 # Load library
@@ -25,7 +32,7 @@ library("plyr")
 
 # Load average methylation data
 
-methyl_values <- read.csv("~/Desktop/Reg_Evo_Primates/data/3965_avg_methyl_per_ts_gene.txt", sep="", stringsAsFactors=FALSE)
+methyl_values <- read.csv("../data/3965_avg_methyl_per_ts_gene.txt", sep="", stringsAsFactors=FALSE)
 
 # For now, take out samples with combined regions
 one_gene_rows <- !grepl(",", methyl_values$X)
@@ -39,11 +46,11 @@ methyl_values_for_exp <- methyl_values_for_exp[,1:49]
 
 ENSG_GENE_HG19 <- read.csv("../data/ENSG_GENE_HG19.csv", stringsAsFactors=FALSE, header = T)
 
-methyl_values_for_exp_no_H1H_ENSG <- merge(methyl_values_for_exp_no_H1H, ENSG_GENE_HG19, by.x = "X", by.y = "Gene")
-
 # Note: we eliminated H1H in the expression data, so we are going to do this with the methylation data for this analysis
 
 methyl_values_for_exp_no_H1H <- methyl_values_for_exp[,-17]
+
+methyl_values_for_exp_no_H1H_ENSG <- merge(methyl_values_for_exp_no_H1H, ENSG_GENE_HG19, by.x = "X", by.y = "Gene")
 
 # Load sample data
 
@@ -93,11 +100,11 @@ hist(cpm_in_cutoff, xlab = "Log2(CPM)", main = "Log2(CPM) values for genes meeti
 cpm.voom.cyclic <- voom(dge_in_cutoff, design, normalize.method="cyclicloess", plot=T)
 
 #corfit <- duplicateCorrelation(cpm.voom.cyclic, design, block=samples$Individual)
-corfit$consensus <- 0.2197275
+corfit.consensus <- 0.2197275
 
 # Final voom on filtered data
 
-cpm.voom.cyclic <- voom(dge_in_cutoff, design, normalize.method="cyclicloess", plot=TRUE, block=samples$Individual, correlation=corfit$consensus)
+cpm.voom.cyclic <- voom(dge_in_cutoff, design, normalize.method="cyclicloess", plot=TRUE, block=samples$Individual, correlation=corfit.consensus)
 
 # Get the expression values for the genes that we have average methylation data
 
@@ -124,7 +131,9 @@ expression_values_only <- exp_methyl[,2:48]
 methylation_values_only <- exp_methyl[,50:96]
 ```
 
-# Write the linear models for scenarios 1 and 2
+# Run H-C liver using all genes (not just the DE genes)
+
+## Write the linear models for scenarios 1 and 2
 
 Scenario 1: don't need to regress out anything
 
@@ -134,9 +143,11 @@ Scenario 2: going to regress out methylation
 
 residuals = species + RIN 
 
-# Obtain corrected data (regression for scenario 2)
+## Obtain corrected data (regression for scenario 2)
 
 ```{r}
+human_chimp_liver_samples <- c(3, 7, 11, 15, 18, 22, 26, 30)
+
 # Make an array to hold the residuals
 
 resid_methyl <- array(0, dim = c(3776, 8)) 
@@ -154,7 +165,7 @@ rownames(resid_methyl) <- rownames(expression_values_only)
 
 ```
 
-# Run the linear model using the corrected data (start with H v C Liver example)
+## Run the linear model using the corrected data (start with H v C Liver example)
 
 Note: when you use the LRT, you can only do pairwise comparisons so compare 2 species (without the 3rd) or group species HC v R or H v RC
 
@@ -205,7 +216,7 @@ HvCLiver_DE_fits12 <- merge(human_chimp_liver_de_limma, HvCLiver_fits12, by = "g
 
 # Set FDR level
 
-FDR_level <- 0.2
+FDR_level <- 0.05
 
 DE_total <- HvCLiver_DE_fits12[which(HvCLiver_DE_fits12$adj.P.Val < FDR_level),]
 nrow(DE_total)
@@ -277,18 +288,17 @@ HvCLiver_perm = topTable(fit2, coef=2, adjust="BH", number=Inf, sort.by="none")
 
 
 
-### RUN FOR HUMAN-CHIMP LIVER ###
+# START WITH ONLY H-C LIVER DE GENES
 
-# Obtain corrected data (regression for scenarios 1 and 2)
+## Obtain corrected data (regression for scenarios 1 and 2)
 
 ```{r}
 # Select FDR level
 
-FDR_level <- 0.1
+FDR_level <- 0.05
 
 # Select data- DE at given FDR for human versus chimp liver
 
-human_chimp_liver <- HvC_Liver
 human_chimp_liver_DE <- human_chimp_liver[which(human_chimp_liver$adj.P.Val < FDR_level), ]
 dim(human_chimp_liver_DE)
 
@@ -344,7 +354,7 @@ rownames(resid_methyl) <- rownames(expression_values_only)
 
 ```
 
-# Run the linear model using the corrected data (start with H v C Liver example)
+## Run the linear model using the corrected data (start with H v C Liver example)
 
 Note: when you use the LRT, you can only do pairwise comparisons so compare 2 species (without the 3rd) or group species HC v R or H v RC
 
@@ -435,8 +445,11 @@ summary(HvCLiver_fits12$fit2_FDR)
 ```{r}
 run1000 <- array(0, dim = c(3, 1000)) 
 
-for (k in 1:1000){
+# Normally, we would permute 1000 times; in this example, we will permute 10 times
+# for (k in 1:1000){
 
+for (k in 1:10){
+  
 # Run 1 for all genes
 run1 <- array(0, dim = c(nrow(expression_values_only), 8)) 
 
@@ -485,156 +498,19 @@ new_numbers <- rbind(DE_total_report, DE_before_report, DE_after_report)
 run1000[,k] <- new_numbers
 }
 
-median(run1000[1,1:750])
-median(run1000[2,1:750])
-median(run1000[3,1:750])
-
-# 115, 48, 0
-# 151, 12, 0
-```
-
-
-
-
-
-
-
-
-
-
-
-### START WITH ONLY H-C LIVER DE GENES
-
-# Obtain corrected data (regression for scenarios 1 and 2)
-
-```{r}
-# Get the values only for the human and chimp liver
-
-human_rhesus_liver_samples <- c(18, 22, 26, 30, 34, 38, 42, 46)
-species_no_rhesus <- species[human_rhesus_liver_samples]
-species_no_rhesus <- droplevels.factor(species_no_rhesus, "Chimp")
-
-# Make the design matrix
-design <- model.matrix(~ 0 + as.factor(species_no_rhesus) + RIN[human_rhesus_liver_samples,])
-
-
-# Make an array to hold the residuals
-
-resid_methyl <- array(0, dim = c(3776, 8)) 
-
-# Regress out RIN on a gene-by-gene basis
-expression_values_only <- as.data.frame(expression_values_only)
-methylation_values_only <- as.data.frame(methylation_values_only)
-
-
-for (i in 1:3776){
-    resid_methyl[i,] <- lm(t(expression_values_only[i,human_rhesus_liver_samples]) ~ t(methylation_values_only[i,human_rhesus_liver_samples]))$resid
-}
-
-rownames(resid_methyl) <- rownames(expression_values_only)
+median(run1000[1,1:10])
+median(run1000[2,1:10])
+median(run1000[3,1:10])
 
 ```
 
-# Run the linear model using the corrected data (start with H v C Liver example)
-
-Note: when you use the LRT, you can only do pairwise comparisons so compare 2 species (without the 3rd) or group species HC v R or H v RC
-
-```{r}
-
-# Scenario 1
-
-fit1 <- lmFit(expression_values_only[,human_rhesus_liver_samples], design)
-fit1 <- eBayes(fit1)
-HvCLiver_fit1 = topTable(fit1, coef=2, adjust="BH", number=Inf, sort.by="none")
-
-# Scenario 2
-
-fit2 <- lmFit(resid_methyl, design)
-fit2 <- eBayes(fit2)
-HvCLiver_fit2 = topTable(fit2, coef=2, adjust="BH", number=Inf, sort.by="none")
-
-# Bind the DE initially, DE from fit1 and DE from fit2 together
-
-HvCLiver_fits12 <- as.data.frame(cbind(rownames(HvCLiver_fit1), HvCLiver_fit1$adj.P.Val, HvCLiver_fit2$adj.P.Val), stringsAsFactors = FALSE)
-HvCLiver_fits12[,2] <- as.numeric(HvCLiver_fits12[,2])
-HvCLiver_fits12[,3] <- as.numeric(HvCLiver_fits12[,3])
-colnames(HvCLiver_fits12) <- c("genes", "fit1_FDR", "fit2_FDR")
-
-HvCLiver_DE_fits12 <- merge(human_chimp_liver_de_limma, HvCLiver_fits12, by = "genes")
-
-# Set FDR level
-
-FDR_level <- 0.2
-
-DE_total <- HvCLiver_DE_fits12[which(HvCLiver_DE_fits12$fit1_FDR < FDR_level &  HvCLiver_DE_fits12$fit2_FDR < FDR_level),]
-nrow(DE_total)
-
-DE_before <- HvCLiver_DE_fits12[which(HvCLiver_DE_fits12$fit1_FDR < FDR_level &  HvCLiver_DE_fits12$fit2_FDR > FDR_level),]
-nrow(DE_before)
-
-DE_after <- HvCLiver_DE_fits12[which(HvCLiver_DE_fits12$fit1_FDR > FDR_level &  HvCLiver_DE_fits12$fit2_FDR < FDR_level),]
-nrow(DE_after)
-
-summary(HvCLiver_DE_fits12$fit2_FDR)
-```
-
-### Permute the methylation values, then re-run
-
-```{r}
-run1000 <- array(0, dim = c(3, 1000)) 
-
-for (k in 1:2){
-
-# Run 1 for all genes
-run1 <- array(0, dim = c(3776, 8)) 
-
-for (i in 1:3776){
-  df <- as.data.frame(methylation_values_only[i,human_rhesus_liver_samples])
-  new_df <- as.data.frame(sample(df))
-  run1[i,] <- t(new_df)
-}
 
 
 
-# Make an array to hold the residuals
-
-resid_methyl_perm <- array(0, dim = c(3776, 8)) 
-
-# Regress out RIN on a gene-by-gene basis
-expression_values_only <- as.data.frame(expression_values_only)
-methylation_values_only <- as.data.frame(methylation_values_only)
 
 
-for (i in 1:3776){
-    resid_methyl_perm[i,] <- lm(t(expression_values_only[i,human_rhesus_liver_samples]) ~ run1[i,])$resid
-}
-
-rownames(resid_methyl_perm) <- rownames(expression_values_only)
 
 
-# Scenario 2
 
-fit2 <- lmFit(resid_methyl_perm, design)
-fit2 <- eBayes(fit2)
-HvCLiver_perm = topTable(fit2, coef=2, adjust="BH", number=Inf, sort.by="none")
-
-summary(HvCLiver_perm$adj.P.Val)
-
-HvCLiver_DE_perm <- cbind(HvCLiver_DE_fits12$fit1_FDR, HvCLiver_perm$adj.P.Val)
-
-DE_total <- as.data.frame(HvCLiver_DE_perm[which(HvCLiver_DE_perm[,1] < FDR_level & HvCLiver_DE_perm[,2]  < FDR_level),])
-DE_total_report <- nrow(DE_total)
-
-DE_before <- as.data.frame(HvCLiver_DE_perm[which(HvCLiver_DE_perm[,1]  < FDR_level &  HvCLiver_DE_perm[,2]  > FDR_level),])
-DE_before_report <- nrow(DE_before)
-
-DE_after <- as.data.frame(HvCLiver_DE_perm[which(HvCLiver_DE_perm[,1] > FDR_level &  HvCLiver_DE_perm[,2] < FDR_level),])
-DE_after_report <- nrow(DE_after)
-
-new_numbers <- rbind(DE_total_report, DE_before_report, DE_after_report)
-
-run1000[,k] <- new_numbers
-}
-```
 
 

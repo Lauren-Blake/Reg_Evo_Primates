@@ -131,6 +131,8 @@ fit2 <- eBayes(fit2)
 HvC_Heart_fit2 = topTable(fit2, coef=2, adjust="BH", number=Inf, sort.by="none")
 summary(HvC_Heart_fit2$adj.P.Val < FDR_level)
 
+plot(HvC_Heart_fit1$logFC, HvC_Heart_fit2$logFC, xlab = "Effect size from lm 1", ylab = "Effect size from lm 2 (corrected gene exp. data)", main = "Effect sizes for genes in human heart-kidney")
+
 # Bind DE from fit1 and DE from fit2 together
 
 HvC_Heart_fits12 <- as.data.frame(cbind(rownames(HvC_Heart_fit1), fit1$coefficients[,2], HvC_Heart_fit1$adj.P.Val, fit2$coefficients[,2], HvC_Heart_fit2$adj.P.Val), stringsAsFactors = FALSE)

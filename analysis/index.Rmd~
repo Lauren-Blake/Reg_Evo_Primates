@@ -39,12 +39,27 @@ title: "Home"
 ### Univariate analysis on gene expression
 
 * [Test for differentially expressed genes](../analysis/Test_DE_genes.html) 
+* [Test for DE genes with ASH](../analysis/DE_RIN_Plus_ASH.html)
+* [Test for significant interactions](../analysis/DE_RIN_Interactiosn_Plus_ASH.html) 
 * [Expression Visualization](../analysis/Expression_Methylation_visualization.html)
 
 ## Methylation Data
 
+*  [Human-chimpanzee orthologous promoters](../analysis/Hg19_PanTro3_TSS.html)
 *  Clustering after testing for technical variables 
 *  tissue DMRs
+
+## Differentiatlly methylated regions
+
+## Integration of gene expression levels and methylatiom levels: humans and chimpanzees
+
+* [Inter-species and inter-tissue example with FSR](../analysis/All_cpgs_for_orth_genes.html)
+
+## Effect size estimation
+
+* [Effect size of DE and non-DE genes: humans and chimpanzees](../analysis/Effect_size_2lms.html)
+
+* [Effect size of DE and non-DE genes: humans and rhesus](../analysis/Effect_size_2lms_human_rhesus.html)
 
 ## Notes
 

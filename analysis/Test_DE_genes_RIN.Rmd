@@ -94,11 +94,11 @@ hist(cpm_in_cutoff, xlab = "Log2(CPM)", main = "Log2(CPM) values for genes meeti
 cpm.voom.cyclic <- voom(dge_in_cutoff, design, normalize.method="cyclicloess", plot=T)
 
 #corfit <- duplicateCorrelation(cpm.voom.cyclic, design, block=samples$Individual)
-corfit$consensus <- 0.221922
+corfit.consensus <- 0.221922
 
 # Final voom on filtered data
 
-cpm.voom.cyclic <- voom(dge_in_cutoff, design, normalize.method="cyclicloess", plot=TRUE, block=samples$Individual, correlation=corfit$consensus)
+cpm.voom.cyclic <- voom(dge_in_cutoff, design, normalize.method="cyclicloess", plot=TRUE, block=samples$Individual, correlation=corfit.consensus)
 
 ```
 

@@ -7,6 +7,11 @@ output: html_document
 
 Currently, our orthologous CpG file is all in hg19 liftOver coordinates. We need to convert these to panTro3 and rheMac2.
 
+```{r chunk-options, include=FALSE}
+source("chunk-options.R")
+```
+
+
 ## Load and format the hg19 coordinates
 ```{r}
 # Get libraries
@@ -52,7 +57,7 @@ chr <- as.data.frame(check2[1,], stringsAsFactors = FALSE)
 coor_num <- as.numeric(unlist(coor))
 coor_num_plus_one <- coor_num + 1
 coor_num_plus_one <- as.character(coor_num_plus_one)
-end <- as.data.frame(coor_num_minus_one, stringsAsFactors = FALSE)
+end <- as.data.frame(coor_num_plus_one, stringsAsFactors = FALSE)
 
 
 bed_pos <- cbind(chr, coor_num, end, stringsAsFactors = FALSE)
@@ -60,7 +65,7 @@ bed_pos <- cbind(chr, coor_num, end, stringsAsFactors = FALSE)
 
 # Make hg19 file in bed format
 
-write.table(bed_pos,file="../data/dfCovnoX_hg19.bed",sep="\t", col.names = F, row.names = F, quote = F)
+#write.table(bed_pos,file="../data/dfCovnoX_hg19.bed",sep="\t", col.names = F, row.names = F, quote = F)
 
 
 #options(scipen = 999)
@@ -111,7 +116,7 @@ refGene_hg19_TSS <- rbind(refGene_hg19_TSS_pos, refGene_hg19_TSS_neg)
 
 # Make TSS hg19 file in bed format
 
-write.table(refGene_hg19_TSS,file="../data/refGene_hg19_TSS_proper.bed",sep="\t", col.names = F, row.names = F, quote = F)
+#write.table(refGene_hg19_TSS,file="../data/refGene_hg19_TSS_proper.bed",sep="\t", col.names = F, row.names = F, quote = F)
 
 ```
 
@@ -148,7 +153,7 @@ dim(genes_in_RNAseq_and_TSS)
 
 # Make TSS hg19 file in bed format
 
-write.table(genes_in_RNAseq_and_TSS,file="../data/refGene_hg19_TSS_11131.bed",sep="\t", col.names = F, row.names = F, quote = F)
+#write.table(genes_in_RNAseq_and_TSS,file="../data/refGene_hg19_TSS_11131.bed",sep="\t", col.names = F, row.names = F, quote = F)
 
 ```
 
@@ -731,7 +736,7 @@ dim(select_genes_2500_no_X)
 
 # Make select_genes_2500_no_X a file
 
-write.table(select_genes_2500_no_X,file="../data/select_genes_2500_no_X.txt",sep="\t", col.names = F, row.names = F, quote = F)
+#write.table(select_genes_2500_no_X,file="../data/select_genes_2500_no_X.txt",sep="\t", col.names = F, row.names = F, quote = F)
 
 select_genes_2500_no_X <- read.delim("../data/select_genes_2500_no_X.txt", header = FALSE)
 
@@ -783,9 +788,9 @@ summary(match_strand)
 5583/(5583 + 1666)
 
 # Save the files
-write.table(make_bed_human_7251, file="../data/refGene_hg19_TSS_7249.bed",sep="\t", col.names = F, row.names = F, quote = F)
-write.table(make_bed_chimp_7251,file="../data/refGene_PanTro3_TSS_7249.bed",sep="\t", col.names = F, row.names = F, quote = F)
-write.table(make_bed_rhesus_7251,file="../data/refGene_RheMac2_TSS_7249.bed",sep="\t", col.names = F, row.names = F, quote = F)
+#write.table(make_bed_human_7251, file="../data/refGene_hg19_TSS_7249.bed",sep="\t", col.names = F, row.names = F, quote = F)
+#write.table(make_bed_chimp_7251,file="../data/refGene_PanTro3_TSS_7249.bed",sep="\t", col.names = F, row.names = F, quote = F)
+#write.table(make_bed_rhesus_7251,file="../data/refGene_RheMac2_TSS_7249.bed",sep="\t", col.names = F, row.names = F, quote = F)
 
 
 ```
@@ -875,9 +880,9 @@ methyl_20000_promoters <- read.csv("~/Desktop/Tissue paper w Julien/methyl_20000
 
 cpg_with_genes <- merge(a.int, methyl_20000_promoters, by.x = 'gene_chr_cpg', by.y = 'X')
 
-write.table(cpg_with_genes, file="../data/genes_methyl_orth_cpgs_within_20000_250.txt",sep="\t", col.names = F, row.names = F, quote = F)
+#write.table(cpg_with_genes, file="../data/genes_methyl_orth_cpgs_within_20000_250.txt",sep="\t", col.names = F, row.names = F, quote = F)
 
-gene_20000_freq_table <- count(cpg_with_genes, c('gene'))
+gene_20000_freq_table <- plyr::count(cpg_with_genes, c('gene'))
 count_gene_20000_freq_table <- plyr::arrange(gene_20000_freq_table, gene_20000_freq_table[,2])
 hist(gene_20000_freq_table[,2], breaks = 100)
 ```
@@ -904,14 +909,14 @@ methylation_multiple_cpgs_per_gene <- counts_genes_in_cutoff[,1:57]
 ```{r}
 # Average over all orthologous CpGs
 
-avg_methylation_multiple_cpgs_per_gene <- array(data = NA, dim = c(5255,48))
+avg_methylation_multiple_cpgs_per_gene <- array(data = NA, dim = c(5250,48))
 
 for (i in 10:57){
 avg_methylation_multiple_cpgs_per_gene[,i-9] <- aggregate(methylation_multiple_cpgs_per_gene[,i] ~ methylation_multiple_cpgs_per_gene$gene, data = methylation_multiple_cpgs_per_gene, mean)[,2]
 }
 
 colnames(avg_methylation_multiple_cpgs_per_gene) <- colnames(methylation_multiple_cpgs_per_gene[,10:57])
-rownames(avg_methylation_multiple_cpgs_per_gene) <-  aggregate(methylation_multiple_cpgs_per_gene[,10] ~ methylation_multiple_cpgs_per_gene$gene, data = methylation_multiple_cpgs_per_gene, mean)[,1])
+rownames(avg_methylation_multiple_cpgs_per_gene) <-  aggregate(methylation_multiple_cpgs_per_gene[,10] ~ methylation_multiple_cpgs_per_gene$gene, data = methylation_multiple_cpgs_per_gene, mean)[,1]
 
 call_chimp_heart <- c("C1H", "C2H", "C3H", "C4H")
 call_human_heart <- c("H1H", "H2H", "H3H", "H4H")
@@ -945,6 +950,7 @@ pcs <- data.frame(pc1, pc2, pc3, pc4, pc5)
 
 library("ggplot2")
 library("RColorBrewer")
+library("gplots")
 
 samples <- read.csv("../data/Sample_info_RNAseq.csv")
 tissue <- samples$Tissue
@@ -1044,7 +1050,7 @@ human_orth_cpg_bounds_sort[,3] <- as.integer(human_orth_cpg_bounds_sort[,3])
 
 
 human_250_interval <- bedr.sort.region(human_orth_cpg_bounds_sort, method = "lexicographical", check.chr = FALSE)
-write.table(human_250_interval, file="../data/250_7251_genes_interval_humans.bed",sep="\t", col.names = F, row.names = F, quote = F)
+#write.table(human_250_interval, file="../data/250_7251_genes_interval_humans.bed",sep="\t", col.names = F, row.names = F, quote = F)
 
 chimp_orth_cpg_bounds_sort[,1] <- as.character(chimp_orth_cpg_bounds_sort[,1])
 chimp_orth_cpg_bounds_sort[,2] <- as.integer(chimp_orth_cpg_bounds_sort[,2])    
@@ -1052,7 +1058,7 @@ chimp_orth_cpg_bounds_sort[,3] <- as.integer(chimp_orth_cpg_bounds_sort[,3])
 
 
 chimp_250_interval <- bedr.sort.region(chimp_orth_cpg_bounds_sort, method = "lexicographical", check.chr = FALSE)
-write.table(chimp_250_interval, file="../data/250_7251_genes_interval_chimps.bed",sep="\t", col.names = F, row.names = F, quote = F)
+#write.table(chimp_250_interval, file="../data/250_7251_genes_interval_chimps.bed",sep="\t", col.names = F, row.names = F, quote = F)
 
 
 rhesus_orth_cpg_bounds_sort[,1] <- as.character(rhesus_orth_cpg_bounds_sort[,1])
@@ -1060,7 +1066,7 @@ rhesus_orth_cpg_bounds_sort[,2] <- as.integer(rhesus_orth_cpg_bounds_sort[,2])
 rhesus_orth_cpg_bounds_sort[,3] <- as.integer(rhesus_orth_cpg_bounds_sort[,3])
 
 rhesus_250_interval <- bedr.sort.region(rhesus_orth_cpg_bounds_sort, method = "lexicographical", check.chr = FALSE)
-write.table(rhesus_250_interval, file="../data/250_7251_genes_interval_rhesus.bed",sep="\t", col.names = F, row.names = F, quote = F)
+#write.table(rhesus_250_interval, file="../data/250_7251_genes_interval_rhesus.bed",sep="\t", col.names = F, row.names = F, quote = F)
 
 ```
 
@@ -1358,9 +1364,9 @@ dim(rhesus_orth_cpg_bounds_sort_res)
 
 rhesus_250_interval <- bedr.sort.region(rhesus_orth_cpg_bounds_sort_res, method = "lexicographical", check.chr = FALSE)
 
-write.table(human_250_interval, file="../data/250_complete_interval_humans.bed",sep="\t", col.names = F, row.names = F, quote = F)
-write.table(chimp_250_interval, file="../data/250_complete_interval_chimps.bed",sep="\t", col.names = F, row.names = F, quote = F)
-write.table(rhesus_250_interval, file="../data/250_complete_interval_rhesus.bed",sep="\t", col.names = F, row.names = F, quote = F)
+#write.table(human_250_interval, file="../data/250_complete_interval_humans.bed",sep="\t", col.names = F, row.names = F, quote = F)
+#write.table(chimp_250_interval, file="../data/250_complete_interval_chimps.bed",sep="\t", col.names = F, row.names = F, quote = F)
+#write.table(rhesus_250_interval, file="../data/250_complete_interval_rhesus.bed",sep="\t", col.names = F, row.names = F, quote = F)
 
 # To do: What if we say it has to be on the same chromosome?
 
@@ -1373,7 +1379,7 @@ val_first_gene_sort <- arrange(val_first_gene, gene.x)
 
 # Grab the last CpG for each gene
 
-val_last_gene <- human.cpg.intersect_2cpgs[as.logical(ave(human_chimp_rhesus_2_orth_cpgs$start.b.x, human_chimp_rhesus_2_orth_cpgs$gene.x, FUN = function(x) x == max(x))),]
+val_last_gene <- human.cpg.intersect_2cpgs[as.logical(ave(human.cpg.intersect_2cpgs$start.b.x, human.cpg.intersect_2cpgs$gene.x, FUN = function(x) x == max(x))),]
 length(unique(val_last_gene$gene.x))
 
 val_last_gene_sort <- arrange(val_last_gene, gene.x)
@@ -1393,7 +1399,7 @@ colnames(humans_250) <- c("chr", "start", "end", "gene")
 
 humans_250_sort <-  bedr.sort.region(humans_250, method = "lexicographical", check.chr = FALSE)
 
-write.table(humans_250_sort, file="../data/boundaries_within_250_humans",sep="\t", col.names = F, row.names = F, quote = F)
+#write.table(humans_250_sort, file="../data/boundaries_within_250_humans",sep="\t", col.names = F, row.names = F, quote = F)
 
 # Chimps
 
@@ -1407,7 +1413,7 @@ chimps_250[,1] <- paste("chr", chimps_250[,1], sep = '' )
 
 chimps_250_sort <-  bedr.sort.region(chimps_250, method = "lexicographical", check.chr = FALSE)
 
-write.table(chimps_250_sort, file="../boundaries_within_250_chimps.bed", sep="\t", col.names = F, row.names = F, quote = F)
+#write.table(chimps_250_sort, file="../boundaries_within_250_chimps.bed", sep="\t", col.names = F, row.names = F, quote = F)
 # Rhesus
 
 rhesus_250 <- as.data.frame(cbind(val_first_gene_sort$chr, as.numeric(val_first_gene_sort$start.b), as.numeric(val_last_gene_sort$end.b), as.character(val_first_gene_sort$gene)), stringsAsFactors = FALSE)
@@ -1450,7 +1456,7 @@ matrix_grab_250[,1] <- as.numeric(matrix_grab_250[,1])
 matrix_grab_250[,5] <- as.character(matrix_grab_250[,5])
 dim(matrix_grab_250)
 
-write.table(matrix_grab_250, "../data/250_matrix_grab_250_merged.txt", quote = FALSE)
+#write.table(matrix_grab_250, "../data/250_matrix_grab_250_merged.txt", quote = FALSE)
 ```
 
 ### Clustering based on regions
@@ -1458,7 +1464,7 @@ write.table(matrix_grab_250, "../data/250_matrix_grab_250_merged.txt", quote = F
 ```{r}
 # Read in the data
 
-methyl_250_2cpgs <- read.csv("~/Desktop/Reg_Evo_Primates/data/methyl_250_2cpgs.txt", sep="", stringsAsFactors=FALSE)
+methyl_250_2cpgs <- read.csv("../data/methyl_250_2cpgs.txt", sep="", stringsAsFactors=FALSE)
 methyl_250_2cpgs_species_tissues_only <- methyl_250_2cpgs[,2:49]
 
 # Average over all orthologous CpGs
@@ -1482,7 +1488,7 @@ gene_names[,i-1] <- aggregate(methyl_250_2cpgs[,i] ~ methyl_250_2cpgs[,54], data
 # Make file with average values and gene names
 
 matrix_methyl <- cbind(avg_methylation_multiple_cpgs_per_gene, gene_names)
-write.table(matrix_methyl, "../data/3965_avg_methyl_per_ts_gene.txt")
+#write.table(matrix_methyl, "../data/3965_avg_methyl_per_ts_gene.txt")
 
 # PCA with just the humans and chimps
 
@@ -1602,16 +1608,220 @@ hist(check_window, xlab = "Distance of region (bp)")
 
 # Read in methylation data
 
+methyl_250_2cpgs <- read.csv("../data/methyl_250_2cpgs.txt", sep="", stringsAsFactors=FALSE)
+dim(methyl_250_2cpgs)
 
-# Make bedtools readable
+# Grab the unmerged orthologous regions 
 
+methyl_250_2cpgs_set <- methyl_250_2cpgs[!grepl(",", methyl_250_2cpgs$matrix_grab_genes.names),]
+length(unique(methyl_250_2cpgs_set$matrix_grab_genes.names))
+
+# For the unmerged orthologous regions, get ENSG-gene pairings
+
+ENSG_GENE_HG19 <- read.csv("../data/ENSG_GENE_HG19.csv", stringsAsFactors=FALSE, header = T)
+
+methyl_values_for_exp_ENSG <- merge(methyl_250_2cpgs_set, ENSG_GENE_HG19, by.x = "matrix_grab_genes.names", by.y = "Gene")
+methyl_250_2cpgs_set1 <- cbind(methyl_values_for_exp_ENSG[,55], methyl_values_for_exp_ENSG[,3:50])
+
+# Count and make sure that there are 2 or more CpGs/gene
+
+make_table_set1 <- count(methyl_250_2cpgs_set1, methyl_250_2cpgs_set1[,1])
+summary(make_table_set1$n)
+
+# Note: for the integration, we will need to eliminate H1H, but we won't quite yet
+
+# For the merged orthologous regions, grab the merged orthologous regions
+
+methyl_250_2cpgs_set2 <- methyl_250_2cpgs[grepl(",", methyl_250_2cpgs$matrix_grab_genes.names),]
+length(unique(methyl_250_2cpgs_set2$matrix_grab_genes.names))
+
+# Get the orthologous CpGs from set 2 so that we can sort out which they belong to
+
+methyl_250_2cpgs_set2_for_intersection <- cbind(methyl_250_2cpgs_set2[,51:53], methyl_250_2cpgs_set2[,50], methyl_250_2cpgs_set2[,50], methyl_250_2cpgs_set2[,54], methyl_250_2cpgs_set2[,2:49], stringsAsFactors = FALSE)
+colnames(methyl_250_2cpgs_set2_for_intersection) <- c("chr", "start", "end", "pos", "pos", "gene_name")
 
 # Use bedtools to sort by CpGs by region. Do not merge regions. 
 
 
+library("bedr")
+
+orth_interval <- read.table("../data/250_7251_genes_interval_humans.bed")
+orth_interval[,1] <- as.character(orth_interval[,1])
+
+human.cpg.int.merged.reg <- bedr(input = list(a = methyl_250_2cpgs_set2_for_intersection, b = orth_interval), method = "intersect", params = "-loj", check.chr=FALSE)
+
+human.cpg.int.merged.reg.gene <- cbind(human.cpg.int.merged.reg[,59], human.cpg.int.merged.reg[,60], human.cpg.int.merged.reg[,7:54])
+length(unique(human.cpg.int.merged.reg.gene[,1]))
+
+# Make sure that there is at least 2 CpGs/gene
+#make_table_set2 <- count(human.cpg.int.merged.reg.gene, human.cpg.int.merged.reg.gene[,1])
+#summary(make_table_set2$n)
+
+methyl_250_2cpgs_set2 <- plyr::arrange(human.cpg.int.merged.reg.gene, human.cpg.int.merged.reg.gene[,1])
+
 # Take average methylation level over the genes (now that you have the methylation value for each gene)
+
+  ##### FOR SET1
+# Rename so you can reuse code
+
+methyl_250_2cpgs <- methyl_250_2cpgs_set1 
+
+# Average over all orthologous CpGs
+
+avg_methylation_multiple_cpgs_per_gene <- array(data = NA, dim = c(3776,48))
+
+for (i in 2:49){
+avg_methylation_multiple_cpgs_per_gene[,i-1] <- aggregate(methyl_250_2cpgs[,i] ~ methyl_250_2cpgs[,1], data = methyl_250_2cpgs, mean)[,2]
+}
+
+colnames(avg_methylation_multiple_cpgs_per_gene) <- colnames(methyl_250_2cpgs[,2:49])
+
+# Get the gene names
+
+gene_names <- array(data = NA, dim = c(3776,1))
+
+for (i in 2){
+gene_names <- aggregate(methyl_250_2cpgs[,i] ~ methyl_250_2cpgs[,1], data = methyl_250_2cpgs, mean)[,1]
+}
+gene_names <- as.data.frame(as.character(gene_names))
+colnames(gene_names) <- c("ENSG")
+set1 <- cbind(gene_names, avg_methylation_multiple_cpgs_per_gene)
+
+
+  ##### FOR SET2
+# Rename so you can reuse code
+
+methyl_250_2cpgs <- methyl_250_2cpgs_set2[,2:50]
+methyl_250_2cpgs[,1] <- as.character(methyl_250_2cpgs[,1])
+for (i in 2:49){
+methyl_250_2cpgs[,i] <- as.numeric(methyl_250_2cpgs[,i])
+}
+
+# Average over all orthologous CpGs
+
+avg_methylation_multiple_cpgs_per_gene <- array(data = NA, dim = c(379,48))
+
+for (i in 2:49){
+avg_methylation_multiple_cpgs_per_gene[,i-1] <- aggregate(methyl_250_2cpgs[,i] ~ methyl_250_2cpgs[,1], data = methyl_250_2cpgs, mean)[,2]
+}
+
+colnames(avg_methylation_multiple_cpgs_per_gene) <- colnames(methyl_250_2cpgs[,2:49])
+
+# Get the gene names
+
+gene_names <- array(data = NA, dim = c(379,1))
+
+for (i in 2){
+gene_names <- aggregate(methyl_250_2cpgs[,i] ~ methyl_250_2cpgs[,1], data = methyl_250_2cpgs, mean)[,1]
+}
+gene_names <- as.data.frame(as.character(gene_names))
+colnames(gene_names) <- c("ENSG")
+set2 <- cbind(gene_names, avg_methylation_multiple_cpgs_per_gene)
+colnames(set2) <- colnames(set1)
+
+meth_4155_hcr_genes <- rbind(set1, set2)
+meth_4155_hcr_genes[,1] <- as.character(meth_4155_hcr_genes[,1])
+
+#write.table(meth_4155_hcr_genes, "../data/250_avg_methyl_hcr_4155_genes_unmerged.txt", quote = FALSE)
+
+
+# Eliminate H1H and merge with expression values
+
+meth_4155_hcr_genes_no_H1H <- meth_4155_hcr_genes[,-18]
+
+# Merge with gene expression that we have values for
+
+cpm.voom.cyclic <-
+readRDS("../data/human_chimp_orth_cpm_voom_cyclic.rds")
+
+human_chimp_liver_4155 <- rownames(cpm.voom.cyclic$E) %in% meth_4155_hcr_genes_no_H1H[,1]
+human_chimp_liver_4155 <- as.data.frame(human_chimp_liver_4155)
+counts_genes_in <- cbind(cpm.voom.cyclic$E, human_chimp_liver_4155)
+counts_genes_in_cutoff <- subset(counts_genes_in, human_chimp_liver_4155 == "TRUE")
+counts_genes_in_cutoff <- counts_genes_in_cutoff[,1:47]  
+
+
+# Bind the expression and methylation data together
+gene_exp_4155 <- cbind(rownames(counts_genes_in_cutoff), counts_genes_in_cutoff) 
+
+gene_exp_4155[,1] <- as.character(gene_exp_4155[,1])
+gene_exp_4155[1:10,1] == meth_4155_hcr_genes_no_H1H[1:10,1]
+
+# Have to merge it first (because set1 and set2 of the methylation messed up the order)
+
+human_chimp_rhesus_exp_methyl <- merge(gene_exp_4155, meth_4155_hcr_genes_no_H1H, by.x = c("rownames(counts_genes_in_cutoff)"), by.y = c("ENSG"))
+
+dim(human_chimp_rhesus_exp_methyl)
+
+# Make the output with ENSG, gene expression, and methylation
+#write.table(human_chimp_rhesus_exp_methyl, "../data/250_exp_avg_methyl_hcr_4155_genes.txt", quote = FALSE)
+
 ```
 
+## Perform PCA on methylation values for 4,155 genes (rather than the 3,965 regions)
+
+```{r}
+# PCA with just the humans and chimps
+
+pca_genes <- prcomp(t(meth_4155_hcr_genes[,2:49]), scale = T)
+scores <- pca_genes$x
+
+matrixpca <- pca_genes$x
+pc1 <- matrixpca[,1]
+pc2 <- matrixpca[,2]
+pc3 <- matrixpca[,3]
+pc4 <- matrixpca[,4]
+pc5 <- matrixpca[,5]
+
+pcs <- data.frame(pc1, pc2, pc3, pc4, pc5)
+
+samples <- read.delim("../data/Sample_info_RNAseq_limma.txt")
+tissue <- samples$Tissue
+species <- samples$Species
+
+ggplot(data=pcs, aes(x=pc1, y=pc2, color=tissue, shape=species, size=2)) + geom_point(aes(colour = as.factor(tissue)))
+
+cors <- cor(meth_4155_hcr_genes[,2:49], method="pearson", use="pairwise")
+
+heatmap.2( cors, scale="none", col = colors, margins = c(12, 12), trace='none', denscol="white", ColSideColors=pal[as.integer(as.factor(species))], RowSideColors=pal[as.integer(as.factor(tissue))+9], cexCol = 0.2 + 1/log10(15), cexRow = 0.2 + 1/log10(15))
+
+
+library(dendextend)
+library(colorspace)
+library(tidyverse)
+
+#Function to make pearson correlation matrix and convert into distance matrix
+pearson <- function(x, ...) {
+    x <- as.matrix(x)
+    res <- as.dist(1 - cor(x, method = "pearson", use = "everything"))
+    res <- as.dist(res)
+    attr(res, "method") <- "pearson"
+    return(res)
+}
+
+#Convert rpkm gene expression matrix into correlation matrix (this is for the heat map tiles part)
+
+
+
+cor(meth_4155_hcr_genes[,2:49])->all_data
+
+hc <- meth_4155_hcr_genes[,2:49] %>% pearson %>% hclust(method="average")
+dend <- hc %>% as.dendrogram 
+
+heatmap.2(all_data, scale="none", col = colors, margins = c(5, 5),  trace='none', denscol="white", Colv=dend,Rowv=dend, ColSideColors=pal[as.integer(as.factor(species))], RowSideColors=pal[as.integer(as.factor(tissue))+9])
+
+```
+
+
+### Using orthologous and non-orthologous CpGs
+
+# Steps for additional analysis
+
+1) For each species, identify the endpoint coordinates on their own genome (bin around Lifted over TSS). 
+2) Find the highest and the lowest orthologous CpG within the endopoint coordinates.
+3) For each sample (on own coordinate system), we are going to find all of the methylation values between the highest and lowest orthologous CpG. The orthologous CpGs will be the endpoints. 
+4) Take the average methylation value for each region in each sample. 
+5) Re-run the PCA. 
 
 ```{r}
 human_orth <- read.table("../data/250_7251_genes_interval_humans_orth_cpgs.txt")
@@ -1706,27 +1916,11 @@ to_count <- as.factor(cpg.int.needed$names)
 check <- as.data.frame(table(to_count))
 summary(check[,2])
 hist(check[,2], breaks = 50)
-write.table(cpg.int.needed, "../data/250_orth_cpg_int_needed.txt", quote = FALSE)
-write.table(cpg.int.needed$V8, "../data/250_row_numbers_orth_cpg_int_needed.txt", quote = FALSE)
+#write.table(cpg.int.needed, "../data/250_orth_cpg_int_needed.txt", quote = FALSE)
+#write.table(cpg.int.needed$V8, "../data/250_row_numbers_orth_cpg_int_needed.txt", quote = FALSE)
 
 ```
 
-
-
-
-
-
-
-
-Now we are going to run bedtools with the intersection of 
-
-# Steps for additional analysis
-
-1) For each species, identify the endpoint coordinates on their own genome (bin around Lifted over TSS). 
-2) Find the highest and the lowest orthologous CpG within the endopoint coordinates.
-3) For each sample (on own coordinate system), we are going to find all of the methylation values between the highest and lowest orthologous CpG. The orthologous CpGs will be the endpoints. 
-4) Take the average methylation value for each region in each sample. 
-5) Re-run the PCA. 
 
 
 
@@ -1816,7 +2010,7 @@ ggplot(data=pcs, aes(x=pc1, y=pc2, color=tissue, shape=species, size=2)) + geom_
 ggplot(data=pcs, aes(x=pc2, y=pc3, color=tissue, shape=species, size=2)) + geom_point(aes(colour = as.factor(tissue)))
 
 
-cors <- cor(avg_methylation_multiple_cpgs_per_gene, method="pearson", use="pairwise.all.obs")
+cors <- cor(avg_methylation_multiple_cpgs_per_gene, method="pearson", use="pairwise.complete.obs")
 
 heatmap.2( cors, scale="none", col = colors, margins = c(12, 12), trace='none', denscol="white", ColSideColors=pal[as.integer(as.factor(species))], RowSideColors=pal[as.integer(as.factor(tissue))+9], cexCol = 0.2 + 1/log10(15), cexRow = 0.2 + 1/log10(15))
 
@@ -1833,6 +2027,7 @@ pc4 <- matrixpca[,4]
 pc5 <- matrixpca[,5]
 
 pcs <- data.frame(pc1, pc2, pc3, pc4, pc5)
+
 
 tissue <- samples$Tissue[1:32]
 species <- samples$Species[1:32]
