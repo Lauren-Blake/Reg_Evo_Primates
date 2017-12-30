@@ -29,3 +29,5 @@
 ./../data/orth_methyl_chrom_cpg.txt
 ./../data/orth_methyl_chrom_cpg_pos.txt
 ./../data/results-limma-voom-ash-interactions.rds
+./../Previous_analysis/*
+./../Previous_data/*

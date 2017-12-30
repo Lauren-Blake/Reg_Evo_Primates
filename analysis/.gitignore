@@ -30,4 +30,7 @@
 ./../data/orth_methyl_chrom_cpg_pos.txt
 ./../data/results-limma-voom-ash-interactions.rds
 ./../Previous_analysis/*
-./../Previous_data/*
+./../Previous_data/C1H_3_Smoothed.bed
+./../Previous_data/C1H_3_Smoothed.txt
+./../Previous_data/C1H_Smoothed.bedGraph
+./.RData
