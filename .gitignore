@@ -2,10 +2,10 @@
 .Rproj.user
 .R*
 .Rhistory
-*html
-*png
 *pdf
+analysis/test_interact_plots/
 data
-analysis/rda
-
-
+*rds
+*RData
+Previous*
+*log
